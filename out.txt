@@ -1,0 +1,1455 @@
+Folder Structure
+--------------------------------------------------
+github_repo_thqi0yu6/
+    middleware.ts
+    postcss.config.mjs
+    next.config.mjs
+    README.md
+    tailwind.config.ts
+    .gitignore
+    package-lock.json
+    package.json
+    components.json
+    tsconfig.json
+    .eslintrc.json
+    app/
+        favicon.ico
+        layout.tsx
+        page.tsx
+        globals.css
+        auth/
+            page.tsx
+            auth-code-error/
+                page.tsx
+            callback/
+                route.ts
+        dashboard/
+            page.tsx
+        profile/
+            page.tsx
+        hook/
+            useUser.tsx
+    supabase/
+        seed.sql
+        .gitignore
+        config.toml
+    components/
+        theme-provider.tsx
+        NavBar.tsx
+        Profile.tsx
+        query-provider.tsx
+        ui/
+            avatar.tsx
+            button.tsx
+    public/
+        vercel.svg
+        next.svg
+    lib/
+        utils.ts
+        types/
+            supabase.ts
+        supabase/
+            browser.ts
+            server.ts
+        constant/
+            inedx.ts
+    .git/
+        config
+        HEAD
+        description
+        index
+        packed-refs
+        objects/
+            pack/
+                pack-9b1b5a8008b93bca759a29e58446db53924b6ad4.pack
+                pack-9b1b5a8008b93bca759a29e58446db53924b6ad4.idx
+            info/
+        info/
+            exclude
+        logs/
+            HEAD
+            refs/
+                heads/
+                    main
+                remotes/
+                    origin/
+                        HEAD
+        hooks/
+            commit-msg.sample
+            pre-rebase.sample
+            pre-commit.sample
+            applypatch-msg.sample
+            fsmonitor-watchman.sample
+            pre-receive.sample
+            prepare-commit-msg.sample
+            post-update.sample
+            pre-merge-commit.sample
+            pre-applypatch.sample
+            pre-push.sample
+            update.sample
+            push-to-checkout.sample
+        refs/
+            heads/
+                main
+            tags/
+            remotes/
+                origin/
+                    HEAD
+    .vscode/
+        settings.json
+        extensions.json
+
+
+File Contents
+--------------------------------------------------
+
+
+/var/folders/ld/sn2mrbtx2bbfmsd9s9vtmg0h0000gn/T/github_repo_thqi0yu6/middleware.ts
+File type: .ts
+import { createServerClient, type CookieOptions } from '@supabase/ssr'
+import { NextResponse, type NextRequest } from 'next/server'
+import { protectedPaths } from './lib/constant/inedx'
+
+export async function middleware(request: NextRequest) {
+  let response = NextResponse.next({
+    request: {
+      headers: request.headers,
+    },
+  })
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return request.cookies.get(name)?.value
+        },
+        set(name: string, value: string, options: CookieOptions) {
+          request.cookies.set({
+            name,
+            value,
+            ...options,
+          })
+          response = NextResponse.next({
+            request: {
+              headers: request.headers,
+            },
+          })
+          response.cookies.set({
+            name,
+            value,
+            ...options,
+          })
+        },
+        remove(name: string, options: CookieOptions) {
+          request.cookies.set({
+            name,
+            value: '',
+            ...options,
+          })
+          response = NextResponse.next({
+            request: {
+              headers: request.headers,
+            },
+          })
+          response.cookies.set({
+            name,
+            value: '',
+            ...options,
+          })
+        },
+      },
+    }
+  )
+
+  const {data} = await supabase.auth.getSession();
+  const url = new URL(request.url);
+  if(data?.session){
+    if(url.pathname === '/auth'){
+      return NextResponse.redirect(new URL("/", request.url));
+    }
+    return response;
+  }
+  else {
+    if(protectedPaths.includes(url.pathname) ){
+      return NextResponse.redirect(new URL("/auth?next="+url.pathname, request.url));
+    }
+    return response;
+  }
+}
+
+export const config = {
+  matcher: [
+    /*
+     * Match all request paths except for the ones starting with:
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * Feel free to modify this pattern to include more paths.
+     */
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+  ],
+}
+
+--------------------------------------------------
+File End
+--------------------------------------------------
+
+
+/var/folders/ld/sn2mrbtx2bbfmsd9s9vtmg0h0000gn/T/github_repo_thqi0yu6/postcss.config.mjs
+File type: .mjs
+/** @type {import('postcss-load-config').Config} */
+const config = {
+  plugins: {
+    tailwindcss: {},
+  },
+};
+
+export default config;
+
+
+--------------------------------------------------
+File End
+--------------------------------------------------
+
+
+/var/folders/ld/sn2mrbtx2bbfmsd9s9vtmg0h0000gn/T/github_repo_thqi0yu6/next.config.mjs
+File type: .mjs
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+    images: {
+        remotePatterns: [
+          {
+            protocol: "https",
+            hostname: '"lh3.googleusercontent.com"',
+          },
+        ],
+      },
+};
+
+export default nextConfig;
+
+
+--------------------------------------------------
+File End
+--------------------------------------------------
+
+
+/var/folders/ld/sn2mrbtx2bbfmsd9s9vtmg0h0000gn/T/github_repo_thqi0yu6/components.json
+File type: .json
+{
+  "$schema": "https://ui.shadcn.com/schema.json",
+  "style": "default",
+  "rsc": true,
+  "tsx": true,
+  "tailwind": {
+    "config": "tailwind.config.ts",
+    "css": "app/globals.css",
+    "baseColor": "zinc",
+    "cssVariables": true,
+    "prefix": ""
+  },
+  "aliases": {
+    "components": "@/components",
+    "utils": "@/lib/utils"
+  }
+}
+
+--------------------------------------------------
+File End
+--------------------------------------------------
+
+
+/var/folders/ld/sn2mrbtx2bbfmsd9s9vtmg0h0000gn/T/github_repo_thqi0yu6/tsconfig.json
+File type: .json
+{
+  "compilerOptions": {
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "preserve",
+    "incremental": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "paths": {
+      "@/*": ["./*"]
+    }
+  },
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+  "exclude": ["node_modules"]
+}
+
+
+--------------------------------------------------
+File End
+--------------------------------------------------
+
+
+/var/folders/ld/sn2mrbtx2bbfmsd9s9vtmg0h0000gn/T/github_repo_thqi0yu6/app/layout.tsx
+File type: .tsx
+import type { Metadata } from "next";
+import { Inter } from "next/font/google";
+import "./globals.css";
+import { ThemeProvider } from "@/components/theme-provider";
+import QueryProvider from "@/components/query-provider";
+import NavBar from "@/components/NavBar";
+
+const inter = Inter({ subsets: ["latin"] });
+
+export const metadata: Metadata = {
+  title: "Create Next App",
+  description: "Generated by create next app",
+};
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <>
+      <html lang="en" suppressHydrationWarning>
+        <head />
+        <body>
+          <QueryProvider>
+            <ThemeProvider
+              attribute="class"
+              defaultTheme="dark"
+              enableSystem
+              disableTransitionOnChange
+            >
+              <main className="max-w-6xl min-h-screen mx-auto py-10 space-y-10">
+                <NavBar/>
+                {children}
+              </main>
+              
+            </ThemeProvider>
+          </QueryProvider>
+        </body>
+      </html>
+    </>
+  );
+}
+
+
+--------------------------------------------------
+File End
+--------------------------------------------------
+
+
+/var/folders/ld/sn2mrbtx2bbfmsd9s9vtmg0h0000gn/T/github_repo_thqi0yu6/app/page.tsx
+File type: .tsx
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
+import React from "react";
+
+export default function page() {
+  return (
+    <div>
+      <Link href="/dashboard">Dashboard</Link>
+      <Link href="/profile">Profile</Link>
+    </div>
+  );
+}
+
+
+--------------------------------------------------
+File End
+--------------------------------------------------
+
+
+/var/folders/ld/sn2mrbtx2bbfmsd9s9vtmg0h0000gn/T/github_repo_thqi0yu6/app/globals.css
+File type: .css
+@tailwind base;
+  @tailwind components;
+  @tailwind utilities;
+
+  
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 240 10% 3.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 3.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 3.9%;
+    --primary: 142.1 76.2% 36.3%;
+    --primary-foreground: 355.7 100% 97.3%;
+    --secondary: 240 4.8% 95.9%;
+    --secondary-foreground: 240 5.9% 10%;
+    --muted: 240 4.8% 95.9%;
+    --muted-foreground: 240 3.8% 46.1%;
+    --accent: 240 4.8% 95.9%;
+    --accent-foreground: 240 5.9% 10%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 5.9% 90%;
+    --input: 240 5.9% 90%;
+    --ring: 142.1 76.2% 36.3%;
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 20 14.3% 4.1%;
+    --foreground: 0 0% 95%;
+    --card: 24 9.8% 10%;
+    --card-foreground: 0 0% 95%;
+    --popover: 0 0% 9%;
+    --popover-foreground: 0 0% 95%;
+    --primary: 142.1 70.6% 45.3%;
+    --primary-foreground: 144.9 80.4% 10%;
+    --secondary: 240 3.7% 15.9%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 0 0% 15%;
+    --muted-foreground: 240 5% 64.9%;
+    --accent: 12 6.5% 15.1%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 85.7% 97.3%;
+    --border: 240 3.7% 15.9%;
+    --input: 240 3.7% 15.9%;
+    --ring: 142.4 71.8% 29.2%;
+  }
+}
+
+
+  @layer base {
+    * {
+      @apply border-border;
+    }
+    body {
+      @apply bg-background text-foreground;
+    }
+  }
+
+--------------------------------------------------
+File End
+--------------------------------------------------
+
+
+/var/folders/ld/sn2mrbtx2bbfmsd9s9vtmg0h0000gn/T/github_repo_thqi0yu6/app/auth/page.tsx
+File type: .tsx
+// Code: Auth Page
+"use client";
+import { Button } from "@/components/ui/button";
+import { supabaseBrowser } from "@/lib/supabase/browser";
+import { KeyRound } from "lucide-react";
+import { useSearchParams } from "next/navigation";
+
+import React from "react";
+import { FcGoogle } from "react-icons/fc";
+
+export default function page() {
+  const params = useSearchParams();
+  const next = params.get("next") || "";
+  const handleLoginwithGoogle = async () => {
+    const supabase = supabaseBrowser();
+    const {data,error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: `${location.origin}/auth/callback?next=`+next,
+      },
+    });
+    if(error){
+      console.log(error);
+    }
+  };
+
+  return (
+    <div className="flex items-center justify-center w-full h-screen">
+      <div className="w-96 h-min rounded-md border p-5 space-y-5">
+        <div className="flex items-center gap-2">
+          <KeyRound />
+          <h1 className="text-2xl font-bold">Login</h1>
+        </div>
+
+        <p className="text-sm text-gray-300">
+          Simplify your Org's Recruitment Today 👇
+        </p>
+        <div className="flex flex-col gap-5">
+          <Button
+            className="w-full flex items-center gap-2"
+            variant="outline"
+            onClick={handleLoginwithGoogle}
+          >
+            {" "}
+            <FcGoogle /> Google
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+--------------------------------------------------
+File End
+--------------------------------------------------
+
+
+/var/folders/ld/sn2mrbtx2bbfmsd9s9vtmg0h0000gn/T/github_repo_thqi0yu6/app/auth/auth-code-error/page.tsx
+File type: .tsx
+export default function AuthError() {
+    return <div>Authentication Error</div>;
+  }
+  
+
+--------------------------------------------------
+File End
+--------------------------------------------------
+
+
+/var/folders/ld/sn2mrbtx2bbfmsd9s9vtmg0h0000gn/T/github_repo_thqi0yu6/app/auth/callback/route.ts
+File type: .ts
+import { cookies } from 'next/headers'
+import { NextResponse } from 'next/server'
+import { type CookieOptions, createServerClient } from '@supabase/ssr'
+
+export async function GET(request: Request) {
+  const { searchParams, origin } = new URL(request.url)
+  const code = searchParams.get('code')
+  // if "next" is in param, use it as the redirect URL
+  const next = searchParams.get('next') ?? '/'
+
+  if (code) {
+    const cookieStore = cookies()
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return cookieStore.get(name)?.value
+          },
+          set(name: string, value: string, options: CookieOptions) {
+            cookieStore.set({ name, value, ...options })
+          },
+          remove(name: string, options: CookieOptions) {
+            cookieStore.delete({ name, ...options })
+          },
+        },
+      }
+    )
+    const { error } = await supabase.auth.exchangeCodeForSession(code)
+    if (!error) {
+      return NextResponse.redirect(`${origin}${next}`)
+    }
+  }
+
+  // return the user to an error page with instructions
+  return NextResponse.redirect(`${origin}/auth/auth-code-error`)
+}
+
+--------------------------------------------------
+File End
+--------------------------------------------------
+
+
+/var/folders/ld/sn2mrbtx2bbfmsd9s9vtmg0h0000gn/T/github_repo_thqi0yu6/app/dashboard/page.tsx
+File type: .tsx
+import React from 'react'
+
+export default function page() {
+  return (
+    <div>Dashboard</div>
+  )
+}
+
+
+--------------------------------------------------
+File End
+--------------------------------------------------
+
+
+/var/folders/ld/sn2mrbtx2bbfmsd9s9vtmg0h0000gn/T/github_repo_thqi0yu6/app/profile/page.tsx
+File type: .tsx
+import React from 'react'
+
+export default function Page() {
+  return (
+    <div>
+        <h1>Profile</h1>
+    </div>
+  )
+}
+
+
+--------------------------------------------------
+File End
+--------------------------------------------------
+
+
+/var/folders/ld/sn2mrbtx2bbfmsd9s9vtmg0h0000gn/T/github_repo_thqi0yu6/app/hook/useUser.tsx
+File type: .tsx
+"use client";
+import { supabaseBrowser } from "@/lib/supabase/browser";
+import { useQuery } from "@tanstack/react-query";
+import React from "react";
+
+
+const initUser = {
+    avatar_url: "",
+    created_at: "",
+    email: "",
+    full_name: "",
+    id: "",
+}
+export default function useUser() {
+  return useQuery({
+    queryKey: ["user"],
+    queryFn: async () => {
+      const supabase = supabaseBrowser();
+      const { data } = await supabase.auth.getSession();
+      if (data.session?.user) {
+        const { data: user } = await supabase
+          .from("users")
+          .select("*")
+          .eq("id", data.session.user.id)
+          .single();
+        return user;
+      }
+      return initUser;
+    },
+  });
+}
+
+
+--------------------------------------------------
+File End
+--------------------------------------------------
+
+
+/var/folders/ld/sn2mrbtx2bbfmsd9s9vtmg0h0000gn/T/github_repo_thqi0yu6/supabase/seed.sql
+File type: .sql
+
+
+--------------------------------------------------
+File End
+--------------------------------------------------
+
+
+/var/folders/ld/sn2mrbtx2bbfmsd9s9vtmg0h0000gn/T/github_repo_thqi0yu6/supabase/config.toml
+File type: .toml
+# A string used to distinguish different Supabase projects on the same host. Defaults to the
+# working directory name when running `supabase init`.
+project_id = "recruitment_platform_v3"
+
+[api]
+enabled = true
+# Port to use for the API URL.
+port = 54321
+# Schemas to expose in your API. Tables, views and stored procedures in this schema will get API
+# endpoints. `public` is always included.
+schemas = ["public", "graphql_public"]
+# Extra schemas to add to the search_path of every request. `public` is always included.
+extra_search_path = ["public", "extensions"]
+# The maximum number of rows returns from a view, table, or stored procedure. Limits payload size
+# for accidental or malicious requests.
+max_rows = 1000
+
+[db]
+# Port to use for the local database URL.
+port = 54322
+# Port used by db diff command to initialize the shadow database.
+shadow_port = 54320
+# The database major version to use. This has to be the same as your remote database's. Run `SHOW
+# server_version;` on the remote database to check.
+major_version = 15
+
+[db.pooler]
+enabled = false
+# Port to use for the local connection pooler.
+port = 54329
+# Specifies when a server connection can be reused by other clients.
+# Configure one of the supported pooler modes: `transaction`, `session`.
+pool_mode = "transaction"
+# How many server connections to allow per user/database pair.
+default_pool_size = 20
+# Maximum number of client connections allowed.
+max_client_conn = 100
+
+[realtime]
+enabled = true
+# Bind realtime via either IPv4 or IPv6. (default: IPv4)
+# ip_version = "IPv6"
+# The maximum length in bytes of HTTP request headers. (default: 4096)
+# max_header_length = 4096
+
+[studio]
+enabled = true
+# Port to use for Supabase Studio.
+port = 54323
+# External URL of the API server that frontend connects to.
+api_url = "http://127.0.0.1"
+# OpenAI API Key to use for Supabase AI in the Supabase Studio.
+openai_api_key = "env(OPENAI_API_KEY)"
+
+# Email testing server. Emails sent with the local dev setup are not actually sent - rather, they
+# are monitored, and you can view the emails that would have been sent from the web interface.
+[inbucket]
+enabled = true
+# Port to use for the email testing server web interface.
+port = 54324
+# Uncomment to expose additional ports for testing user applications that send emails.
+# smtp_port = 54325
+# pop3_port = 54326
+
+[storage]
+enabled = true
+# The maximum file size allowed (e.g. "5MB", "500KB").
+file_size_limit = "50MiB"
+
+[storage.image_transformation]
+enabled = true
+
+[auth]
+enabled = true
+# The base URL of your website. Used as an allow-list for redirects and for constructing URLs used
+# in emails.
+site_url = "http://127.0.0.1:3000"
+# A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
+additional_redirect_urls = ["https://127.0.0.1:3000"]
+# How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
+jwt_expiry = 3600
+# If disabled, the refresh token will never expire.
+enable_refresh_token_rotation = true
+# Allows refresh tokens to be reused after expiry, up to the specified interval in seconds.
+# Requires enable_refresh_token_rotation = true.
+refresh_token_reuse_interval = 10
+# Allow/disallow new user signups to your project.
+enable_signup = true
+# Allow/disallow anonymous sign-ins to your project.
+enable_anonymous_sign_ins = false
+# Allow/disallow testing manual linking of accounts
+enable_manual_linking = false
+
+[auth.email]
+# Allow/disallow new user signups via email to your project.
+enable_signup = true
+# If enabled, a user will be required to confirm any email change on both the old, and new email
+# addresses. If disabled, only the new email is required to confirm.
+double_confirm_changes = true
+# If enabled, users need to confirm their email address before signing in.
+enable_confirmations = false
+# Controls the minimum amount of time that must pass before sending another signup confirmation or password reset email.
+max_frequency = "1s"
+
+# Uncomment to customize email template
+# [auth.email.template.invite]
+# subject = "You have been invited"
+# content_path = "./supabase/templates/invite.html"
+
+[auth.sms]
+# Allow/disallow new user signups via SMS to your project.
+enable_signup = true
+# If enabled, users need to confirm their phone number before signing in.
+enable_confirmations = false
+# Template for sending OTP to users
+template = "Your code is {{ .Code }} ."
+# Controls the minimum amount of time that must pass before sending another sms otp.
+max_frequency = "5s"
+
+# Use pre-defined map of phone number to OTP for testing.
+# [auth.sms.test_otp]
+# 4152127777 = "123456"
+
+# This hook runs before a token is issued and allows you to add additional claims based on the authentication method used.
+# [auth.hook.custom_access_token]
+# enabled = true
+# uri = "pg-functions://<database>/<schema>/<hook_name>"
+
+# Configure one of the supported SMS providers: `twilio`, `twilio_verify`, `messagebird`, `textlocal`, `vonage`.
+[auth.sms.twilio]
+enabled = false
+account_sid = ""
+message_service_sid = ""
+# DO NOT commit your Twilio auth token to git. Use environment variable substitution instead:
+auth_token = "env(SUPABASE_AUTH_SMS_TWILIO_AUTH_TOKEN)"
+
+# Use an external OAuth provider. The full list of providers are: `apple`, `azure`, `bitbucket`,
+# `discord`, `facebook`, `github`, `gitlab`, `google`, `keycloak`, `linkedin_oidc`, `notion`, `twitch`,
+# `twitter`, `slack`, `spotify`, `workos`, `zoom`.
+[auth.external.apple]
+enabled = false
+client_id = ""
+# DO NOT commit your OAuth provider secret to git. Use environment variable substitution instead:
+secret = "env(SUPABASE_AUTH_EXTERNAL_APPLE_SECRET)"
+# Overrides the default auth redirectUrl.
+redirect_uri = ""
+# Overrides the default auth provider URL. Used to support self-hosted gitlab, single-tenant Azure,
+# or any other third-party OIDC providers.
+url = ""
+# If enabled, the nonce check will be skipped. Required for local sign in with Google auth.
+skip_nonce_check = false
+
+[edge_runtime]
+enabled = true
+# Configure one of the supported request policies: `oneshot`, `per_worker`.
+# Use `oneshot` for hot reload, or `per_worker` for load testing.
+policy = "oneshot"
+inspector_port = 8083
+
+[analytics]
+enabled = false
+port = 54327
+vector_port = 54328
+# Configure one of the supported backends: `postgres`, `bigquery`.
+backend = "postgres"
+
+# Experimental features may be deprecated any time
+[experimental]
+# Configures Postgres storage engine to use OrioleDB (S3)
+orioledb_version = ""
+# Configures S3 bucket URL, eg. <bucket_name>.s3-<region>.amazonaws.com
+s3_host = "env(S3_HOST)"
+# Configures S3 bucket region, eg. us-east-1
+s3_region = "env(S3_REGION)"
+# Configures AWS_ACCESS_KEY_ID for S3 bucket
+s3_access_key = "env(S3_ACCESS_KEY)"
+# Configures AWS_SECRET_ACCESS_KEY for S3 bucket
+s3_secret_key = "env(S3_SECRET_KEY)"
+
+
+--------------------------------------------------
+File End
+--------------------------------------------------
+
+
+/var/folders/ld/sn2mrbtx2bbfmsd9s9vtmg0h0000gn/T/github_repo_thqi0yu6/components/theme-provider.tsx
+File type: .tsx
+"use client"
+
+import * as React from "react"
+import { ThemeProvider as NextThemesProvider } from "next-themes"
+import { type ThemeProviderProps } from "next-themes/dist/types"
+
+export function ThemeProvider({ children, ...props }: ThemeProviderProps) {
+  return <NextThemesProvider {...props}>{children}</NextThemesProvider>
+}
+
+--------------------------------------------------
+File End
+--------------------------------------------------
+
+
+/var/folders/ld/sn2mrbtx2bbfmsd9s9vtmg0h0000gn/T/github_repo_thqi0yu6/components/NavBar.tsx
+File type: .tsx
+import React from 'react'
+import Profile from './Profile'
+import Link from 'next/link'
+
+export default function NavBar() {
+  return (
+    <div className='flex justify-between items-center h-20'>
+        <Link href="/">
+        <h1 className='text-xl font-bold'>Recruiter</h1>
+        </Link>
+        
+        <Profile/>
+    </div>
+  )
+}
+
+
+--------------------------------------------------
+File End
+--------------------------------------------------
+
+
+/var/folders/ld/sn2mrbtx2bbfmsd9s9vtmg0h0000gn/T/github_repo_thqi0yu6/components/Profile.tsx
+File type: .tsx
+"use client";
+import React from "react";
+import { Button } from "./ui/button";
+import Link from "next/link";
+import useUser from "@/app/hook/useUser";
+import Image from "next/image";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { supabaseBrowser } from "@/lib/supabase/browser";
+import { useQueryClient } from "@tanstack/react-query";
+import { usePathname, useRouter } from "next/navigation";
+import { protectedPaths } from "@/lib/constant/inedx";
+
+export default function Profile() {
+  const { isFetching, data } = useUser();
+  const queryClient = useQueryClient();
+  const router = useRouter();
+  const pathname = usePathname();
+  
+
+  if (isFetching) {
+    return <></>;
+  }
+
+  const handleLogout = async () => {
+    const supabase = supabaseBrowser();
+    queryClient.clear();
+    await supabase.auth.signOut();
+    router.refresh();
+    if(protectedPaths.includes(pathname)){
+      router.replace("/auth?next="+pathname);
+    } 
+  };
+
+  return (
+    <div>
+      {!data?.id ? (
+        <Link href="/auth" className="animate-fade">
+          <Button variant="outline">Sign In</Button>
+        </Link>
+      ) : (
+        <>
+          {/* {data?.avatar_url ? (
+            <Image
+              src={data.avatar_url || ""}
+              alt={data.full_name || ""}
+              width={40}
+              height={40}
+              className="rounded-full animate-fade ring-2"
+            />
+          ) : (
+            <div className="h-[50px] w-[50px] flex items-center justify-center ring-2 rounded-full">
+              <h1>{data?.full_name ? data?.full_name[0] : ""}</h1>
+            </div>
+          )} */}
+          <Avatar onClick={handleLogout} className='cursor-pointer animate-fade'>
+            <AvatarImage
+              src={data?.avatar_url || undefined}
+              alt={data?.full_name || undefined}
+            />
+            <AvatarFallback>
+              {data?.full_name ? data?.full_name[0] : ""}
+            </AvatarFallback>
+          </Avatar>
+        </>
+      )}
+    </div>
+  );
+}
+
+
+--------------------------------------------------
+File End
+--------------------------------------------------
+
+
+/var/folders/ld/sn2mrbtx2bbfmsd9s9vtmg0h0000gn/T/github_repo_thqi0yu6/components/query-provider.tsx
+File type: .tsx
+"use client";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import React, { ReactNode } from "react";
+import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
+
+export default function QueryProvider({ children }: { children: ReactNode }) {
+  const [queryClient] = React.useState(
+    () =>
+      new QueryClient({
+        defaultOptions: {
+          queries: {
+            staleTime: Infinity,
+          },
+        },
+      })
+  );
+  return (
+    <QueryClientProvider client={queryClient}>
+      {children}
+      <ReactQueryDevtools initialIsOpen={false} />
+    </QueryClientProvider>
+  );
+}
+
+
+--------------------------------------------------
+File End
+--------------------------------------------------
+
+
+/var/folders/ld/sn2mrbtx2bbfmsd9s9vtmg0h0000gn/T/github_repo_thqi0yu6/components/ui/avatar.tsx
+File type: .tsx
+"use client"
+
+import * as React from "react"
+import * as AvatarPrimitive from "@radix-ui/react-avatar"
+
+import { cn } from "@/lib/utils"
+
+const Avatar = React.forwardRef<
+  React.ElementRef<typeof AvatarPrimitive.Root>,
+  React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Root>
+>(({ className, ...props }, ref) => (
+  <AvatarPrimitive.Root
+    ref={ref}
+    className={cn(
+      "relative flex h-10 w-10 shrink-0 overflow-hidden rounded-full",
+      className
+    )}
+    {...props}
+  />
+))
+Avatar.displayName = AvatarPrimitive.Root.displayName
+
+const AvatarImage = React.forwardRef<
+  React.ElementRef<typeof AvatarPrimitive.Image>,
+  React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Image>
+>(({ className, ...props }, ref) => (
+  <AvatarPrimitive.Image
+    ref={ref}
+    className={cn("aspect-square h-full w-full", className)}
+    {...props}
+  />
+))
+AvatarImage.displayName = AvatarPrimitive.Image.displayName
+
+const AvatarFallback = React.forwardRef<
+  React.ElementRef<typeof AvatarPrimitive.Fallback>,
+  React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Fallback>
+>(({ className, ...props }, ref) => (
+  <AvatarPrimitive.Fallback
+    ref={ref}
+    className={cn(
+      "flex h-full w-full items-center justify-center rounded-full bg-muted",
+      className
+    )}
+    {...props}
+  />
+))
+AvatarFallback.displayName = AvatarPrimitive.Fallback.displayName
+
+export { Avatar, AvatarImage, AvatarFallback }
+
+
+--------------------------------------------------
+File End
+--------------------------------------------------
+
+
+/var/folders/ld/sn2mrbtx2bbfmsd9s9vtmg0h0000gn/T/github_repo_thqi0yu6/components/ui/button.tsx
+File type: .tsx
+import * as React from "react"
+import { Slot } from "@radix-ui/react-slot"
+import { cva, type VariantProps } from "class-variance-authority"
+
+import { cn } from "@/lib/utils"
+
+const buttonVariants = cva(
+  "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
+  {
+    variants: {
+      variant: {
+        default: "bg-primary text-primary-foreground hover:bg-primary/90",
+        destructive:
+          "bg-destructive text-destructive-foreground hover:bg-destructive/90",
+        outline:
+          "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
+        secondary:
+          "bg-secondary text-secondary-foreground hover:bg-secondary/80",
+        ghost: "hover:bg-accent hover:text-accent-foreground",
+        link: "text-primary underline-offset-4 hover:underline",
+      },
+      size: {
+        default: "h-10 px-4 py-2",
+        sm: "h-9 rounded-md px-3",
+        lg: "h-11 rounded-md px-8",
+        icon: "h-10 w-10",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+      size: "default",
+    },
+  }
+)
+
+export interface ButtonProps
+  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
+    VariantProps<typeof buttonVariants> {
+  asChild?: boolean
+}
+
+const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
+  ({ className, variant, size, asChild = false, ...props }, ref) => {
+    const Comp = asChild ? Slot : "button"
+    return (
+      <Comp
+        className={cn(buttonVariants({ variant, size, className }))}
+        ref={ref}
+        {...props}
+      />
+    )
+  }
+)
+Button.displayName = "Button"
+
+export { Button, buttonVariants }
+
+
+--------------------------------------------------
+File End
+--------------------------------------------------
+
+
+/var/folders/ld/sn2mrbtx2bbfmsd9s9vtmg0h0000gn/T/github_repo_thqi0yu6/public/vercel.svg
+File type: .svg
+<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 283 64"><path fill="black" d="M141 16c-11 0-19 7-19 18s9 18 20 18c7 0 13-3 16-7l-7-5c-2 3-6 4-9 4-5 0-9-3-10-7h28v-3c0-11-8-18-19-18zm-9 15c1-4 4-7 9-7s8 3 9 7h-18zm117-15c-11 0-19 7-19 18s9 18 20 18c6 0 12-3 16-7l-8-5c-2 3-5 4-8 4-5 0-9-3-11-7h28l1-3c0-11-8-18-19-18zm-10 15c2-4 5-7 10-7s8 3 9 7h-19zm-39 3c0 6 4 10 10 10 4 0 7-2 9-5l8 5c-3 5-9 8-17 8-11 0-19-7-19-18s8-18 19-18c8 0 14 3 17 8l-8 5c-2-3-5-5-9-5-6 0-10 4-10 10zm83-29v46h-9V5h9zM37 0l37 64H0L37 0zm92 5-27 48L74 5h10l18 30 17-30h10zm59 12v10l-3-1c-6 0-10 4-10 10v15h-9V17h9v9c0-5 6-9 13-9z"/></svg>
+
+--------------------------------------------------
+File End
+--------------------------------------------------
+
+
+/var/folders/ld/sn2mrbtx2bbfmsd9s9vtmg0h0000gn/T/github_repo_thqi0yu6/public/next.svg
+File type: .svg
+<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 394 80"><path fill="#000" d="M262 0h68.5v12.7h-27.2v66.6h-13.6V12.7H262V0ZM149 0v12.7H94v20.4h44.3v12.6H94v21h55v12.6H80.5V0h68.7zm34.3 0h-17.8l63.8 79.4h17.9l-32-39.7 32-39.6h-17.9l-23 28.6-23-28.6zm18.3 56.7-9-11-27.1 33.7h17.8l18.3-22.7z"/><path fill="#000" d="M81 79.3 17 0H0v79.3h13.6V17l50.2 62.3H81Zm252.6-.4c-1 0-1.8-.4-2.5-1s-1.1-1.6-1.1-2.6.3-1.8 1-2.5 1.6-1 2.6-1 1.8.3 2.5 1a3.4 3.4 0 0 1 .6 4.3 3.7 3.7 0 0 1-3 1.8zm23.2-33.5h6v23.3c0 2.1-.4 4-1.3 5.5a9.1 9.1 0 0 1-3.8 3.5c-1.6.8-3.5 1.3-5.7 1.3-2 0-3.7-.4-5.3-1s-2.8-1.8-3.7-3.2c-.9-1.3-1.4-3-1.4-5h6c.1.8.3 1.6.7 2.2s1 1.2 1.6 1.5c.7.4 1.5.5 2.4.5 1 0 1.8-.2 2.4-.6a4 4 0 0 0 1.6-1.8c.3-.8.5-1.8.5-3V45.5zm30.9 9.1a4.4 4.4 0 0 0-2-3.3 7.5 7.5 0 0 0-4.3-1.1c-1.3 0-2.4.2-3.3.5-.9.4-1.6 1-2 1.6a3.5 3.5 0 0 0-.3 4c.3.5.7.9 1.3 1.2l1.8 1 2 .5 3.2.8c1.3.3 2.5.7 3.7 1.2a13 13 0 0 1 3.2 1.8 8.1 8.1 0 0 1 3 6.5c0 2-.5 3.7-1.5 5.1a10 10 0 0 1-4.4 3.5c-1.8.8-4.1 1.2-6.8 1.2-2.6 0-4.9-.4-6.8-1.2-2-.8-3.4-2-4.5-3.5a10 10 0 0 1-1.7-5.6h6a5 5 0 0 0 3.5 4.6c1 .4 2.2.6 3.4.6 1.3 0 2.5-.2 3.5-.6 1-.4 1.8-1 2.4-1.7a4 4 0 0 0 .8-2.4c0-.9-.2-1.6-.7-2.2a11 11 0 0 0-2.1-1.4l-3.2-1-3.8-1c-2.8-.7-5-1.7-6.6-3.2a7.2 7.2 0 0 1-2.4-5.7 8 8 0 0 1 1.7-5 10 10 0 0 1 4.3-3.5c2-.8 4-1.2 6.4-1.2 2.3 0 4.4.4 6.2 1.2 1.8.8 3.2 2 4.3 3.4 1 1.4 1.5 3 1.5 5h-5.8z"/></svg>
+
+--------------------------------------------------
+File End
+--------------------------------------------------
+
+
+/var/folders/ld/sn2mrbtx2bbfmsd9s9vtmg0h0000gn/T/github_repo_thqi0yu6/lib/utils.ts
+File type: .ts
+import { type ClassValue, clsx } from "clsx"
+import { twMerge } from "tailwind-merge"
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs))
+}
+
+
+--------------------------------------------------
+File End
+--------------------------------------------------
+
+
+/var/folders/ld/sn2mrbtx2bbfmsd9s9vtmg0h0000gn/T/github_repo_thqi0yu6/lib/types/supabase.ts
+File type: .ts
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
+
+export type Database = {
+  public: {
+    Tables: {
+      applicants: {
+        Row: {
+          created_at: string | null
+          data: Json
+          id: string
+          recruitment_cycle_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          data: Json
+          id?: string
+          recruitment_cycle_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          data?: Json
+          id?: string
+          recruitment_cycle_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "applicants_recruitment_cycle_id_fkey"
+            columns: ["recruitment_cycle_id"]
+            isOneToOne: false
+            referencedRelation: "recruitment_cycles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organization_users: {
+        Row: {
+          created_at: string | null
+          id: string
+          organization_id: string | null
+          role: Database["public"]["Enums"]["role_type"]
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          organization_id?: string | null
+          role: Database["public"]["Enums"]["role_type"]
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          organization_id?: string | null
+          role?: Database["public"]["Enums"]["role_type"]
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_users_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organization_users_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organizations: {
+        Row: {
+          created_at: string | null
+          id: string
+          name: string
+          owner_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          name: string
+          owner_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          name?: string
+          owner_id?: string | null
+        }
+        Relationships: []
+      }
+      recruitment_cycles: {
+        Row: {
+          created_at: string | null
+          id: string
+          name: string
+          organization_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          name: string
+          organization_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          name?: string
+          organization_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recruitment_cycles_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      users: {
+        Row: {
+          avatar_url: string | null
+          created_at: string | null
+          email: string
+          full_name: string | null
+          id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string | null
+          email: string
+          full_name?: string | null
+          id?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string | null
+          email?: string
+          full_name?: string | null
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "users_id_fkey"
+            columns: ["id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      [_ in never]: never
+    }
+    Enums: {
+      role_type: "Owner" | "Admin" | "Member"
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
+}
+
+type PublicSchema = Database[Extract<keyof Database, "public">]
+
+export type Tables<
+  PublicTableNameOrOptions extends
+    | keyof (PublicSchema["Tables"] & PublicSchema["Views"])
+    | { schema: keyof Database },
+  TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
+    ? keyof (Database[PublicTableNameOrOptions["schema"]]["Tables"] &
+        Database[PublicTableNameOrOptions["schema"]]["Views"])
+    : never = never,
+> = PublicTableNameOrOptions extends { schema: keyof Database }
+  ? (Database[PublicTableNameOrOptions["schema"]]["Tables"] &
+      Database[PublicTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
+    ? R
+    : never
+  : PublicTableNameOrOptions extends keyof (PublicSchema["Tables"] &
+        PublicSchema["Views"])
+    ? (PublicSchema["Tables"] &
+        PublicSchema["Views"])[PublicTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
+
+export type TablesInsert<
+  PublicTableNameOrOptions extends
+    | keyof PublicSchema["Tables"]
+    | { schema: keyof Database },
+  TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
+    ? keyof Database[PublicTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = PublicTableNameOrOptions extends { schema: keyof Database }
+  ? Database[PublicTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
+  : PublicTableNameOrOptions extends keyof PublicSchema["Tables"]
+    ? PublicSchema["Tables"][PublicTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
+
+export type TablesUpdate<
+  PublicTableNameOrOptions extends
+    | keyof PublicSchema["Tables"]
+    | { schema: keyof Database },
+  TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
+    ? keyof Database[PublicTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = PublicTableNameOrOptions extends { schema: keyof Database }
+  ? Database[PublicTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
+    ? U
+    : never
+  : PublicTableNameOrOptions extends keyof PublicSchema["Tables"]
+    ? PublicSchema["Tables"][PublicTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
+
+export type Enums<
+  PublicEnumNameOrOptions extends
+    | keyof PublicSchema["Enums"]
+    | { schema: keyof Database },
+  EnumName extends PublicEnumNameOrOptions extends { schema: keyof Database }
+    ? keyof Database[PublicEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
+> = PublicEnumNameOrOptions extends { schema: keyof Database }
+  ? Database[PublicEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : PublicEnumNameOrOptions extends keyof PublicSchema["Enums"]
+    ? PublicSchema["Enums"][PublicEnumNameOrOptions]
+    : never
+
+
+--------------------------------------------------
+File End
+--------------------------------------------------
+
+
+/var/folders/ld/sn2mrbtx2bbfmsd9s9vtmg0h0000gn/T/github_repo_thqi0yu6/lib/supabase/browser.ts
+File type: .ts
+import { createBrowserClient } from "@supabase/ssr";
+import { Database } from "../types/supabase";
+
+export function supabaseBrowser() {
+  return createBrowserClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
+}
+
+
+--------------------------------------------------
+File End
+--------------------------------------------------
+
+
+/var/folders/ld/sn2mrbtx2bbfmsd9s9vtmg0h0000gn/T/github_repo_thqi0yu6/lib/supabase/server.ts
+File type: .ts
+import { createServerClient } from "@supabase/ssr";
+import { cookies } from "next/headers";
+import { Database } from "../types/supabase";
+
+export function supabaseServer() {
+  const cookieStore = cookies();
+
+  return createServerClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return cookieStore.get(name)?.value;
+        },
+      },
+    }
+  );
+}
+
+
+--------------------------------------------------
+File End
+--------------------------------------------------
+
+
+/var/folders/ld/sn2mrbtx2bbfmsd9s9vtmg0h0000gn/T/github_repo_thqi0yu6/lib/constant/inedx.ts
+File type: .ts
+ export const protectedPaths = ["/dashboard", "/profile"];
+
+--------------------------------------------------
+File End
+--------------------------------------------------

@@ -26,7 +26,7 @@ export default function Profile() {
     queryClient.clear();
     await supabase.auth.signOut();
     router.refresh();
-    if(protectedPaths.includes(pathname)){
+    if(protectedPaths.includes(pathname || "")){
       router.replace("/auth?next="+pathname);
     } 
   };
