@@ -33,7 +33,7 @@ export function OrgSelector({ user }: { user: any }) {
         }
 
         const data: Org[] = await response.json();
-        console.log("Fetched organizations:", data);
+        //console.log("Fetched organizations:", data);
         setOrganizations(data);
       } catch (err: any) {
         setError(err.message);

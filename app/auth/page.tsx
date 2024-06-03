@@ -1,16 +1,12 @@
 "use client";
 import { Button } from "@/components/ui/button";
 import { supabaseBrowser } from "@/lib/supabase/browser";
+import { HOSTNAME } from "@/pages/api/_app";
 import { KeyRound } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import React, { useState, useEffect, Suspense } from "react";
 import { FcGoogle } from "react-icons/fc";
 
-// Set the hostname based on the environment
-const HOSTNAME =
-  process.env.NODE_ENV === "development"
-    ? "http://localhost:3000"
-    : "https://recruitment-v3.vercel.app";
 
 function LoginPageContent() {
   const params = useSearchParams();
@@ -62,9 +58,7 @@ function LoginPageContent() {
             <FcGoogle /> Google
           </Button>
 
-          <Button onClick={getHostname}>{ process.env.NODE_ENV === "development"
-    ? "http://localhost:3000"
-    : "https://recruitment-v3.vercel.app"}</Button>
+          <Button onClick={getHostname}>{HOSTNAME}</Button>
         </div>
       </div>
     </div>

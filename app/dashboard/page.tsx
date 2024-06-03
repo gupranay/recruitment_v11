@@ -8,11 +8,6 @@ import { OrganizationProvider, useOrganization } from '@/contexts/OrganizationCo
 import { Button } from '@/components/ui/button';
 
 export default function Page() {
-  
-  const HOSTNAME =
-  process.env.NODE_ENV === "development"
-    ? "http://localhost:3000"
-    : "https://recruitment-v3.vercel.app";
 
   const { isFetching, data: user, error } = useUser();
 
@@ -24,11 +19,7 @@ export default function Page() {
     return <div>Error loading user data.</div>;
   }
 
-  const getHostname = () => {
-    console.log( process.env.NODE_ENV === "development"
-    ? "http://localhost:3000"
-    : "https://recruitment-v3.vercel.app");
-  }
+  
 
 
   return (
@@ -37,7 +28,6 @@ export default function Page() {
       <CreateOrganizationDialog user={user}/>
       <OrgSelector user={user}/>
     </div>
-    <Button onClick={getHostname}>Get Hostname</Button>
     </OrganizationProvider>
       
     
