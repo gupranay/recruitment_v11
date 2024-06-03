@@ -8,9 +8,14 @@ import { useSearchParams } from "next/navigation";
 import React from "react";
 import { FcGoogle } from "react-icons/fc";
 
-export default function page() {
+export default function LoginPage() {
   const params = useSearchParams();
-  const next = params.get("next") || "";
+  let next;
+  if(!params){
+    next = "";
+  }else {
+    next = params.get("next") || "";
+  }
   const handleLoginwithGoogle = async () => {
     const supabase = supabaseBrowser();
     const {data,error } = await supabase.auth.signInWithOAuth({

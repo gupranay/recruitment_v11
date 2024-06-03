@@ -6,7 +6,7 @@ import { supabaseBrowser } from '@/lib/supabase/browser';
 import { OrgSelector } from '@/components/OrgSelector';
 import { OrganizationProvider, useOrganization } from '@/contexts/OrganizationContext';
 
-export default function page() {
+export default function Dashboard() {
   const { isFetching, data: user, error } = useUser();
 
   if (isFetching) {
