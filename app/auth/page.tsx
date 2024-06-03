@@ -3,35 +3,45 @@ import { Button } from "@/components/ui/button";
 import { supabaseBrowser } from "@/lib/supabase/browser";
 import { KeyRound } from "lucide-react";
 import { useSearchParams } from "next/navigation";
-import React, { Suspense } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import { FcGoogle } from "react-icons/fc";
 
-function LoginPageContent() {
-  const params = useSearchParams();
-  let next;
-  if (!params) {
-    next = "";
-  } else {
-    next = params.get("next") || "";
-  }
-  const HOSTNAME =
+// Set the hostname based on the environment
+const HOSTNAME =
   process.env.NODE_ENV === "development"
     ? "http://localhost:3000"
     : "https://recruitment-v3.vercel.app";
 
+function LoginPageContent() {
+  const params = useSearchParams();
+  const [next, setNext] = useState("");
+
+  useEffect(() => {
+    if (params) {
+      const nextParam = params.get("next") || "";
+      setNext(nextParam);
+    }
+  }, [params]);
 
   const handleLoginwithGoogle = async () => {
     const supabase = supabaseBrowser();
+    const redirectTo = `${HOSTNAME}/auth/callback?next=${next}`;
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${HOSTNAME}/auth/callback?next=` + next,
+        redirectTo,
       },
     });
     if (error) {
       console.log(error);
     }
   };
+
+  const getHostname = () => {
+    console.log( process.env.NODE_ENV === "development"
+    ? "http://localhost:3000"
+    : "https://recruitment-v3.vercel.app");
+  }
 
   return (
     <div className="flex items-center justify-center w-full h-screen">
@@ -51,6 +61,8 @@ function LoginPageContent() {
           >
             <FcGoogle /> Google
           </Button>
+
+          <Button onClick={getHostname}>Get Hostname</Button>
         </div>
       </div>
     </div>
