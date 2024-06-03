@@ -38,7 +38,7 @@ export default function LoginPage() {
         </div>
 
         <p className="text-sm text-gray-300">
-          Simplify your Org's Recruitment Today 👇
+          Simplify your Org&apos;s Recruitment Today 👇
         </p>
         <div className="flex flex-col gap-5">
           <Button
