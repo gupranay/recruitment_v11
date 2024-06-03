@@ -14,13 +14,18 @@ function LoginPageContent() {
   } else {
     next = params.get("next") || "";
   }
+  const HOSTNAME =
+  process.env.NODE_ENV === "development"
+    ? "http://localhost:3000"
+    : "https://recruitment-v3.vercel.app";
+
 
   const handleLoginwithGoogle = async () => {
     const supabase = supabaseBrowser();
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${location.origin}/auth/callback?next=` + next,
+        redirectTo: `${HOSTNAME}/auth/callback?next=` + next,
       },
     });
     if (error) {
