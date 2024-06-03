@@ -46,10 +46,12 @@ export function CreateOrganizationDialog({ user }: CreateOrganizationDialogProps
       setError("");
       setName("");
       setOpen(false);
+      router.refresh();
     } catch (err: any) {
       setError(err.message);
     } finally {
       setLoading(false);
+      router.refresh();
     }
   };
 
