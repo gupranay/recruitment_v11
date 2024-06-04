@@ -22,6 +22,7 @@ export const OrganizationProvider = ({ children }: { children: ReactNode }) => {
   );
 };
 
+
 export const useOrganization = () => {
   const context = useContext(OrganizationContext);
   if (context === undefined) {

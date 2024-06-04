@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -14,10 +14,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useRouter } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabase/browser";
+import { useOrganization } from "@/contexts/OrganizationContext";
+import { toast } from "./ui/Toast";
+
 type CreateOrganizationDialogProps = {
-    user: any; // Replace 'any' with the appropriate type for the user
-  };
-export function CreateOrganizationDialog({ user }: CreateOrganizationDialogProps) {
+  user: any; // Replace 'any' with the appropriate type for the user
+};
+export function CreateOrganizationDialog({
+  user,
+}: CreateOrganizationDialogProps) {
+
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -34,26 +40,41 @@ export function CreateOrganizationDialog({ user }: CreateOrganizationDialogProps
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ name, user}),
+        body: JSON.stringify({ name, user }),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
+        // if error.code === '23505' || error.message.includes('duplicate key value violates unique constraint')
         throw new Error(data.error || "An error occurred");
       }
 
       setError("");
       setName("");
       setOpen(false);
+      toast("Organization created successfully!", "success");
       router.refresh();
     } catch (err: any) {
-      setError(err.message);
+      if (err.code === '23505' || err.message.includes('duplicate key value violates unique constraint "organizations_name_key"')) {
+        setError("Organization name already exists. Please choose a different name.");
+      } else {
+        setError(err.message);
+      }
+      
     } finally {
       setLoading(false);
       router.refresh();
     }
   };
+
+  // if dialog is closed, clear error and name
+  useEffect(() => {
+    if (!open) {
+      setError("");
+      setName("");
+    }
+  }, [open]);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -78,17 +99,19 @@ export function CreateOrganizationDialog({ user }: CreateOrganizationDialogProps
               onChange={(e) => setName(e.target.value)}
               className="col-span-3"
             />
+            {error && <div className="col-span-4 text-red-500">{error}</div>}
           </div>
-          {error && (
-            <div className="col-span-4 text-red-500">
-              {error}
-            </div>
-          )}
+          
         </div>
         <DialogFooter>
-          <Button type="button" onClick={handleCreateOrganization} disabled={loading}>
+          <Button
+            type="button"
+            onClick={handleCreateOrganization}
+            disabled={loading}
+          >
             {loading ? "Creating..." : "Create"}
           </Button>
+          
         </DialogFooter>
       </DialogContent>
     </Dialog>
