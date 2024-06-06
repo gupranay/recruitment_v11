@@ -11,25 +11,20 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useOrganization } from "@/contexts/OrganizationContext";
-import { Button } from "./ui/button";
 import { useEffect } from "react";
-
-type Org = {
-  id: string;
-  name: string;
-  created_at: string;
-  owner_id: string;
-};
+import { useNavigate } from "react-router-dom";
+import { Organization } from "@/contexts/OrganizationContext";
 
 export function OrgSelector({ user }: { user: any }) {
   const { selectedOrganization, setSelectedOrganization } = useOrganization();
-  const [organizations, setOrganizations] = React.useState<Org[]>([]);
+  const [organizations, setOrganizations] = React.useState<Organization[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [isInitialLoad, setIsInitialLoad] = React.useState(true);
+  const navigate = useNavigate();
 
   React.useEffect(() => {
-    const savedOrg = localStorage.getItem('selectedOrganization');
+    const savedOrg = localStorage.getItem("selectedOrganization");
     if (savedOrg) {
       setSelectedOrganization(JSON.parse(savedOrg));
     }
@@ -37,16 +32,18 @@ export function OrgSelector({ user }: { user: any }) {
   }, [setSelectedOrganization]);
 
   // Debugging selectedOrganization updates
-  useEffect(() => {
+  /* useEffect(() => {
     console.log("Selected Organization Updated:", selectedOrganization);
-  }, [selectedOrganization]);
+  }, [selectedOrganization]); */
 
   // Save organization to local storage when it changes
   React.useEffect(() => {
-    
     if (selectedOrganization) {
-      console.log("setting", selectedOrganization);
-      localStorage.setItem('selectedOrganization', JSON.stringify(selectedOrganization));
+      //console.log("setting", selectedOrganization);
+      localStorage.setItem(
+        "selectedOrganization",
+        JSON.stringify(selectedOrganization)
+      );
     }
   }, [selectedOrganization]);
 
@@ -65,7 +62,7 @@ export function OrgSelector({ user }: { user: any }) {
           throw new Error("Failed to fetch organizations");
         }
 
-        const data: Org[] = await response.json();
+        const data: Organization[] = await response.json();
         setOrganizations(data);
       } catch (err: any) {
         setError(err.message);
@@ -81,7 +78,11 @@ export function OrgSelector({ user }: { user: any }) {
     return <div>Loading organization data...</div>;
   }
   if (loading) return <div>Loading...</div>;
-  if (error) return <div>Error: {error}</div>;
+  React.useEffect(() => {
+    if (error) {
+      navigate("/auth"); // Replace '/auth' with the path to your authentication page
+    }
+  }, [error, navigate]);
 
   return (
     <Select
@@ -90,11 +91,20 @@ export function OrgSelector({ user }: { user: any }) {
         if (org) {
           setSelectedOrganization(org);
         }
-      }} key={selectedOrganization ? selectedOrganization.id : 'no-org'}
+      }}
+      key={selectedOrganization ? selectedOrganization.id : "no-org"}
     >
       <SelectTrigger className="w-[200px]">
-        <SelectValue placeholder={selectedOrganization ? selectedOrganization.name : "Select organization..."}>
-          {selectedOrganization ? selectedOrganization.name : "Select organization..."}
+        <SelectValue
+          placeholder={
+            selectedOrganization
+              ? selectedOrganization.name
+              : "Select organization..."
+          }
+        >
+          {selectedOrganization
+            ? selectedOrganization.name
+            : "Select organization..."}
         </SelectValue>
       </SelectTrigger>
       <SelectContent>
