@@ -78,9 +78,10 @@ export function OrgSelector({ user }: { user: any }) {
     return <div>Loading organization data...</div>;
   }
   if (loading) return <div>Loading...</div>;
+  
   React.useEffect(() => {
     if (error) {
-      navigate("/auth"); // Replace '/auth' with the path to your authentication page
+      navigate("/auth");
     }
   }, [error, navigate]);
 
