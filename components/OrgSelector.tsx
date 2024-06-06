@@ -11,8 +11,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useOrganization } from "@/contexts/OrganizationContext";
-import { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import { Organization } from "@/contexts/OrganizationContext";
 
 export function OrgSelector({ user }: { user: any }) {
@@ -21,7 +19,7 @@ export function OrgSelector({ user }: { user: any }) {
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [isInitialLoad, setIsInitialLoad] = React.useState(true);
-  const navigate = useNavigate();
+  
 
   React.useEffect(() => {
     const savedOrg = localStorage.getItem("selectedOrganization");
@@ -80,7 +78,7 @@ export function OrgSelector({ user }: { user: any }) {
   if (loading) return <div>Loading...</div>;
 
   if (error) {
-    navigate("/auth");
+    return <div>Error: {error}</div>;
   }
 
   return (
