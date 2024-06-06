@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useRouter } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabase/browser";
-import { useOrganization } from "@/contexts/OrganizationContext";
+import { Organization, useOrganization } from "@/contexts/OrganizationContext";
 import { toast } from "./ui/Toast";
 
 type CreateOrganizationDialogProps = {
@@ -23,7 +23,7 @@ type CreateOrganizationDialogProps = {
 export function CreateOrganizationDialog({
   user,
 }: CreateOrganizationDialogProps) {
-
+  const { selectedOrganization, setSelectedOrganization } = useOrganization();
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -49,11 +49,23 @@ export function CreateOrganizationDialog({
         // if error.code === '23505' || error.message.includes('duplicate key value violates unique constraint')
         throw new Error(data.error || "An error occurred");
       }
+      console.log("created org: ",data);
 
       setError("");
       setName("");
       setOpen(false);
       toast("Organization created successfully!", "success");
+
+      // create var of type organization from OrganizationContext
+      const newOrganization: Organization = {
+        id: data[0].id,
+        name: data[0].name,
+        owner_id: data[0].owner_id,
+        created_at: data[0].created_at,
+      };
+
+
+      setSelectedOrganization(newOrganization);
       router.refresh();
     } catch (err: any) {
       if (err.code === '23505' || err.message.includes('duplicate key value violates unique constraint "organizations_name_key"')) {

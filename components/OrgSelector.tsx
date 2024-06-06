@@ -1,8 +1,18 @@
 "use client";
 
 import * as React from "react";
-import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useOrganization } from "@/contexts/OrganizationContext";
+import { Button } from "./ui/button";
+import { useEffect } from "react";
 
 type Org = {
   id: string;
@@ -16,6 +26,29 @@ export function OrgSelector({ user }: { user: any }) {
   const [organizations, setOrganizations] = React.useState<Org[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
+  const [isInitialLoad, setIsInitialLoad] = React.useState(true);
+
+  React.useEffect(() => {
+    const savedOrg = localStorage.getItem('selectedOrganization');
+    if (savedOrg) {
+      setSelectedOrganization(JSON.parse(savedOrg));
+    }
+    setIsInitialLoad(false);
+  }, [setSelectedOrganization]);
+
+  // Debugging selectedOrganization updates
+  useEffect(() => {
+    console.log("Selected Organization Updated:", selectedOrganization);
+  }, [selectedOrganization]);
+
+  // Save organization to local storage when it changes
+  React.useEffect(() => {
+    
+    if (selectedOrganization) {
+      console.log("setting", selectedOrganization);
+      localStorage.setItem('selectedOrganization', JSON.stringify(selectedOrganization));
+    }
+  }, [selectedOrganization]);
 
   React.useEffect(() => {
     const fetchOrganizations = async () => {
@@ -25,7 +58,7 @@ export function OrgSelector({ user }: { user: any }) {
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify(user), // Ensure the user object is correctly passed
+          body: JSON.stringify(user),
         });
 
         if (!response.ok) {
@@ -33,7 +66,6 @@ export function OrgSelector({ user }: { user: any }) {
         }
 
         const data: Org[] = await response.json();
-        //console.log("Fetched organizations:", data);
         setOrganizations(data);
       } catch (err: any) {
         setError(err.message);
@@ -43,18 +75,27 @@ export function OrgSelector({ user }: { user: any }) {
     };
 
     fetchOrganizations();
-  }, [user]); // Assuming dependency on 'user'
+  }, [user]);
 
+  if (isInitialLoad) {
+    return <div>Loading organization data...</div>;
+  }
   if (loading) return <div>Loading...</div>;
   if (error) return <div>Error: {error}</div>;
 
   return (
-    <Select onValueChange={(value: string) => {
-      const org = organizations.find(org => org.id === value);
-      if (org) setSelectedOrganization(org);
-    }}>
+    <Select
+      onValueChange={(value: string) => {
+        const org = organizations.find((org) => org.id === value);
+        if (org) {
+          setSelectedOrganization(org);
+        }
+      }} key={selectedOrganization ? selectedOrganization.id : 'no-org'}
+    >
       <SelectTrigger className="w-[200px]">
-        <SelectValue placeholder="Select organization..." />
+        <SelectValue placeholder={selectedOrganization ? selectedOrganization.name : "Select organization..."}>
+          {selectedOrganization ? selectedOrganization.name : "Select organization..."}
+        </SelectValue>
       </SelectTrigger>
       <SelectContent>
         <SelectGroup>

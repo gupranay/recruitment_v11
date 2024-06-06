@@ -1,8 +1,10 @@
 import React, { createContext, useContext, useState, ReactNode } from "react";
 
-type Organization = {
+export type Organization = {
   id: string;
   name: string;
+  owner_id: string;
+  created_at: string;
 };
 
 type OrganizationContextType = {

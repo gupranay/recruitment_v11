@@ -9,7 +9,6 @@ import { Button } from '@/components/ui/button';
 import { ToastProvider } from "@/components/ui/Toast";
 
 export default function Page() {
-
   const { isFetching, data: user, error } = useUser();
 
   if (isFetching) {
@@ -30,6 +29,7 @@ export default function Page() {
       <div>Dashboard
       <CreateOrganizationDialog user={user}/>
       <OrgSelector user={user}/>
+      
     </div>
     </OrganizationProvider>
     
