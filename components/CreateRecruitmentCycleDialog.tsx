@@ -54,7 +54,7 @@ export default function CreateRecruitmentCycleDialog() {
             className="col-span-3"
           />
         </div>
-        <Button onClick={handleCreate} className="mt-4">
+        <Button onClick={handleCreate} className="mt-1">
           Create
         </Button>
       </DialogContent>
