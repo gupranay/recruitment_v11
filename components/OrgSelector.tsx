@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/select";
 import { useOrganization } from "@/contexts/OrganizationContext";
 import { Organization } from "@/contexts/OrganizationContext";
+import { RecruitmentCycle } from "@/lib/types/RecruitmentCycle";
 
 export function OrgSelector({ user }: { user: any }) {
   const { selectedOrganization, setSelectedOrganization } = useOrganization();
@@ -19,6 +20,7 @@ export function OrgSelector({ user }: { user: any }) {
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [isInitialLoad, setIsInitialLoad] = React.useState(true);
+  const [recruitmentCycles, setRecruitmentCycles] = React.useState<RecruitmentCycle[]>([]);
   
 
   React.useEffect(() => {
@@ -71,6 +73,29 @@ export function OrgSelector({ user }: { user: any }) {
 
     fetchOrganizations();
   }, [user]);
+
+  React.useEffect(() => {
+    if (selectedOrganization) {
+      const fetchRecruitmentCycles = async () => {
+        const response = await fetch("/api/recruitment_cycles", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ organization_id: selectedOrganization.id }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setRecruitmentCycles(data);
+          //console.log(data);
+        }
+      };
+
+      fetchRecruitmentCycles();
+    }
+  }, [selectedOrganization]);
+
 
   if (isInitialLoad) {
     return <div>Loading organization data...</div>;

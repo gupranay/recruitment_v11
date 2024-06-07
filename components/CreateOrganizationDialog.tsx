@@ -67,6 +67,7 @@ export function CreateOrganizationDialog({
 
       setSelectedOrganization(newOrganization);
       router.refresh();
+      window.location.reload();
     } catch (err: any) {
       if (err.code === '23505' || err.message.includes('duplicate key value violates unique constraint "organizations_name_key"')) {
         setError("Organization name already exists. Please choose a different name.");
