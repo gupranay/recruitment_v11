@@ -8,7 +8,7 @@ export default function ApplicantsList() {
 
   return (
     <div className="p-4">
-        <UploadApplicants />
+        
       <h3 className="text-lg font-semibold">Applicants</h3>
       <ul className="mt-4">
         {applicants.map((applicant) => (
