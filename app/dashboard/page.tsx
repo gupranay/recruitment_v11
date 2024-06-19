@@ -16,6 +16,7 @@ import ApplicantsList from "@/components/ApplicantsList";
 import { RecruitmentCycleProvider } from "@/contexts/RecruitmentCycleContext";
 import UploadApplicants from "@/components/UploadApplicants";
 import UploadApplicantsDialog from "@/components/UploadApplicantsDialog";
+import NavBar from "@/components/NavBar";
 
 export default function Page() {
   const { isFetching, data: user, error } = useUser();
@@ -33,6 +34,7 @@ export default function Page() {
       <ToastProvider />
       <RecruitmentCycleProvider>
       <ApplicantsProvider>
+      <NavBar />
         <div className="flex h-screen">
           <Sidebar />
           <div className="flex flex-col flex-1">

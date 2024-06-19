@@ -33,12 +33,6 @@ function LoginPageContent() {
     }
   };
 
-  const getHostname = () => {
-    console.log( process.env.NODE_ENV === "development"
-    ? "http://localhost:3000"
-    : "https://recruitment-v3.vercel.app");
-  }
-
   return (
     <div className="flex items-center justify-center w-full h-screen">
       <div className="w-96 h-min rounded-md border p-5 space-y-5">
@@ -57,8 +51,6 @@ function LoginPageContent() {
           >
             <FcGoogle /> Google
           </Button>
-
-          <Button onClick={getHostname}>{HOSTNAME}</Button>
         </div>
       </div>
     </div>

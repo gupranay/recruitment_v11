@@ -23,6 +23,7 @@ export default function UploadApplicantsDialog() {
   const [nameColumn, setNameColumn] = useState("");
   const [emailColumn, setEmailColumn] = useState("");
   const [headshotColumn, setHeadshotColumn] = useState("");
+  const [filePath, setFilePath] = useState(""); // Added this line
   const { selectedRecruitmentCycle } = useRecruitmentCycle();
 
   useEffect(() => {
@@ -62,9 +63,11 @@ export default function UploadApplicantsDialog() {
       method: "POST",
       body: formData,
     });
-
     if (response.ok) {
+      
       const { filePath } = await response.json();
+      console.log(filePath);
+      setFilePath(filePath); // Set filePath state here
       const headersResponse = await fetch("/api/applicants/readHeaders", {
         method: "POST",
         headers: {
@@ -102,7 +105,7 @@ export default function UploadApplicantsDialog() {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        filePath,
+        filePath, // Use filePath state here
         nameColumn,
         emailColumn,
         headshotColumn,

@@ -35,17 +35,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     const supabase = supabaseBrowser();
+    const uniqueFilename = await ensureUniqueFilename(supabase, file.originalFilename);
+    
     
     // Convert formidable file to a stream and upload to Supabase Storage
     const { data, error } = await supabase.storage
       .from('Applicant_Uploads')
-      .upload(`${file.originalFilename}`, fileData, {
+      .upload(`${uniqueFilename}`, fileData, {
         contentType: 'text/csv',
        // duplex: "true",
       });
       // console.log("Data", data);
       // console.log("Error", error);
     if (error) {
+      if(error.message.includes("already exists")){
+        console.log("File already exists");
+        return res.status(400).json({ error: "File already exists" });
+      }
       return res.status(500).json({ error: error.message });
     }
 
@@ -53,3 +59,33 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   });
 }
 
+
+async function ensureUniqueFilename(supabase: any, filename: any) {
+  let uniqueFilename = filename;
+  let exists = true;
+  let counter = 0;
+
+  while (exists) {
+    console.log("Unique Filename", uniqueFilename);
+    const { data, error } = await supabase.storage
+      .from('Applicant_Uploads')
+      .list('', { limit: 1, search: uniqueFilename });
+    // console.log("Data", data);
+    // console.log("Error", error);
+    if (error) {
+      throw new Error('Failed to check for existing filename');
+    }
+    if (!data || data === '') {
+      exists = false;
+    }
+    exists = data.length > 0;
+
+    if (exists) {
+      // Append a unique letter (or increment it) to the filename
+      uniqueFilename = `${filename}_${counter}`; // 97 is ASCII for 'a'
+      counter++;
+    }
+  }
+
+  return uniqueFilename;
+}
