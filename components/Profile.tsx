@@ -32,7 +32,7 @@ export default function Profile() {
   };
 
   return (
-    <div>
+    <div className="flex items-center gap-4">
       {!data?.id ? (
         <Link href="/auth" className="animate-fade">
           <Button variant="outline">Sign In</Button>
@@ -52,7 +52,7 @@ export default function Profile() {
               <h1>{data?.full_name ? data?.full_name[0] : ""}</h1>
             </div>
           )} */}
-          <Avatar onClick={handleLogout} className='cursor-pointer animate-fade'>
+          {/* <Avatar onClick={handleLogout} className='cursor-pointer animate-fade'>
             <AvatarImage
               src={data?.avatar_url || undefined}
               alt={data?.full_name || undefined}
@@ -60,7 +60,13 @@ export default function Profile() {
             <AvatarFallback>
               {data?.full_name ? data?.full_name[0] : ""}
             </AvatarFallback>
-          </Avatar>
+          </Avatar> */}
+          <Button asChild>
+            <Link href={"/dashboard"}> Go to Dashboard</Link>
+          </Button>
+          <Button onClick={handleLogout} variant="outline">
+            Logout
+          </Button>
         </>
       )}
     </div>
