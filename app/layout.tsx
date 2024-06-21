@@ -1,3 +1,4 @@
+// app/layout.tsx
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
@@ -30,7 +31,7 @@ export default function RootLayout({
               
             >
               <main className="max-w-6xl min-h-screen mx-auto py-10 space-y-10">
-                <NavBar />
+               
                 {children}
               </main>
             </ThemeProvider>

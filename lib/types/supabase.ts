@@ -13,19 +13,25 @@ export type Database = {
         Row: {
           created_at: string | null
           data: Json
+          email: string | null
           id: string
+          name: string
           recruitment_cycle_id: string | null
         }
         Insert: {
           created_at?: string | null
           data: Json
+          email?: string | null
           id?: string
+          name: string
           recruitment_cycle_id?: string | null
         }
         Update: {
           created_at?: string | null
           data?: Json
+          email?: string | null
           id?: string
+          name?: string
           recruitment_cycle_id?: string | null
         }
         Relationships: [
@@ -82,19 +88,19 @@ export type Database = {
           created_at: string | null
           id: string
           name: string
-          owner_id: string | null
+          owner_id: string
         }
         Insert: {
           created_at?: string | null
           id?: string
           name: string
-          owner_id?: string | null
+          owner_id?: string
         }
         Update: {
           created_at?: string | null
           id?: string
           name?: string
-          owner_id?: string | null
+          owner_id?: string
         }
         Relationships: []
       }

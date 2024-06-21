@@ -7,10 +7,14 @@ import { Button } from "@/components/ui/button";
 import CreateRecruitmentCycleDialog from "@/components/CreateRecruitmentCycleDialog";
 import { RecruitmentCycle } from "@/lib/types/RecruitmentCycle";
 import { Separator } from "@/components/ui/separator";
+import { useApplicants } from "@/contexts/ApplicantsContext"; // New context to manage applicants
+import { useRecruitmentCycle } from "@/contexts/RecruitmentCycleContext";
 
 export default function Sidebar() {
   const { selectedOrganization, setSelectedOrganization } = useOrganization();
+  const { setApplicants } = useApplicants(); // Context to manage applicants
   const [recruitmentCycles, setRecruitmentCycles] = React.useState([]);
+  const { selectedRecruitmentCycle, setSelectedRecruitmentCycle } = useRecruitmentCycle();
 
   React.useEffect(() => {
     if (selectedOrganization) {
@@ -35,8 +39,24 @@ export default function Sidebar() {
     }
   }, [selectedOrganization]);
 
-  //refresh page if recruitmenCycles updates
-  
+  const handleCycleSelect = async (cycle: RecruitmentCycle) => {
+    setSelectedRecruitmentCycle(cycle);
+    const response = await fetch("/api/applicants", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ cycle_id: cycle.id }),
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      setApplicants(data); // Update the applicants context with the fetched data
+    } else {
+        console.log("error", response.statusText);
+      toast("Failed to fetch applicants", "error");
+    }
+  };
 
   return (
     <div className="relative flex">
@@ -49,7 +69,11 @@ export default function Sidebar() {
             <h3 className="text-lg font-semibold">Recruitment Cycles</h3>
             <ul className="mt-4">
               {recruitmentCycles.map((cycle: RecruitmentCycle) => (
-                <li key={cycle.id} className="p-2">
+                <li
+                  key={cycle.id}
+                  className={`p-2 cursor-pointer ${selectedRecruitmentCycle?.id === cycle.id ? "bg-gray-300" : ""}`}
+                  onClick={() => handleCycleSelect(cycle)}
+                >
                   {cycle.name}
                 </li>
               ))}
