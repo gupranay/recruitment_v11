@@ -1,3 +1,4 @@
+//app/page.tsx
 import { Landing } from "@/components/landing";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";

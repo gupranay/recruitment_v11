@@ -227,9 +227,11 @@
 //   )
 // }
 
+//components/landing.tsx
 import Link from "next/link";
 import { JSX, SVGProps } from "react";
 import { Button } from "./ui/button";
+import Profile from "./Profile";
 
 export function Landing() {
   return (
@@ -245,9 +247,7 @@ export function Landing() {
         </Link>
         <div className="flex gap-4">
           <Button variant="outline">Contact</Button>
-          <Button asChild>
-            <Link href="/auth">Login</Link>
-          </Button>
+          <Profile />
         </div>
       </header>
       <main className="flex-1">
@@ -266,14 +266,14 @@ export function Landing() {
               </div>
               <div className="flex flex-col gap-2 min-[400px]:flex-row">
                 <Link
-                  href="/auth"
+                  href="/dashboard"
                   className="inline-flex h-10 items-center justify-center rounded-md bg-primary px-8 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
                   prefetch={false}
                 >
                   Sign Up
                 </Link>
                 <Link
-                  href="/auth"
+                  href="/auth?next=/dashboard"
                   className="inline-flex h-10 items-center justify-center rounded-md border border-input bg-background px-8 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
                   prefetch={false}
                 >
@@ -297,7 +297,7 @@ export function Landing() {
                       Comprehensive Profiles
                     </h3>
                     <p className="text-muted-foreground">
-                      Get a detailed view of each applicant's qualifications,
+                      Get a detailed view of each applicant&aposs qualifications,
                       experience, and interests.
                     </p>
                   </div>
@@ -348,7 +348,7 @@ export function Landing() {
                     <div className="grid gap-1">
                       <h3 className="text-xl font-bold">Candidate Profiles</h3>
                       <p className="text-muted-foreground">
-                        Get a comprehensive view of each applicant's
+                        Get a comprehensive view of each applicant&aposs
                         qualifications, experience, and interests.
                       </p>
                     </div>
@@ -393,14 +393,14 @@ export function Landing() {
             </div>
             <div className="mx-auto w-full max-w-sm flex flex-col gap-2">
               <Link
-                href="/auth"
+                href="/auth?next=/dashboard"
                 className="inline-flex h-10 items-center justify-center rounded-md bg-primary px-8 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
                 prefetch={false}
               >
                 Sign Up
               </Link>
               <Link
-                href="/auth"
+                href="/auth?next=/dashboard"
                 className="inline-flex h-10 items-center justify-center rounded-md border border-input bg-background px-8 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
                 prefetch={false}
               >
