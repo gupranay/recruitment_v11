@@ -17,6 +17,7 @@ import { RecruitmentCycleProvider } from "@/contexts/RecruitmentCycleContext";
 import UploadApplicants from "@/components/UploadApplicants";
 import UploadApplicantsDialog from "@/components/UploadApplicantsDialog";
 import NavBar from "@/components/NavBar";
+import UploadApplicantsDialog2 from "@/components/UploadApplicantsDialog2";
 
 export default function Page() {
   const { isFetching, data: user, error } = useUser();
@@ -43,7 +44,7 @@ export default function Page() {
               <CreateOrganizationDialog user={user} />
             </div>
             <main className="flex-1 p-4 overflow-auto">
-              <UploadApplicantsDialog />
+              <UploadApplicantsDialog2 />
               <ApplicantsList />
               </main>
           </div>
