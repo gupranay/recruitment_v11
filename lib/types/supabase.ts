@@ -14,6 +14,7 @@ export type Database = {
           created_at: string | null
           data: Json
           email: string | null
+          headshot_url: string | null
           id: string
           name: string
           recruitment_cycle_id: string | null
@@ -22,6 +23,7 @@ export type Database = {
           created_at?: string | null
           data: Json
           email?: string | null
+          headshot_url?: string | null
           id?: string
           name: string
           recruitment_cycle_id?: string | null
@@ -30,6 +32,7 @@ export type Database = {
           created_at?: string | null
           data?: Json
           email?: string | null
+          headshot_url?: string | null
           id?: string
           name?: string
           recruitment_cycle_id?: string | null

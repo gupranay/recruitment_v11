@@ -15,7 +15,6 @@ export default function Profile() {
   const queryClient = useQueryClient();
   const router = useRouter();
   const pathname = usePathname();
-  
 
   if (isFetching) {
     return <></>;
@@ -26,9 +25,9 @@ export default function Profile() {
     queryClient.clear();
     await supabase.auth.signOut();
     router.refresh();
-    if(protectedPaths.includes(pathname || "")){
-      router.replace("/auth?next="+pathname);
-    } 
+    if (protectedPaths.includes(pathname || "")) {
+      router.replace("/auth?next=" + pathname);
+    }
   };
 
   return (

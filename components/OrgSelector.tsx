@@ -13,6 +13,7 @@ import {
 import { useOrganization } from "@/contexts/OrganizationContext";
 import { Organization } from "@/contexts/OrganizationContext";
 import { RecruitmentCycle } from "@/lib/types/RecruitmentCycle";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export function OrgSelector({ user }: { user: any }) {
   const { selectedOrganization, setSelectedOrganization } = useOrganization();
@@ -100,9 +101,12 @@ export function OrgSelector({ user }: { user: any }) {
   if (isInitialLoad) {
     return <div>Loading organization data...</div>;
   }
-  if (loading) return <div>Loading...</div>;
+  if (loading) {
+    return <div style={{ width: "100%", height: "100%" }}></div>; // Adjust width and height as needed
+  }
 
   if (error) {
+    window.location.reload();
     return <div>Error: {error}</div>;
   }
 
