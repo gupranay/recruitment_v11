@@ -58,10 +58,6 @@ const ApplicantTile: React.FC<ApplicantTileProps> = ({ applicant }) => {
             </h2>
             <div className="mb-4">
               <div className="grid grid-cols-1 gap-4">
-                <div>
-                  <Label>Email</Label>
-                  <p className="text-gray-600">{applicant.email}</p>
-                </div>
                 {Object.entries(applicant.data || {}).map(([key, value]) => (
                   <div key={key}>
                     <Label>{key}</Label>
