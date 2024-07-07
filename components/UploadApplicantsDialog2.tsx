@@ -1,4 +1,3 @@
-// UploadApplicantsDialog.tsx
 "use client";
 import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -15,24 +14,11 @@ import {
 } from "@/components/ui/dialog";
 import { useRecruitmentCycle } from "@/contexts/RecruitmentCycleContext";
 import { Select, SelectTrigger, SelectContent, SelectItem } from "@/components/ui/select";
-import { parse } from 'csv-parse/sync';
-
-function parseCSVRow(rowString: string | Buffer) {
-  // Parse the CSV row
-  const records = parse(rowString, {
-    columns: false,
-    skip_empty_lines: true,
-    relax_column_count: true,
-    relax_quotes: true,
-    trim: true
-  });
-
-  // Return the first (and only) row
-  return records[0];
-}
+import { parse } from "csv-parse/sync";
 
 export default function UploadApplicantsDialog() {
   const [file, setFile] = useState<File | null>(null);
+  const [parsedData, setParsedData] = useState<any[]>([]);
   const [headers, setHeaders] = useState<string[]>([]);
   const [nameHeader, setNameHeader] = useState<string | null>(null);
   const [emailHeader, setEmailHeader] = useState<string | null>(null);
@@ -46,6 +32,7 @@ export default function UploadApplicantsDialog() {
     if (!open) {
       setLoading(false);
       setFile(null);
+      setParsedData([]);
       setHeaders([]);
       setNameHeader(null);
       setEmailHeader(null);
@@ -53,21 +40,32 @@ export default function UploadApplicantsDialog() {
     }
   }, [open]);
 
+  if (!selectedRecruitmentCycle) {
+    return null;
+  }
+
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files[0]) {
       const selectedFile = event.target.files[0];
       setFile(selectedFile);
-      parseHeaders(selectedFile);
+      parseCSV(selectedFile);
     }
   };
 
-  const parseHeaders = (csvFile: Blob) => {
+  const parseCSV = (csvFile: Blob) => {
     const reader = new FileReader();
     reader.onload = (e) => {
       const data = e.target?.result as string;
-      const lines = data.split("\n");
-      if (lines.length > 0) {
-        const headers = parseCSVRow(lines[0]);
+      const records = parse(data, {
+        columns: true,
+        skip_empty_lines: true,
+        trim: true,
+        relax_quotes: true,
+        relax_column_count: true,
+      });
+      setParsedData(records);
+      if (records.length > 0) {
+        const headers = Object.keys(records[0]);
         setHeaders(headers);
       }
     };
@@ -75,19 +73,27 @@ export default function UploadApplicantsDialog() {
   };
 
   const handleUploadClick = async () => {
-    if (!file) {
-      toast("Please select a file to upload", "error");
+    if (!file || !nameHeader || !emailHeader) {
+      toast("Please select a file and all required headers", "error");
       return;
     }
 
     setLoading(true);
 
-    const formData = new FormData();
-    formData.append("file", file);
+    const payload = {
+      parsedData,
+      nameHeader,
+      emailHeader,
+      headShotHeader,
+      recruitmentCycleId: selectedRecruitmentCycle?.id,
+    };
 
     const response = await fetch("/api/applicants/upload", {
       method: "POST",
-      body: formData,
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
     });
 
     if (response.ok) {
@@ -122,10 +128,7 @@ export default function UploadApplicantsDialog() {
                   <SelectTrigger className="w-full">{nameHeader || "Select Name Header"}</SelectTrigger>
                   <SelectContent>
                     {headers.map((header, index) => (
-                      <SelectItem
-                        key={index}
-                        value={header}
-                      >
+                      <SelectItem key={index} value={header}>
                         {header}
                       </SelectItem>
                     ))}
@@ -138,10 +141,7 @@ export default function UploadApplicantsDialog() {
                   <SelectTrigger className="w-full">{emailHeader || "Select Email Header"}</SelectTrigger>
                   <SelectContent>
                     {headers.map((header, index) => (
-                      <SelectItem
-                        key={index}
-                        value={header}
-                      >
+                      <SelectItem key={index} value={header}>
                         {header}
                       </SelectItem>
                     ))}
@@ -154,10 +154,7 @@ export default function UploadApplicantsDialog() {
                   <SelectTrigger className="w-full">{headShotHeader || "Select Headshot URL Header"}</SelectTrigger>
                   <SelectContent>
                     {headers.map((header, index) => (
-                      <SelectItem
-                        key={index}
-                        value={header}
-                      >
+                      <SelectItem key={index} value={header}>
                         {header}
                       </SelectItem>
                     ))}
