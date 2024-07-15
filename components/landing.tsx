@@ -416,7 +416,7 @@ export default function Landing() {
             Terms of Service
           </Link>
           <Link
-            href="#"
+            href="/privacy-policy"
             className="text-xs hover:underline underline-offset-4"
             prefetch={false}
           >
