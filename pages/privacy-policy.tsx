@@ -71,7 +71,7 @@ export default function PrivacyPolicy() {
               Data Storage and Security
             </h2>
             <p className="text-muted-foreground md:text-xl">
-              We store your data securely using [describe your storage solution, e.g., Supabase] and ensure that your information is protected against unauthorized access, disclosure, or destruction. We implement a variety of security measures to maintain the safety of your personal information.
+              We store your data securely using Supabase and ensure that your information is protected against unauthorized access, disclosure, or destruction. We implement a variety of security measures to maintain the safety of your personal information.
             </p>
 
             <h2 className="text-2xl font-semibold mt-6 mb-2">
