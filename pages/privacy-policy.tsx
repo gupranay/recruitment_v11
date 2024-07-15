@@ -2,13 +2,16 @@
 import Link from "next/link";
 import { Inter } from "next/font/google";
 import "../app/globals.css";
+import { Button } from "@/components/ui/button";
+
+const inter = Inter({ subsets: ["latin"], display: "swap" });
 
 export default function PrivacyPolicy() {
   return (
-    <div className="flex flex-col min-h-screen">
-      <header className="px-4 lg:px-6 h-14 flex items-center justify-center">
-        <Link href="/" className="text-3xl font-bold">
-          Back to main page
+    <div className={`flex flex-col min-h-screen ${inter.className}`}>
+      <header className="px-4 lg:px-6 h-14 flex items-center justify-between">
+        <Link href="/" prefetch={false}>
+          <Button variant="outline">Back to main page</Button>
         </Link>
       </header>
       <main className="flex-1 py-12 md:py-24 lg:py-32 xl:py-48">
@@ -28,7 +31,7 @@ export default function PrivacyPolicy() {
               Introduction
             </h2>
             <p className="text-muted-foreground md:text-xl">
-              At Recruiter ("we", "us", "our"), we are committed to protecting and respecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our services.
+              At Recruiter (&quot;we&quot;, &quot;us&quot;, &quot;our&quot;), we are committed to protecting and respecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our services.
             </p>
 
             <h2 className="text-2xl font-semibold mt-6 mb-2">
