@@ -1,3 +1,4 @@
+// components/OrgSelector.tsx
 "use client";
 
 import * as React from "react";
@@ -14,35 +15,40 @@ import { useOrganization } from "@/contexts/OrganizationContext";
 import { Organization } from "@/contexts/OrganizationContext";
 import { RecruitmentCycle } from "@/lib/types/RecruitmentCycle";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useApplicants } from "@/contexts/ApplicantsContext"; // Import useApplicants
 
 export function OrgSelector({ user }: { user: any }) {
   const { selectedOrganization, setSelectedOrganization } = useOrganization();
-  const { clearApplicants } = useApplicants(); // Get clearApplicants function
   const [organizations, setOrganizations] = React.useState<Organization[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [isInitialLoad, setIsInitialLoad] = React.useState(true);
   const [recruitmentCycles, setRecruitmentCycles] = React.useState<RecruitmentCycle[]>([]);
-  
+
+  const userSpecificKey = `selectedOrganization_${user.id}`;
 
   React.useEffect(() => {
-    const savedOrg = localStorage.getItem("selectedOrganization");
+    const savedOrg = localStorage.getItem(userSpecificKey);
     if (savedOrg) {
       setSelectedOrganization(JSON.parse(savedOrg));
     }
     setIsInitialLoad(false);
-  }, [setSelectedOrganization]);
+  }, [setSelectedOrganization, userSpecificKey]);
+
+  // Debugging selectedOrganization updates
+  /* useEffect(() => {
+    console.log("Selected Organization Updated:", selectedOrganization);
+  }, [selectedOrganization]); */
 
   // Save organization to local storage when it changes
   React.useEffect(() => {
     if (selectedOrganization) {
+      //console.log("setting", selectedOrganization);
       localStorage.setItem(
-        "selectedOrganization",
+        userSpecificKey,
         JSON.stringify(selectedOrganization)
       );
     }
-  }, [selectedOrganization]);
+  }, [selectedOrganization, userSpecificKey]);
 
   React.useEffect(() => {
     const fetchOrganizations = async () => {
@@ -85,6 +91,7 @@ export function OrgSelector({ user }: { user: any }) {
         if (response.ok) {
           const data = await response.json();
           setRecruitmentCycles(data);
+          //console.log(data);
         }
       };
 
@@ -109,7 +116,6 @@ export function OrgSelector({ user }: { user: any }) {
       onValueChange={(value: string) => {
         const org = organizations.find((org) => org.id === value);
         if (org) {
-          clearApplicants(); // Clear applicants when organization changes
           setSelectedOrganization(org);
         }
       }}
