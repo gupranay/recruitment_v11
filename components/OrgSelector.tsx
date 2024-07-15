@@ -14,9 +14,11 @@ import { useOrganization } from "@/contexts/OrganizationContext";
 import { Organization } from "@/contexts/OrganizationContext";
 import { RecruitmentCycle } from "@/lib/types/RecruitmentCycle";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useApplicants } from "@/contexts/ApplicantsContext"; // Import useApplicants
 
 export function OrgSelector({ user }: { user: any }) {
   const { selectedOrganization, setSelectedOrganization } = useOrganization();
+  const { clearApplicants } = useApplicants(); // Get clearApplicants function
   const [organizations, setOrganizations] = React.useState<Organization[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
@@ -32,15 +34,9 @@ export function OrgSelector({ user }: { user: any }) {
     setIsInitialLoad(false);
   }, [setSelectedOrganization]);
 
-  // Debugging selectedOrganization updates
-  /* useEffect(() => {
-    console.log("Selected Organization Updated:", selectedOrganization);
-  }, [selectedOrganization]); */
-
   // Save organization to local storage when it changes
   React.useEffect(() => {
     if (selectedOrganization) {
-      //console.log("setting", selectedOrganization);
       localStorage.setItem(
         "selectedOrganization",
         JSON.stringify(selectedOrganization)
@@ -89,14 +85,12 @@ export function OrgSelector({ user }: { user: any }) {
         if (response.ok) {
           const data = await response.json();
           setRecruitmentCycles(data);
-          //console.log(data);
         }
       };
 
       fetchRecruitmentCycles();
     }
   }, [selectedOrganization]);
-
 
   if (isInitialLoad) {
     return <div>Loading organization data...</div>;
@@ -115,6 +109,7 @@ export function OrgSelector({ user }: { user: any }) {
       onValueChange={(value: string) => {
         const org = organizations.find((org) => org.id === value);
         if (org) {
+          clearApplicants(); // Clear applicants when organization changes
           setSelectedOrganization(org);
         }
       }}
