@@ -34,21 +34,15 @@ export function OrgSelector({ user }: { user: any }) {
     setIsInitialLoad(false);
   }, [setSelectedOrganization, userSpecificKey]);
 
-  // Debugging selectedOrganization updates
-  /* useEffect(() => {
-    console.log("Selected Organization Updated:", selectedOrganization);
-  }, [selectedOrganization]); */
-
-  // Save organization to local storage when it changes
   React.useEffect(() => {
-    if (selectedOrganization) {
-      //console.log("setting", selectedOrganization);
+    if (!selectedOrganization && organizations.length > 0) {
+      setSelectedOrganization(organizations[0]);
       localStorage.setItem(
         userSpecificKey,
-        JSON.stringify(selectedOrganization)
+        JSON.stringify(organizations[0])
       );
     }
-  }, [selectedOrganization, userSpecificKey]);
+  }, [selectedOrganization, organizations, setSelectedOrganization, userSpecificKey]);
 
   React.useEffect(() => {
     const fetchOrganizations = async () => {
@@ -91,7 +85,6 @@ export function OrgSelector({ user }: { user: any }) {
         if (response.ok) {
           const data = await response.json();
           setRecruitmentCycles(data);
-          //console.log(data);
         }
       };
 
@@ -102,6 +95,7 @@ export function OrgSelector({ user }: { user: any }) {
   if (isInitialLoad) {
     return <div>Loading organization data...</div>;
   }
+
   if (loading) {
     return <div style={{ width: "100%", height: "100%" }}></div>; // Adjust width and height as needed
   }
@@ -111,12 +105,20 @@ export function OrgSelector({ user }: { user: any }) {
     return <div>Error: {error}</div>;
   }
 
+  if (organizations.length === 0) {
+    return <div>You have no organizations. Please create one.</div>;
+  }
+
   return (
     <Select
       onValueChange={(value: string) => {
         const org = organizations.find((org) => org.id === value);
         if (org) {
           setSelectedOrganization(org);
+          localStorage.setItem(
+            userSpecificKey,
+            JSON.stringify(org)
+          );
         }
       }}
       key={selectedOrganization ? selectedOrganization.id : "no-org"}
