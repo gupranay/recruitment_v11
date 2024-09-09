@@ -18,6 +18,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     .select("*")
     .eq("recruitment_cycle_id", cycle_id);
   
+  
+  
   if (error) {
     return res.status(400).json({ error: error.message });
   }
