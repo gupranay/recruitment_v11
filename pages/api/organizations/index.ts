@@ -36,6 +36,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const user = req.body;
   
   const id = user.id;
+  console.log("id:", id);
 
   if (!id) {
     return res.status(401).json({ error: "Unauthorized" });
@@ -54,11 +55,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // Fetch organizations where the user is a part of (via organization_users table)
+
     const { data: memberOrganizations, error: memberFetchError } = await supabase
       .from("organization_users")
       .select("organization_id, role")
       .eq("user_id", id);
 
+    console.log("memberOrganizations:", memberOrganizations);
     if (memberFetchError) {
       console.log("memberFetchError:", memberFetchError);
       return res.status(400).json({ error: memberFetchError.message });
