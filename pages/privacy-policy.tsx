@@ -31,7 +31,7 @@ export default function PrivacyPolicy() {
               Introduction
             </h2>
             <p className="text-muted-foreground md:text-xl">
-              At Recruiter (&quot;we&quot;, &quot;us&quot;, &quot;our&quot;), we are committed to protecting and respecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our services.
+              At Recruitify (&quot;we&quot;, &quot;us&quot;, &quot;our&quot;), we are committed to protecting and respecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our services.
             </p>
 
             <h2 className="text-2xl font-semibold mt-6 mb-2">

@@ -4,12 +4,13 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import QueryProvider from "@/components/query-provider";
+import { Analytics } from "@vercel/analytics/react"
 import NavBar from "@/components/NavBar";
 
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Recruiter",
+  title: "Recruitify",
   description: "Simplify your Orgs Recruitment Today",
 };
 
@@ -21,6 +22,7 @@ export default function RootLayout({
   return (
     <>
       <html lang="en" suppressHydrationWarning>
+        <Analytics/>
         <head>
           <link
             rel="icon"

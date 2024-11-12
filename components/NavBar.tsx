@@ -7,7 +7,7 @@ export default function NavBar() {
     <div className='flex justify-between items-center h-20'>
         <div className='flex items-center'>
             <Link href="/">
-            <h1 className='text-xl font-bold'>Recruiter</h1>
+            <h1 className='text-xl font-bold'>Recruitify</h1>
             </Link>
         </div>
         <div className='flex items-center'>
