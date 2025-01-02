@@ -593,10 +593,17 @@ export default function Component() {
 
   const [applicants, setApplicants] = useState<Applicant[]>([]);
 
-  const [isPageLoading, setIsPageLoading] = useState(true); // Manage overall page loading
+  const [isLoading, setIsLoading] = useState(true);
   const [loadingMessage, setLoadingMessage] = useState("Loading...");
 
-  const updateLoadingMessage = (message: string) => setLoadingMessage(message);
+  const updateLoadingMessage = (message: string) => {
+    setLoadingMessage(message);
+    setIsLoading(true);
+  };
+
+  const finishLoading = () => {
+    setIsLoading(false);
+  };
 
   // Fetch Organizations
   useEffect(() => {
@@ -631,6 +638,7 @@ export default function Component() {
       } catch (error) {
         console.error((error as Error).message);
       }
+      finishLoading();
     };
 
     fetchOrganizations();
@@ -665,6 +673,7 @@ export default function Component() {
       } catch (error) {
         console.error((error as Error).message);
       }
+      finishLoading();
     };
 
     fetchRecruitmentCycles();
@@ -697,27 +706,14 @@ export default function Component() {
       } catch (error) {
         console.error((error as Error).message);
       }
+      finishLoading();
     };
 
     fetchRecruitmentRounds();
   }, [currentCycle]);
 
-  // Manage overall loading state
-  useEffect(() => {
-    const shouldStopLoading =
-      user &&
-      (organizations.length > 0 || organizations.length === 0) &&
-      (currentOrg === null || recruitmentCycles.length > 0 || recruitmentCycles.length === 0) &&
-      (currentCycle === null || recruitmentRounds.length > 0 || recruitmentRounds.length === 0);
-
-    if (shouldStopLoading) {
-      setIsPageLoading(false);
-    }
-  }, [user, organizations, currentOrg, recruitmentCycles, currentCycle, recruitmentRounds]);
-
-  // Render loading state
-  if (isPageLoading) {
-    return <LoadingModal isOpen={true} message={loadingMessage} />;
+  if (isLoading) {
+    return <LoadingModal isOpen={isLoading} message={loadingMessage} />;
   }
 
   return (
