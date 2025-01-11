@@ -121,7 +121,6 @@ export default function Component() {
   useEffect(() => {
     const fetchOrganizations = async () => {
       if (!user) return;
-
       updateLoadingMessage("Loading organizations...");
       try {
         const response = await fetch("/api/organizations", {

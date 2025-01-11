@@ -1,3 +1,4 @@
+//components/ApplicantCard.tsx
 import { ApplicantCardType } from "@/lib/types/ApplicantCardType";
 import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogTitle, AlertDialogDescription, AlertDialogCancel } from "@/components/ui/alert-dialog";
 import { Expand, ChevronRight, Loader2 } from "lucide-react";
@@ -9,6 +10,7 @@ import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "./ui/card";
 import ApplicationDialog from "./ApplicationDialog";
+import useUser from "@/app/hook/useUser";
 
 interface ApplicantCardProps {
   applicant: ApplicantCardType;
@@ -28,6 +30,7 @@ export default function ApplicantCard({
   const [isApplicationDialogOpen, setIsApplicationDialogOpen] = useState(false);
   const [isAccepting, setIsAccepting] = useState(false); // Loading state for accepting
   const [isRejecting, setIsRejecting] = useState(false); // Loading state for rejecting
+  const { data: user } = useUser();
 
   const handleMoveToNextRound = async () => {
     setIsAccepting(true); // Start loading state for accepting
@@ -221,6 +224,8 @@ export default function ApplicantCard({
       </CardFooter>
       <ApplicationDialog
         applicantId={applicant.applicant_id}
+        applicantRoundId={applicant.applicant_round_id}
+        userId={user?.id}
         isOpen={isApplicationDialogOpen}
         onClose={() => setIsApplicationDialogOpen(false)}
       />

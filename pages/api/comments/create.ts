@@ -1,3 +1,4 @@
+// api/comments/create.ts
 import { NextApiRequest, NextApiResponse } from "next";
 import { supabaseBrowser } from "@/lib/supabase/browser";
 

@@ -2,90 +2,67 @@ import { NextApiRequest, NextApiResponse } from "next";
 import { supabaseBrowser } from "@/lib/supabase/browser";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  // For best REST semantics, let's say we only allow GET here.
-  if (req.method !== "GET") {
+  // Only allow POST
+  if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  // We can read applicant_id from query parameters, e.g. /api/get-comments-for-applicant?applicant_id=abc123
-  const { applicant_id } = req.query;
+  // Read applicant_id from the request body
+  const { applicant_id } = req.body;
 
   // Basic validation
-  if (!applicant_id || typeof applicant_id !== "string") {
-    return res.status(400).json({ error: "Missing or invalid applicant_id in query." });
+  if (!applicant_id) {
+    return res.status(400).json({ error: "Missing required field: applicant_id" });
   }
 
   const supabase = supabaseBrowser();
 
   /*
-    We'll start from the applicant_rounds table (the bridging table).
-    For each applicant_round, we fetch the array of related comments.
+    We'll select from "comments" and nest relationships:
+      - user: referencing "users" to get full_name (or email, etc.)
+      - applicant_rounds: bridging table referencing "recruitment_rounds" for round name.
 
-    Structure of the select:
-      .select(`
-        id,
-        recruitment_round_id,
-        comments (
-          id,
-          comment_text,
-          created_at,
-          updated_at,
-          user_id
-        )
-      `)
+    Make sure your foreign key constraints are properly set:
+    - comments.user_id -> users.id
+    - comments.applicant_round_id -> applicant_rounds.id
+    - applicant_rounds.recruitment_round_id -> recruitment_rounds.id
 
-    So each record will look like:
-      {
-        id: "uuid-of-applicant_rounds",
-        recruitment_round_id: "uuid-of-the-round",
-        comments: [
-          {
-            id: "uuid-of-comment",
-            comment_text: "...",
-            created_at: "...",
-            user_id: "who wrote it"
-          },
-          ...
-        ]
-      }
+    Also note that if Supabase can't autodetect the relationship from user_id -> users.id,
+    you may need to specify the constraint name (e.g. users!comments_user_id_fkey).
   */
-  const { data: applicantRounds, error } = await supabase
-    .from("applicant_rounds")
+
+  const { data, error } = await supabase
+    .from("comments")
     .select(`
-      id,
-      recruitment_round_id,
-      status,
-      comments (
-        id,
-        comment_text,
-        created_at,
-        updated_at,
-        user_id
+      comment_text,
+      created_at,
+
+      user:users (
+        full_name
+      ),
+
+      applicant_rounds (
+        applicant_id,
+        recruitment_rounds (
+          name
+        )
       )
     `)
-    .eq("applicant_id", applicant_id);
+    // Filter to only comments for the given applicant_id
+    .eq("applicant_rounds.applicant_id", applicant_id);
 
-  // Handle error
   if (error) {
+    console.error("Error fetching comments:", error.message);
     return res.status(500).json({ error: error.message });
   }
 
-  // If you want to return comments in a flat array instead of grouped by round:
-  // We'll map over each round, extract its comments, and flatten them.
-  const allComments = applicantRounds?.flatMap((round) => {
-    // We can optionally attach some round info to each comment, or just return them as is
-    return round.comments.map((c) => ({
-      ...c,
-      applicant_round_id: round.id,
-      recruitment_round_id: round.recruitment_round_id,
-      status: round.status,
-    }));
-  }) ?? [];
+  // Transform data into a simpler format
+  const comments = data.map((item) => ({
+    comment_text: item.comment_text,
+    created_at: item.created_at,
+    user_name: item.user?.full_name || null,
+    round_name: item.applicant_rounds?.recruitment_rounds?.name || null,
+  }));
 
-  // Return the data as you prefer. Either grouped by rounds, or flattened.
-  // 1) Grouped by rounds (the raw response from the DB):
-  // return res.status(200).json(applicantRounds);
-
-  // 2) Flattened array of comments:
-  return res.status(200).json(allComments);
+  return res.status(200).json(comments);
 }
