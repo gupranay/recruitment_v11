@@ -3,8 +3,6 @@ import React from "react";
 import { Button } from "./ui/button";
 import Link from "next/link";
 import useUser from "@/app/hook/useUser";
-import Image from "next/image";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { supabaseBrowser } from "@/lib/supabase/browser";
 import { useQueryClient } from "@tanstack/react-query";
 import { usePathname, useRouter } from "next/navigation";

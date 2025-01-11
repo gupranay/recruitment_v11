@@ -1,17 +1,12 @@
 "use client";
 
-import { useState, useEffect, SetStateAction } from "react";
+import { useState, useEffect } from "react";
 import {
   ChevronDown,
   ChevronRight,
-  LogOut,
-  Plus,
   Settings,
-  Upload,
-  X,
   Expand,
   Loader2,
-  Send,
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
@@ -48,7 +43,6 @@ import { Separator } from "@/components/ui/separator";
 import { Toaster, toast } from "react-hot-toast";
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -58,19 +52,16 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
-import { Textarea } from "@/components/ui/textarea";
+// import { Textarea } from "@/components/ui/textarea";
 import useUser from "../hook/useUser";
 import { Organization } from "@/contexts/OrganizationContext";
 import React from "react";
 import { RecruitmentCycle } from "@/lib/types/RecruitmentCycle";
 import CreateRecruitmentCycleDialog from "../../components/CreateRecruitmentCycleDialog";
 import { RecruitmentRound } from "@/lib/types/RecruitmentRound";
-import { handleClientScriptLoad } from "next/script";
 import CreateRecruitmentRoundDialog from "@/components/CreateRecruitmentRoundDialog";
 import { CreateOrganizationDialog } from "@/components/CreateOrganizationDialog";
-import UploadApplicantsDialog from "@/components/UploadApplicantsDialog";
 import UploadApplicantsDialog3 from "@/components/UploadApplicantsDialog3";
-import NextImage from "next/image";
 import LogOutButton from "@/components/LogOut";
 interface LoadingModalProps {
   isOpen: boolean;
