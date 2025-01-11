@@ -76,7 +76,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const { data: memberDetails, error: detailsFetchError } = await supabase
         .from("organizations")
         .select("*")
-        .in("id", organizationIds);
+        .in("id", organizationIds.filter((id): id is string => id !== null));
       
       if (detailsFetchError) {
         console.log("detailsFetchError:", detailsFetchError);
