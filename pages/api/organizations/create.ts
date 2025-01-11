@@ -4,7 +4,7 @@ import { createClient } from '@supabase/supabase-js'
 import { NextApiRequest, NextApiResponse } from "next";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-    console.log("here");
+    // console.log("here");
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
@@ -26,7 +26,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(400).json({ error: error.message });
   }
 
-  console.log("created org: ",data);
+  // console.log("created org: ",data);
 
   res.status(201).json(data);
 }

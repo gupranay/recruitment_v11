@@ -7,7 +7,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   const { applicant_id, applicant_round_id } = req.body;
-  console.log(req.body);
+  // console.log(req.body);
 
   // Basic validation
   if (!applicant_id || !applicant_round_id) {

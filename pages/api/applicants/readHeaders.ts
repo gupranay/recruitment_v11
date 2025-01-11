@@ -20,15 +20,15 @@ export default async function handler(
   // try{
 
   const { filePath } = req.body;
-  console.log("File Path", filePath);
+  // console.log("File Path", filePath);
 
   const supabase = supabaseBrowser();
 
   const { data, error } = await supabase.storage
     .from("Applicant_Uploads")
     .download(filePath);
-  console.log("Data", data);
-  console.log("Error", error);
+  // console.log("Data", data);
+  // console.log("Error", error);
   if (error) {
     return res.status(500).json({ error: error.message });
   }

@@ -22,7 +22,7 @@ export default function LogOutButton() {
   }
 
   const handleLogout = async () => {
-    console.log("Logging out...");
+    // console.log("Logging out...");
     try {
       const supabase = supabaseBrowser();
       queryClient.clear();

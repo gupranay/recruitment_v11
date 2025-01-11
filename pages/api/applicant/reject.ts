@@ -8,8 +8,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   const { applicant_id, applicant_round_id, reason } = req.body;
-  console.log("reject applicant_id: ", applicant_id);
-  console.log("reject applicant_round_id: ", applicant_round_id);
+  // console.log("reject applicant_id: ", applicant_id);
+  // console.log("reject applicant_round_id: ", applicant_round_id);
 
   // Validate inputs
   if (!applicant_id || !applicant_round_id) {

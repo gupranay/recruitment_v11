@@ -5,9 +5,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
-  console.log(req.body)
+  // console.log(req.body)
   const { applicant_id } = req.body;
-  console.log("applicant_id: ", applicant_id);
+  // console.log("applicant_id: ", applicant_id);
 
   if (!applicant_id) {
     return res.status(400).json({ error: "Missing required fields" });

@@ -85,7 +85,7 @@ export default function UploadApplicantsDialog(recruitment_round_id: any) {
     }
 
     setLoading(true);
-    console.log("recruitment_round_id actual: ", recruitment_round_id.recruitment_round_id.id);
+    // console.log("recruitment_round_id actual: ", recruitment_round_id.recruitment_round_id.id);
 
     const payload = {
       parsedData,
@@ -95,7 +95,7 @@ export default function UploadApplicantsDialog(recruitment_round_id: any) {
       recruitment_round_id: recruitment_round_id.recruitment_round_id.id,
     };
 
-    console.log("recruitment_round_id", recruitment_round_id);
+    // console.log("recruitment_round_id", recruitment_round_id);
 
     const response = await fetch("/api/applicants/upload2", {
       method: "POST",

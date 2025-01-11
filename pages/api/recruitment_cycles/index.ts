@@ -8,7 +8,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const { organization_id } = req.body;
 
-  console.log(req.body);
+  // console.log(req.body);
 
   if (!organization_id) {
     return res.status(400).json({ error: "Missing required fields" });
