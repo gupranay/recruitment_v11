@@ -7,7 +7,6 @@ import QueryProvider from "@/components/query-provider";
 import { Analytics } from "@vercel/analytics/react"
 import NavBar from "@/components/NavBar";
 
-const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "Recruitify",
@@ -32,7 +31,7 @@ export default function RootLayout({
         <body>
           <QueryProvider>
             <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-              <main className="max-w-6xl min-h-screen mx-auto py-10 space-y-10">
+              <main className=" min-h-screen mx-auto py-10">
                 {children}
               </main>
             </ThemeProvider>

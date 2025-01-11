@@ -259,14 +259,14 @@ export default function Landing() {
               </div>
               <div className="flex flex-col gap-2 min-[400px]:flex-row">
                 <Link
-                  href="/dashboard"
+                  href="/dash"
                   className="inline-flex h-10 items-center justify-center rounded-md bg-primary px-8 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
                   prefetch={false}
                 >
                   Sign Up
                 </Link>
                 <Link
-                  href="/auth?next=/dashboard"
+                  href="/auth?next=/dash"
                   className="inline-flex h-10 items-center justify-center rounded-md border border-input bg-background px-8 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
                   prefetch={false}
                 >
@@ -386,14 +386,14 @@ export default function Landing() {
             </div>
             <div className="mx-auto w-full max-w-sm flex flex-col gap-2">
               <Link
-                href="/auth?next=/dashboard"
+                href="/auth?next=/dash"
                 className="inline-flex h-10 items-center justify-center rounded-md bg-primary px-8 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
                 prefetch={false}
               >
                 Sign Up
               </Link>
               <Link
-                href="/auth?next=/dashboard"
+                href="/auth?next=/dash"
                 className="inline-flex h-10 items-center justify-center rounded-md border border-input bg-background px-8 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
                 prefetch={false}
               >

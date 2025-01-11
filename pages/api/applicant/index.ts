@@ -5,24 +5,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
+  console.log(req.body)
+  const { applicant_id } = req.body;
+  console.log("applicant_id: ", applicant_id);
 
-  const { organization_id } = req.body;
-
-  console.log(req.body);
-
-  if (!organization_id) {
+  if (!applicant_id) {
     return res.status(400).json({ error: "Missing required fields" });
   }
 
   const supabase = supabaseBrowser();
   const { data, error } = await supabase
-    .from("recruitment_cycles")
+    .from("applicants")
     .select("*")
-    .eq("organization_id", organization_id);
-
+    .eq("id", applicant_id);
+  
+  
+  
   if (error) {
     return res.status(400).json({ error: error.message });
   }
 
-  res.status(200).json(data);
+    //   console.log(data[0])
+
+  res.status(200).json(data[0]);
 }

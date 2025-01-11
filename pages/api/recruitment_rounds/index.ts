@@ -6,21 +6,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const { organization_id } = req.body;
+  const { recruitment_cycle_id } = req.body;
 
   console.log(req.body);
 
-  if (!organization_id) {
+  if (!recruitment_cycle_id) {
     return res.status(400).json({ error: "Missing required fields" });
   }
 
   const supabase = supabaseBrowser();
   const { data, error } = await supabase
-    .from("recruitment_cycles")
+    .from("recruitment_rounds")
     .select("*")
-    .eq("organization_id", organization_id);
+    .eq("recruitment_cycle_id", recruitment_cycle_id);
 
-  if (error) {
+  console.log(data);
+    if (error) {
+    console.log(error);
     return res.status(400).json({ error: error.message });
   }
 

@@ -13,17 +13,24 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useRouter } from "next/navigation";
-import { supabaseBrowser } from "@/lib/supabase/browser";
-import { Organization, useOrganization } from "@/contexts/OrganizationContext";
-import { toast } from "./ui/Toast";
+import { Organization } from "@/contexts/OrganizationContext";
+import toast from "react-hot-toast";
+import { DropdownMenuItem } from "@/components/ui/dropdown-menu"; // Adjusted import for consistency
+import { Plus } from "lucide-react";
 
 type CreateOrganizationDialogProps = {
-  user: any; // Replace 'any' with the appropriate type for the user
+  user: any; // User object
+  organizations: Organization[];
+  setOrganizations: (orgs: Organization[]) => void;
+  setCurrentOrg: (org: Organization) => void;
 };
+
 export function CreateOrganizationDialog({
   user,
+  organizations,
+  setOrganizations,
+  setCurrentOrg,
 }: CreateOrganizationDialogProps) {
-  const { selectedOrganization, setSelectedOrganization } = useOrganization();
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -46,17 +53,10 @@ export function CreateOrganizationDialog({
       const data = await response.json();
 
       if (!response.ok) {
-        // if error.code === '23505' || error.message.includes('duplicate key value violates unique constraint')
         throw new Error(data.error || "An error occurred");
       }
-      console.log("created org: ",data);
 
-      setError("");
-      setName("");
-      setOpen(false);
-      toast("Organization created successfully!", "success");
-
-      // create var of type organization from OrganizationContext
+      // Add the new organization to the list
       const newOrganization: Organization = {
         id: data[0].id,
         name: data[0].name,
@@ -64,24 +64,30 @@ export function CreateOrganizationDialog({
         created_at: data[0].created_at,
       };
 
+      setOrganizations([...organizations, newOrganization]);
+      setCurrentOrg(newOrganization); // Set the newly created organization as the current organization
+      toast.success("Organization created successfully!");
 
-      setSelectedOrganization(newOrganization);
-      router.refresh();
-      window.location.reload();
+      setName("");
+      setOpen(false);
+      router.refresh(); // Refresh the page to reflect changes
     } catch (err: any) {
-      if (err.code === '23505' || err.message.includes('duplicate key value violates unique constraint "organizations_name_key"')) {
+      if (
+        err.code === "23505" ||
+        err.message.includes(
+          'duplicate key value violates unique constraint "organizations_name_key"'
+        )
+      ) {
         setError("Organization name already exists. Please choose a different name.");
       } else {
         setError(err.message);
       }
-      
     } finally {
       setLoading(false);
-      router.refresh();
     }
   };
 
-  // if dialog is closed, clear error and name
+  // Clear error and name when dialog is closed
   useEffect(() => {
     if (!open) {
       setError("");
@@ -92,7 +98,10 @@ export function CreateOrganizationDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline">Create Organization</Button>
+        <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+          <Plus className="mr-2 h-4 w-4" />
+          <span>Create Organization</span>
+        </DropdownMenuItem>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
@@ -114,7 +123,6 @@ export function CreateOrganizationDialog({
             />
             {error && <div className="col-span-4 text-red-500">{error}</div>}
           </div>
-          
         </div>
         <DialogFooter>
           <Button
@@ -124,7 +132,6 @@ export function CreateOrganizationDialog({
           >
             {loading ? "Creating..." : "Create"}
           </Button>
-          
         </DialogFooter>
       </DialogContent>
     </Dialog>
