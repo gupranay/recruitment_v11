@@ -71,6 +71,7 @@ import { CreateOrganizationDialog } from "@/components/CreateOrganizationDialog"
 import UploadApplicantsDialog from "@/components/UploadApplicantsDialog";
 import UploadApplicantsDialog3 from "@/components/UploadApplicantsDialog3";
 import NextImage from "next/image";
+import LogOutButton from "@/components/LogOut";
 interface LoadingModalProps {
   isOpen: boolean;
   message?: string;
@@ -606,10 +607,7 @@ export function Header({
         </DropdownMenu>
 
         {/* Logout Button */}
-        <Button variant="ghost" size="icon">
-          <LogOut className="h-4 w-4" />
-          <span className="sr-only">Logout</span>
-        </Button>
+        <LogOutButton />
       </div>
     </header>
   );

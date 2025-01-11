@@ -61,7 +61,7 @@ export default function Profile() {
             </AvatarFallback>
           </Avatar> */}
           <Button asChild>
-            <Link href={"/dashboard"}> Go to Dashboard</Link>
+            <Link href={"/dash"}> Go to Dashboard</Link>
           </Button>
           <Button onClick={handleLogout} variant="outline">
             Logout
