@@ -1,6 +1,12 @@
 import { useState } from "react";
 import { ChevronRight, X } from "lucide-react";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -28,9 +34,18 @@ interface ApplicantCardProps {
   onReject: (id: string) => void;
 }
 
-export default function ApplicantCard({ applicant, onMoveToNextRound, onReject }: ApplicantCardProps) {
+export default function ApplicantCard({
+  applicant,
+  onMoveToNextRound,
+  onReject,
+  fetchApplicants,
+}: ApplicantCardProps & { fetchApplicants: () => Promise<void> }) {
   const [isAlertDialogOpen, setIsAlertDialogOpen] = useState(false);
   const [showRejectConfirmation, setShowRejectConfirmation] = useState(false);
+
+  const handleAction = async () => {
+    await fetchApplicants();
+  };
 
   return (
     <Card className={applicant.rejected ? "border-destructive" : ""}>
@@ -45,13 +60,16 @@ export default function ApplicantCard({ applicant, onMoveToNextRound, onReject }
       </CardContent>
       <CardFooter className="flex justify-between">
         <div className="text-sm text-muted-foreground">{applicant.status}</div>
-        <AlertDialog open={isAlertDialogOpen} onOpenChange={setIsAlertDialogOpen}>
+        <AlertDialog
+          open={isAlertDialogOpen}
+          onOpenChange={setIsAlertDialogOpen}
+        >
           <AlertDialogTrigger asChild>
             <Button
               size="sm"
               variant="outline"
               className="gap-2"
-              onClick={() => setIsAlertDialogOpen(true)}
+              onClick={handleAction}
             >
               {applicant.rejected ? "Rejected" : "Move or Reject"}
               <ChevronRight className="h-4 w-4" />
@@ -61,7 +79,8 @@ export default function ApplicantCard({ applicant, onMoveToNextRound, onReject }
             <AlertDialogHeader>
               <AlertDialogTitle>Confirm Action</AlertDialogTitle>
               <AlertDialogDescription>
-                Do you want to move {applicant.name} to the next round or reject them?
+                Do you want to move {applicant.name} to the next round or reject
+                them?
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -92,12 +111,16 @@ export default function ApplicantCard({ applicant, onMoveToNextRound, onReject }
           </AlertDialogContent>
         </AlertDialog>
       </CardFooter>
-      <AlertDialog open={showRejectConfirmation} onOpenChange={setShowRejectConfirmation}>
+      <AlertDialog
+        open={showRejectConfirmation}
+        onOpenChange={setShowRejectConfirmation}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Confirm Rejection</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to reject {applicant.name}? This action cannot be undone.
+              Are you sure you want to reject {applicant.name}? This action
+              cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

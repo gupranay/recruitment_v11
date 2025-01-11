@@ -22,7 +22,7 @@ import {
 import { parse } from "csv-parse/sync";
 import { Upload } from "lucide-react";
 
-export default function UploadApplicantsDialog() {
+export default function UploadApplicantsDialog(recruitment_round_id: any) {
   const [file, setFile] = useState<File | null>(null);
   const [parsedData, setParsedData] = useState<any[]>([]);
   const [headers, setHeaders] = useState<string[]>([]);
@@ -31,7 +31,7 @@ export default function UploadApplicantsDialog() {
   const [headShotHeader, setHeadShotHeader] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
-  const { selectedRecruitmentCycle } = useRecruitmentCycle();
+  
 
   // Always call hooks at the top level
   useEffect(() => {
@@ -46,7 +46,7 @@ export default function UploadApplicantsDialog() {
     }
   }, [open]);
 
-  if (!selectedRecruitmentCycle) {
+  if (!recruitment_round_id) {
     return null;
   }
 
@@ -85,16 +85,19 @@ export default function UploadApplicantsDialog() {
     }
 
     setLoading(true);
+    console.log("recruitment_round_id actual: ", recruitment_round_id.recruitment_round_id.id);
 
     const payload = {
       parsedData,
       nameHeader,
       emailHeader,
       headShotHeader,
-      recruitmentCycleId: selectedRecruitmentCycle?.id,
+      recruitment_round_id: recruitment_round_id.recruitment_round_id.id,
     };
 
-    const response = await fetch("/api/applicants/upload", {
+    console.log("recruitment_round_id", recruitment_round_id);
+
+    const response = await fetch("/api/applicants/upload2", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

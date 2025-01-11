@@ -45,6 +45,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import { Toaster, toast } from "react-hot-toast";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -67,7 +68,9 @@ import { RecruitmentRound } from "@/lib/types/RecruitmentRound";
 import { handleClientScriptLoad } from "next/script";
 import CreateRecruitmentRoundDialog from "@/components/CreateRecruitmentRoundDialog";
 import { CreateOrganizationDialog } from "@/components/CreateOrganizationDialog";
-
+import UploadApplicantsDialog from "@/components/UploadApplicantsDialog";
+import UploadApplicantsDialog3 from "@/components/UploadApplicantsDialog3";
+import NextImage from "next/image";
 interface LoadingModalProps {
   isOpen: boolean;
   message?: string;
@@ -87,103 +90,118 @@ function LoadingModal({ isOpen, message = "Loading..." }: LoadingModalProps) {
   );
 }
 
-interface Applicant {
-  name?: string;
-  email?: string;
-  status?: string;
-}
+type ApplicantCardType = {
+  applicant_round_id: string;
+  applicant_id: string;
+  name: string;
+  headshot_url: string;
+  status: string;
+};
 
 function ApplicationDialog({
-  applicant,
+  applicantId,
   isOpen,
   onClose,
 }: {
-  applicant: Applicant;
+  applicantId: string;
   isOpen: boolean;
   onClose: () => void;
 }) {
-  const [newComment, setNewComment] = useState<string>("");
-  const [comments, setComments] = useState<{ text: string; timestamp: Date }[]>(
-    []
-  );
+  const [applicantData, setApplicantData] = useState<{
+    name: string;
+    headshot_url: string;
+    data: Record<string, string>;
+  } | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const addComment = () => {
-    if (newComment.trim()) {
-      setComments([...comments, { text: newComment, timestamp: new Date() }]);
-      setNewComment("");
+  useEffect(() => {
+    const fetchApplicantDetails = async () => {
+      setIsLoading(true);
+      try {
+        const response = await fetch("/api/applicant", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ applicant_id: applicantId }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch applicant details");
+        }
+        const data = await response.json();
+        setApplicantData(data);
+      } catch (error) {
+        console.error(error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (isOpen) {
+      fetchApplicantDetails();
+    }
+  }, [isOpen, applicantId]);
+
+  const isValidUrl = (url: string) => {
+    try {
+      new URL(url);
+      return true;
+    } catch {
+      return false;
     }
   };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[600px]">
-        <DialogHeader>
-          <DialogTitle>
-            {applicant?.name || "Applicant"}'s Application
-          </DialogTitle>
-          <DialogDescription>
-            Full details of the applicant's submission
-          </DialogDescription>
-        </DialogHeader>
-        <div className="flex flex-col items-center space-y-4">
-          <div className="relative w-32 h-32 rounded-full overflow-hidden">
-            <Image
-              src="/placeholder.svg?height=128&width=128"
-              alt={`${applicant?.name || "Applicant"}'s headshot`}
-              layout="fill"
-              objectFit="cover"
-            />
+      <DialogContent className="max-w-4xl max-h-screen overflow-y-auto p-8">
+        {isLoading ? (
+          <div className="flex items-center justify-center h-full">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
-          <h2 className="text-2xl font-bold">
-            {applicant?.name || "Applicant"}
-          </h2>
-          <Badge>{applicant?.status || "Unknown"}</Badge>
-        </div>
-        <ScrollArea className="h-[300px] mt-4">
-          <div className="space-y-4">
-            <div>
-              <h3 className="font-semibold">Email</h3>
-              <p>{applicant?.email || "applicant@example.com"}</p>
-            </div>
-            <div>
-              <h3 className="font-semibold">Resume</h3>
-              <Button variant="outline" className="w-full mt-2">
-                Download Resume
-              </Button>
-            </div>
-            <div>
-              <h3 className="font-semibold">Cover Letter</h3>
-              <p className="mt-2 text-sm text-muted-foreground">
-                Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do
-                eiusmod tempor incididunt ut labore et dolore magna aliqua.
-              </p>
-            </div>
-            <Separator />
-            <div>
-              <h3 className="font-semibold mb-2">Comments</h3>
-              {comments.map((comment, index) => (
-                <div key={index} className="bg-muted p-2 rounded-md mb-2">
-                  <p className="text-sm">{comment.text}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {comment.timestamp.toLocaleString()}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </ScrollArea>
-        <div className="mt-4 space-y-2">
-          <Textarea
-            placeholder="Add a new comment..."
-            value={newComment}
-            onChange={(e: { target: { value: SetStateAction<string> } }) =>
-              setNewComment(e.target.value)
-            }
-          />
-          <Button onClick={addComment} className="w-full">
-            <Send className="w-4 h-4 mr-2" />
-            Add Comment
-          </Button>
-        </div>
+        ) : (
+          applicantData && (
+            <>
+              {/* Name and Headshot */}
+              <div className="flex flex-col items-center mb-8">
+                <img
+                  src={
+                    applicantData.headshot_url ||
+                    "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png"
+                  }
+                  alt={`Headshot of ${applicantData.name}`}
+                  className="w-48 h-48 rounded-full object-cover mb-4 shadow-md"
+                />
+                <h2 className="text-2xl font-bold text-gray-800">
+                  {applicantData.name}
+                </h2>
+              </div>
+
+              {/* Dynamic Data Fields */}
+              <div className="grid grid-cols-1 gap-y-6">
+                {Object.entries(applicantData.data || {}).map(
+                  ([key, value]) => (
+                    <div key={key} className="flex flex-col">
+                      <h3 className="text-sm font-bold text-black">{key}</h3>
+                      {isValidUrl(value) ? (
+                        <a
+                          href={value}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 underline"
+                        >
+                          View {key}
+                        </a>
+                      ) : (
+                        <p className="text-gray-700 mt-1">{value}</p>
+                      )}
+                    </div>
+                  )
+                )}
+              </div>
+            </>
+          )
+        )}
       </DialogContent>
     </Dialog>
   );
@@ -198,132 +216,223 @@ interface Applicant {
 }
 
 interface ApplicantCardProps {
-  applicant: Applicant;
+  applicant: ApplicantCardType;
   onMoveToNextRound: (id: string) => void;
   onReject: (id: string) => void;
+  fetchApplicants: () => Promise<void>;
 }
 
 function ApplicantCard({
   applicant,
   onMoveToNextRound,
   onReject,
-}: ApplicantCardProps) {
+  fetchApplicants,
+  isLastRound,
+}: ApplicantCardProps & { isLastRound: boolean }) {
   const [isAlertDialogOpen, setIsAlertDialogOpen] = useState(false);
-  const [showRejectConfirmation, setShowRejectConfirmation] = useState(false);
   const [isApplicationDialogOpen, setIsApplicationDialogOpen] = useState(false);
+  const [isAccepting, setIsAccepting] = useState(false); // Loading state for accepting
+  const [isRejecting, setIsRejecting] = useState(false); // Loading state for rejecting
+
+  const handleMoveToNextRound = async () => {
+    setIsAccepting(true); // Start loading state for accepting
+    try {
+      const endpoint = isLastRound
+        ? "/api/applicant/finalize" // Different API for the last recruitment round
+        : "/api/applicant/accept";
+
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          applicant_id: applicant.applicant_id,
+          applicant_round_id: applicant.applicant_round_id,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(
+          isLastRound
+            ? "Failed to finalize the applicant."
+            : "Failed to move the applicant to the next round."
+        );
+      }
+
+      onMoveToNextRound(applicant.applicant_id);
+    } catch (error) {
+      console.error(error);
+      alert(
+        isLastRound
+          ? "An error occurred while finalizing the applicant."
+          : "An error occurred while moving the applicant to the next round."
+      );
+    } finally {
+      setIsAccepting(false); // End loading state for accepting
+      setIsAlertDialogOpen(false);
+      toast.success(
+        isLastRound
+          ? "Applicant finalized successfully!"
+          : "Applicant moved to the next round successfully!"
+      );
+      fetchApplicants();
+    }
+  };
+
+  const handleRejectApplicant = async () => {
+    setIsRejecting(true); // Start loading state for rejecting
+    try {
+      const response = await fetch("/api/applicant/reject", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          applicant_id: applicant.applicant_id,
+          applicant_round_id: applicant.applicant_round_id,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to reject the applicant.");
+      }
+
+      onReject(applicant.applicant_id);
+    } catch (error) {
+      console.error("Error rejecting applicant:", error);
+      alert("An error occurred while rejecting the applicant.");
+    } finally {
+      setIsRejecting(false); // End loading state for rejecting
+      setIsAlertDialogOpen(false);
+      toast.success("Applicant rejected successfully");
+      fetchApplicants();
+    }
+  };
 
   return (
-    <Card className={applicant?.rejected ? "border-destructive" : ""}>
+    <Card
+      className={`${
+        applicant.status === "accepted"
+          ? "border-green-500"
+          : applicant.status === "rejected"
+          ? "border-destructive"
+          : ""
+      } flex flex-col justify-between mx-auto w-[250px]`} // Fixed card width
+    >
       <CardHeader>
-        <CardTitle className="text-base flex items-center justify-between">
-          {applicant?.name || "Unnamed Applicant"}
-          {applicant?.rejected && <Badge variant="destructive">Rejected</Badge>}
+        <CardTitle className="text-sm flex items-center justify-between">
+          {applicant.name || "Unnamed Applicant"}
+          {applicant.status === "rejected" && (
+            <Badge variant="destructive" className="text-xs">
+              Rejected
+            </Badge>
+          )}
+          {applicant.status === "accepted" && (
+            <Badge variant="default" className="text-xs">
+              Accepted
+            </Badge>
+          )}
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="aspect-[3/4] rounded-lg bg-muted" />
-      </CardContent>
-      <CardFooter className="flex justify-between">
-        <div className="text-sm text-muted-foreground">
-          {applicant?.status || "Unknown"}
+        <div className="aspect-[3/4] relative overflow-hidden rounded-lg bg-muted">
+          {applicant.headshot_url && (
+            <Image
+              src={applicant.headshot_url}
+              alt={`${applicant.name}'s headshot`}
+              layout="fill"
+              className="object-cover"
+            />
+          )}
         </div>
-        <div className="flex gap-2">
+      </CardContent>
+      <CardFooter className="flex justify-between items-center mt-2">
+        <div className="flex gap-1">
           <Button
             size="sm"
             variant="outline"
+            className="p-1 text-xs"
             onClick={() => setIsApplicationDialogOpen(true)}
           >
-            <Expand className="h-4 w-4" />
+            <Expand className="h-3 w-3" />
             <span className="sr-only">Expand application</span>
           </Button>
-          <AlertDialog
-            open={isAlertDialogOpen}
-            onOpenChange={setIsAlertDialogOpen}
-          >
-            <AlertDialogTrigger asChild>
-              <Button
-                size="sm"
-                variant="outline"
-                className="gap-2"
-                onClick={() => setIsAlertDialogOpen(true)}
-              >
-                {applicant?.rejected ? "Rejected" : "Move or Reject"}
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Confirm Action</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Do you want to move {applicant?.name || "Applicant"} to the
-                  next round or reject them?
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                {!applicant?.rejected && (
-                  <AlertDialogAction
-                    onClick={() => {
-                      onMoveToNextRound(applicant.id);
-                      setIsAlertDialogOpen(false);
-                    }}
-                  >
-                    Move to Next Round
-                  </AlertDialogAction>
-                )}
-                {!applicant?.rejected && (
-                  <AlertDialogAction
-                    onClick={() => {
-                      setShowRejectConfirmation(true);
-                      setIsAlertDialogOpen(false);
-                    }}
-                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                  >
-                    <X className="mr-2 h-4 w-4" />
-                    Reject Applicant
-                  </AlertDialogAction>
-                )}
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        </div>
-      </CardFooter>
-      <AlertDialog
-        open={showRejectConfirmation}
-        onOpenChange={setShowRejectConfirmation}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Confirm Rejection</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to reject {applicant?.name || "Applicant"}?
-              This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setShowRejectConfirmation(false)}>
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                onReject(applicant.id);
-                setShowRejectConfirmation(false);
-              }}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          {applicant.status === "in_progress" && (
+            <AlertDialog
+              open={isAlertDialogOpen}
+              onOpenChange={setIsAlertDialogOpen}
             >
-              Confirm Rejection
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="p-1 text-xs"
+                  onClick={() => setIsAlertDialogOpen(true)}
+                >
+                  Decide
+                  <ChevronRight className="h-3 w-3" />
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Confirm Action</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    What do you want to do with{" "}
+                    {applicant.name || "this applicant"}?
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter className="flex justify-end space-x-4">
+                  <AlertDialogCancel className="w-auto px-4 py-2">
+                    Cancel
+                  </AlertDialogCancel>
+                  <Button
+                    variant="outline"
+                    onClick={handleMoveToNextRound}
+                    disabled={isAccepting} // Disable the button while loading
+                    className="w-auto px-4 py-2 bg-green-500 text-white hover:bg-green-600"
+                  >
+                    {isAccepting ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : null}
+                    {isLastRound ? "Finalize Applicant" : "Move to Next Round"}
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    onClick={handleRejectApplicant}
+                    disabled={isRejecting} // Disable the button while loading
+                    className="w-auto px-4 py-2 bg-red-500 text-white hover:bg-red-600"
+                  >
+                    {isRejecting ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : null}
+                    Reject Applicant
+                  </Button>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
+        </div>
+        {applicant.status === "accepted" && (
+          <Button
+            size="sm"
+            variant="outline"
+            className="p-1 text-xs opacity-50 cursor-not-allowed"
+            disabled
+          >
+            Accepted
+          </Button>
+        )}
+      </CardFooter>
       <ApplicationDialog
-        applicant={applicant}
+        applicantId={applicant.applicant_id}
         isOpen={isApplicationDialogOpen}
         onClose={() => setIsApplicationDialogOpen(false)}
       />
     </Card>
   );
 }
+
 
 export function Header({
   currentOrg,
@@ -548,15 +657,79 @@ function Sidebar({
   );
 }
 
+type ApplicantGridProps = {
+  recruitment_round_id: string | undefined;
+  onMoveToNextRound: (applicantId: string) => Promise<void>;
+  onReject: (applicantId: string) => Promise<void>;
+  isLastRound: boolean;
+};
+
 function ApplicantGrid({
-  applicants,
+  recruitment_round_id,
   onMoveToNextRound,
   onReject,
-}: {
-  applicants: Applicant[];
-  onMoveToNextRound: (applicantId: number) => Promise<void>;
-  onReject: (applicantId: number) => Promise<void>;
-}) {
+  isLastRound,
+}: ApplicantGridProps) {
+  const [applicants, setApplicants] = useState<ApplicantCardType[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState("Loading applicants...");
+
+  const fetchApplicants = async () => {
+    if (!recruitment_round_id) {
+      setIsLoading(false); // Stop loading if no round ID exists
+      return;
+    }
+
+    setIsLoading(true);
+    setLoadingMessage("Loading applicants...");
+    try {
+      const response = await fetch("/api/applicants/index2", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ recruitment_round_id }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch applicants");
+      }
+
+      const data: ApplicantCardType[] = await response.json();
+
+      // Sort applicants: accepted at the top, rejected at the bottom
+      const sortedData = [...data].sort((a, b) => {
+        if (a.status === "accepted" && b.status !== "accepted") return -1;
+        if (a.status !== "accepted" && b.status === "accepted") return 1;
+        if (a.status === "rejected" && b.status !== "rejected") return 1;
+        if (a.status !== "rejected" && b.status === "rejected") return -1;
+        return 0;
+      });
+
+      setApplicants(sortedData);
+    } catch (error) {
+      console.error("Error fetching applicants:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchApplicants();
+  }, [recruitment_round_id]);
+
+  if (isLoading) {
+    return <LoadingModal isOpen={true} message={loadingMessage} />;
+  }
+
+  if (!recruitment_round_id) {
+    return (
+      <div className="text-center text-muted-foreground">
+        No recruitment round selected.
+      </div>
+    );
+  }
+
   if (applicants.length === 0) {
     return (
       <div className="text-center text-muted-foreground">
@@ -564,31 +737,38 @@ function ApplicantGrid({
       </div>
     );
   }
+
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
       {applicants.map((applicant) => (
         <ApplicantCard
-          key={applicant.id.toString()} // Convert id to string
-          applicant={{
-            ...applicant,
-            id: applicant.id.toString(), // Convert id to string for compatibility
-          }}
-          onMoveToNextRound={(id) => onMoveToNextRound(Number(id))}
-          onReject={(id) => onReject(Number(id))}
+          key={applicant.applicant_id}
+          applicant={applicant}
+          onMoveToNextRound={onMoveToNextRound}
+          onReject={onReject}
+          fetchApplicants={fetchApplicants}
+          isLastRound={isLastRound}
         />
       ))}
     </div>
   );
 }
+
 export default function Component() {
   const { data: user } = useUser();
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [currentOrg, setCurrentOrg] = useState<Organization | null>(null);
 
-  const [recruitmentCycles, setRecruitmentCycles] = useState<RecruitmentCycle[]>([]);
-  const [currentCycle, setCurrentCycle] = useState<RecruitmentCycle | null>(null);
+  const [recruitmentCycles, setRecruitmentCycles] = useState<
+    RecruitmentCycle[]
+  >([]);
+  const [currentCycle, setCurrentCycle] = useState<RecruitmentCycle | null>(
+    null
+  );
 
-  const [recruitmentRounds, setRecruitmentRounds] = useState<RecruitmentRound[]>([]);
+  const [recruitmentRounds, setRecruitmentRounds] = useState<
+    RecruitmentRound[]
+  >([]);
   const [currentRound, setCurrentRound] = useState(0);
 
   const [applicants, setApplicants] = useState<Applicant[]>([]);
@@ -683,6 +863,7 @@ export default function Component() {
   useEffect(() => {
     if (!currentCycle) {
       setRecruitmentRounds([]);
+      setIsLoading(false); // Stop loading if no recruitment cycle exists
       return;
     }
 
@@ -702,15 +883,24 @@ export default function Component() {
         }
 
         const data: RecruitmentRound[] = await response.json();
+
         setRecruitmentRounds(data);
+        if (data.length === 0) {
+          setIsLoading(false); // Stop loading if no rounds exist
+        }
       } catch (error) {
         console.error((error as Error).message);
+      } finally {
+        setIsLoading(false);
       }
-      finishLoading();
     };
 
     fetchRecruitmentRounds();
   }, [currentCycle]);
+
+  useEffect(() => {
+    console.log("Updated recruitmentRounds:", recruitmentRounds);
+  }, [recruitmentRounds]);
 
   if (isLoading) {
     return <LoadingModal isOpen={isLoading} message={loadingMessage} />;
@@ -718,6 +908,7 @@ export default function Component() {
 
   return (
     <div className="flex h-screen flex-col">
+      <Toaster />
       <Header
         currentOrg={currentOrg}
         setCurrentOrg={setCurrentOrg}
@@ -747,17 +938,17 @@ export default function Component() {
           <div className="border-b">
             <div className="flex h-14 items-center justify-between px-6">
               <div className="font-medium">Applicants</div>
-              <Button size="sm" className="gap-2">
-                <Upload className="h-4 w-4" />
-                Upload Applicants
-              </Button>
+              <UploadApplicantsDialog3
+                recruitment_round_id={recruitmentRounds[currentRound]}
+              />
             </div>
           </div>
           <div className="p-6">
             <ApplicantGrid
-              applicants={applicants}
+              recruitment_round_id={recruitmentRounds[currentRound]?.id}
               onMoveToNextRound={(id) => Promise.resolve()}
               onReject={(id) => Promise.resolve()}
+              isLastRound={currentRound === recruitmentRounds.length - 1}
             />
           </div>
         </main>
