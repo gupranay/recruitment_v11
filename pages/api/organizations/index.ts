@@ -36,7 +36,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const user = req.body;
   
   const id = user.id;
-  console.log("id:", id);
+  // console.log("id:", id);
 
   if (!id) {
     return res.status(401).json({ error: "Unauthorized" });
@@ -61,7 +61,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .select("organization_id, role")
       .eq("user_id", id);
 
-    console.log("memberOrganizations:", memberOrganizations);
+    // console.log("memberOrganizations:", memberOrganizations);
     if (memberFetchError) {
       console.log("memberFetchError:", memberFetchError);
       return res.status(400).json({ error: memberFetchError.message });

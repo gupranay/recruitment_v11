@@ -2,7 +2,7 @@
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { toast } from "@/components/ui/Toast";
+import { toast } from "react-hot-toast";
 import { useOrganization } from "@/contexts/OrganizationContext";
 import { useRecruitmentCycle } from "@/contexts/RecruitmentCycleContext";
 
@@ -19,19 +19,19 @@ export default function UploadApplicants() {
 
   const handleUpload = async () => {
     if (!file) {
-      toast("Please select a file to upload", "error");
+      toast.error("Please select a file to upload");
       return;
     }
 
     if (!selectedOrganization) {
-      toast("Please select an organization", "error");
+      toast.error("Please select an organization");
       return;
     }
 
     const formData = new FormData();
     formData.append("file", file);
     formData.append("organization_id", selectedOrganization.id);
-    console.log(selectedRecruitmentCycle);
+    // console.log(selectedRecruitmentCycle);
     if (selectedRecruitmentCycle?.id) {
       formData.append("recruitment_cycle_id", selectedRecruitmentCycle.id);
     }
@@ -44,10 +44,10 @@ export default function UploadApplicants() {
     });
 
     if (response.ok) {
-      toast("Applicants uploaded successfully!", "success");
+      toast.success("Applicants uploaded successfully!");
     } else {
       const error = await response.json();
-      toast(error.message, "error");
+      toast.error(error.message);
     }
   };
 

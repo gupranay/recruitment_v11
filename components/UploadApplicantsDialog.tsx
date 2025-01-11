@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { toast } from "@/components/ui/Toast";
+import { toast } from "react-hot-toast";
 import {
   Dialog,
   DialogContent,
@@ -50,7 +50,7 @@ export default function UploadApplicantsDialog() {
 
   const handleUploadClick = async () => {
     if (!file) {
-      toast("Please select a file to upload", "error");
+      toast.error("Please select a file to upload");
       return;
     }
 
@@ -66,7 +66,7 @@ export default function UploadApplicantsDialog() {
     if (response.ok) {
       
       const { filePath } = await response.json();
-      console.log(filePath);
+      // console.log(filePath);
       setFilePath(filePath); // Set filePath state here
       const headersResponse = await fetch("/api/applicants/readHeaders", {
         method: "POST",
@@ -81,11 +81,11 @@ export default function UploadApplicantsDialog() {
         setHeaders(headers);
         setStep(2);
       } else {
-        toast("Failed to read CSV headers", "error");
+        toast.error("Failed to read CSV headers");
       }
     } else {
       const error = await response.json();
-      toast(error.message, "error");
+      toast.error(error.message);
     }
 
     setLoading(false);
@@ -93,7 +93,7 @@ export default function UploadApplicantsDialog() {
 
   const handleProcessClick = async () => {
     if (!nameColumn || !emailColumn || !headshotColumn) {
-      toast("Please map all required columns", "error");
+      toast.error("Please map all required columns");
       return;
     }
 
@@ -114,11 +114,11 @@ export default function UploadApplicantsDialog() {
     });
 
     if (processResponse.ok) {
-      toast("Applicants processed successfully!", "success");
+      toast.success("Applicants processed successfully!");
       setOpen(false);
     } else {
       const error = await processResponse.json();
-      toast(error.message, "error");
+      toast.error(error.message);
     }
 
     setLoading(false);

@@ -29,10 +29,10 @@ const result = parseCSV(filePath);
 const fieldToAccess1 = "Full Name"; // Replace with actual field name from your CSV
 const fieldToAccess2 = "Email"; // Replace with actual field name from your CSV
 
-console.log("\nAccessing specific fields:");
-result.forEach((record, index) => {
-  console.log(`Record ${index + 1}:`);
-  console.log(`${fieldToAccess1}: ${accessField(record, fieldToAccess1)}`);
-  console.log(`${fieldToAccess2}: ${accessField(record, fieldToAccess2)}`);
-  console.log("---");
-});
+// console.log("\nAccessing specific fields:");
+// result.forEach((record, index) => {
+//   console.log(`Record ${index + 1}:`);
+//   console.log(`${fieldToAccess1}: ${accessField(record, fieldToAccess1)}`);
+//   console.log(`${fieldToAccess2}: ${accessField(record, fieldToAccess2)}`);
+//   console.log("---");
+// });

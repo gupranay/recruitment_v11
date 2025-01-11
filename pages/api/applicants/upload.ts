@@ -15,8 +15,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   // Log for debugging purposes
-  console.log("recruitmentCycleId", recruitmentCycleId);
-  console.log("Headers - Name:", nameHeader, "Email:", emailHeader, "Headshot:", headShotHeader);
+  // console.log("recruitmentCycleId", recruitmentCycleId);
+  // console.log("Headers - Name:", nameHeader, "Email:", emailHeader, "Headshot:", headShotHeader);
 
   const applicants = parsedData.map((record: any) => ({
     name: record[nameHeader],
