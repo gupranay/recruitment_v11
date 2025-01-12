@@ -54,6 +54,7 @@ export async function middleware(request: NextRequest) {
       },
     }
   );
+  
 
   const { data } = await supabase.auth.getSession();
   const url = new URL(request.url);

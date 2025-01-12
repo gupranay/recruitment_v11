@@ -9,7 +9,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   // Read applicant_id from the request body
   const { applicant_id } = req.body;
-
+  
   // Basic validation
   if (!applicant_id) {
     return res.status(400).json({ error: "Missing required field: applicant_id" });
