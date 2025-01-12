@@ -66,7 +66,7 @@ export default function UploadApplicantsDialog() {
     if (response.ok) {
       
       const { filePath } = await response.json();
-      // console.log(filePath);
+      console.log(filePath);
       setFilePath(filePath); // Set filePath state here
       const headersResponse = await fetch("/api/applicants/readHeaders", {
         method: "POST",
