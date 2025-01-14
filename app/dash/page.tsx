@@ -1,9 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Loader2, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Toaster } from "react-hot-toast";
@@ -14,28 +12,13 @@ import React from "react";
 import { RecruitmentCycle } from "@/lib/types/RecruitmentCycle";
 import { RecruitmentRound } from "@/lib/types/RecruitmentRound";
 import CreateRecruitmentRoundDialog from "@/components/CreateRecruitmentRoundDialog";
-import UploadApplicantsDialog3 from "@/components/UploadApplicantsDialog3";
 import ApplicantGrid from "@/components/ApplicantsGrid";
 import Header from "@/components/Header";
-import { CreateOrganizationDialog } from "@/components/CreateOrganizationDialog";
-import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent } from "@/components/ui/dropdown-menu";
+
+import LoadingModal from "@/components/LoadingModal2";
 interface LoadingModalProps {
   isOpen: boolean;
   message?: string;
-}
-
-function LoadingModal({ isOpen, message = "Loading..." }: LoadingModalProps) {
-  if (!isOpen) return null;
-  return (
-    <Dialog open={isOpen}>
-      <DialogContent className="sm:max-w-[425px]">
-        <div className="flex flex-col items-center justify-center space-y-4 py-6">
-          <Loader2 className="h-10 w-10 animate-spin text-primary" />
-          <p className="text-center text-lg font-medium">{message}</p>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
 }
 
 interface Applicant {
@@ -266,15 +249,13 @@ export default function Component() {
           </div>
         )}
         <main className="flex-1">
-          <div className="border-b">
-            <div className="flex h-14 items-center justify-between px-6">
-              <div className="font-medium">Applicants</div>
-              <UploadApplicantsDialog3/>
-            </div>
-          </div>
+         
+            
+         
           <div className="p-6">
             <ApplicantGrid
               recruitment_round_id={recruitmentRounds[currentRound]?.id}
+              recruitment_round_name={recruitmentRounds[currentRound]?.name}
               onMoveToNextRound={(id) => Promise.resolve()}
               onReject={(id) => Promise.resolve()}
               isLastRound={currentRound === recruitmentRounds.length - 1}
