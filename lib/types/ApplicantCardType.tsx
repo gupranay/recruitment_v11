@@ -3,5 +3,6 @@ export type ApplicantCardType = {
   applicant_id: string;
   name: string;
   headshot_url: string;
+  email: string;
   status: string;
 };

@@ -17,6 +17,7 @@ interface ApplicantCardProps {
   onMoveToNextRound: (id: string) => void;
   onReject: (id: string) => void;
   fetchApplicants: () => Promise<void>;
+  isLastRound: boolean;
 }
 
 export default function ApplicantCard({
@@ -25,7 +26,7 @@ export default function ApplicantCard({
   onReject,
   fetchApplicants,
   isLastRound,
-}: ApplicantCardProps & { isLastRound: boolean }) {
+}: ApplicantCardProps) {
   const [isAlertDialogOpen, setIsAlertDialogOpen] = useState(false);
   const [isApplicationDialogOpen, setIsApplicationDialogOpen] = useState(false);
   const [isAccepting, setIsAccepting] = useState(false); // Loading state for accepting

@@ -22,7 +22,15 @@ import {
 import { parse } from "csv-parse/sync";
 import { Upload } from "lucide-react";
 
-export default function UploadApplicantsDialog(recruitment_round_id: any) {
+interface UploadApplicantsDialogProps {
+  recruitment_round_id: string;
+  fetchApplicants: () => Promise<void>;
+}
+
+export default function UploadApplicantsDialog({
+  recruitment_round_id,
+  fetchApplicants,
+}: UploadApplicantsDialogProps) {
   const [file, setFile] = useState<File | null>(null);
   const [parsedData, setParsedData] = useState<any[]>([]);
   const [headers, setHeaders] = useState<string[]>([]);
@@ -92,7 +100,7 @@ export default function UploadApplicantsDialog(recruitment_round_id: any) {
       nameHeader,
       emailHeader,
       headShotHeader,
-      recruitment_round_id: recruitment_round_id.recruitment_round_id.id,
+      recruitment_round_id: recruitment_round_id,
     };
 
     // console.log("recruitment_round_id", recruitment_round_id);
@@ -109,6 +117,7 @@ export default function UploadApplicantsDialog(recruitment_round_id: any) {
       setOpen(false);
       setLoading(false);
       toast.success(`${file.name} uploaded successfully!`);
+      fetchApplicants();
     } else {
       const error = await response.json();
       toast.error(error.message);

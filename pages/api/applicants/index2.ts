@@ -10,7 +10,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const recruitment_round_id  = req.body;
 
-  console.log("recruitment_round_id: ", recruitment_round_id.recruitment_round_id);
+  // console.log("recruitment_round_id: ", recruitment_round_id.recruitment_round_id);
 
   if (!recruitment_round_id) {
     return res.status(400).json({ error: "Missing required field: recruitment_round_id" });
@@ -30,7 +30,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       applicants (
         id,
         name,
-        headshot_url
+        headshot_url, 
+        email
       )
     `)
     .eq("recruitment_round_id", recruitment_round_id.recruitment_round_id);
@@ -45,6 +46,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     applicant_id: item.applicant_id,
     name: item.applicants?.name,
     headshot_url: item.applicants?.headshot_url,
+    email: item.applicants?.email,
     status: item.status,
   }));
 
