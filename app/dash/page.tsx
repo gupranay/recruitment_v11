@@ -16,6 +16,17 @@ import ApplicantGrid from "@/components/ApplicantsGrid";
 import Header from "@/components/Header";
 
 import LoadingModal from "@/components/LoadingModal2";
+import { DialogHeader, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@radix-ui/react-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
+import { MoreVertical } from "lucide-react";
+import { MultiSelect } from "@/components/ui/MultiSelect";
+import CreateAnonymizedAppDialog from "@/components/CreateAnonymizedAppDialog";
 interface LoadingModalProps {
   isOpen: boolean;
   message?: string;
@@ -249,9 +260,6 @@ export default function Component() {
           </div>
         )}
         <main className="flex-1">
-         
-            
-         
           <div className="p-6">
             <ApplicantGrid
               recruitment_round_id={recruitmentRounds[currentRound]?.id}
