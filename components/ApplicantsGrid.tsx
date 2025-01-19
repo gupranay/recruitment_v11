@@ -8,6 +8,7 @@ import { Button } from "./ui/button";
 import { exportToCSV } from "@/lib/utils/exportAppsToCSV";
 import { Separator } from "./ui/separator";
 import UploadApplicantsDialog3 from "./UploadApplicantsDialog3";
+import CreateAnonymizedAppDialog from "./CreateAnonymizedAppDialog";
 
 type ApplicantGridProps = {
   recruitment_round_id: string | undefined;
@@ -27,7 +28,7 @@ export default function ApplicantGrid({
   const [applicants, setApplicants] = useState<ApplicantCardType[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState("Loading applicants...");
-
+  const [isDialogOpen, setIsDialogOpen] = useState(false); 
   const fetchApplicants = useCallback(async () => {
     if (!recruitment_round_id) {
       setIsLoading(false);
@@ -92,50 +93,75 @@ export default function ApplicantGrid({
 
   return (
     <div className="relative">
-      {/* Export Button */}
-      <div className="flex items-center justify-between mb-4 ">
-        <div className="font-medium text-lg">Applicant Overview</div>
-        <div className="flex items-center ml-auto space-x-2">
-          <Button
-            onClick={() => {
-              const applicantsData = applicants || [];
-              exportToCSV(
-                applicantsData.map(({ name, email, status }) => ({
-                  name: name || "N/A",
-                  email: email || "N/A",
-                  status: status || "N/A",
-                })), recruitment_round_name || "applicants"
-              );
-            }}
-            variant="outline"
-          >
-            Export to CSV
-          </Button>
-          <UploadApplicantsDialog3 
-          recruitment_round_id={recruitment_round_id} 
-          fetchApplicants={fetchApplicants} />
-        </div>
-      </div>
-      <Separator className="mb-4" />
-      {/* Applicant Grid */}
-      {applicants.length > 0 ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {applicants.map((applicant) => (
-            <ApplicantCard
-              key={applicant.applicant_id}
-              applicant={applicant}
-              onMoveToNextRound={onMoveToNextRound}
-              onReject={onReject}
-              fetchApplicants={fetchApplicants}
-              isLastRound={isLastRound}
-            />
-          ))}
-        </div>
-      ) : (
-        <div className="text-center text-muted-foreground">
-          Please upload applicants.
-        </div>
-      )}
+  {/* Action Buttons */}
+  <div className="flex items-center justify-between mb-4 ">
+    <div className="font-medium text-lg">Applicant Overview</div>
+    <div className="flex items-center ml-auto space-x-2">
+      {/* Export to CSV Button */}
+      <Button
+        onClick={() => {
+          const applicantsData = applicants || [];
+          exportToCSV(
+            applicantsData.map(({ name, email, status }) => ({
+              name: name || "N/A",
+              email: email || "N/A",
+              status: status || "N/A",
+            })),
+            recruitment_round_name || "applicants"
+          );
+        }}
+        variant="outline"
+      >
+        Export to CSV
+      </Button>
+
+      {/* Create Anonymized App Dialog Button */}
+      <Button
+        onClick={() => setIsDialogOpen(true)}
+        variant="outline"
+      >
+        Create Anonymized App Reading
+      </Button>
+
+      {/* Upload Applicants Dialog */}
+      <UploadApplicantsDialog3
+        recruitment_round_id={recruitment_round_id}
+        fetchApplicants={fetchApplicants}
+      />
     </div>
+  </div>
+  <Separator className="mb-4" />
+
+  {/* Applicant Grid */}
+  {applicants.length > 0 ? (
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      {applicants.map((applicant) => (
+        <ApplicantCard
+          key={applicant.applicant_id}
+          applicant={applicant}
+          onMoveToNextRound={onMoveToNextRound}
+          onReject={onReject}
+          fetchApplicants={fetchApplicants}
+          isLastRound={isLastRound}
+        />
+      ))}
+    </div>
+  ) : (
+    <div className="text-center text-muted-foreground">
+      Please upload applicants.
+    </div>
+  )}
+
+  {/* Create Anonymized App Dialog */}
+  <CreateAnonymizedAppDialog
+  isOpen={isDialogOpen}
+  onClose={() => setIsDialogOpen(false)}
+  recruitment_round_id={recruitment_round_id || ""}
+  recruitment_round_name={recruitment_round_name || "Unknown Round"}
+  applicant_id={applicants[0]?.applicant_id || ""}
+/>
+
+</div>
+
   );
 }
