@@ -8,30 +8,29 @@ import {
 import { Button } from "@/components/ui/button";
 import { MultiSelect } from "@/components/ui/MultiSelect";
 import { useState, useEffect } from "react";
+import toast from "react-hot-toast";
 
 export default function CreateAnonymizedAppDialog({
-  isOpen,
-  onClose,
   recruitment_round_id,
   recruitment_round_name,
   applicant_id,
 }: {
-  isOpen: boolean;
-  onClose: () => void;
   recruitment_round_id: string;
   recruitment_round_name: string;
   applicant_id: string;
 }) {
   const [selectedFields, setSelectedFields] = useState<string[]>([]);
   const [availableFields, setAvailableFields] = useState<string[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingFields, setIsLoadingFields] = useState(false);
+  const [slug, setSlug] = useState<string | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   // Fetch available fields for anonymization
   useEffect(() => {
     const fetchFields = async () => {
-      if (!recruitment_round_id) return;
+      if (!applicant_id) return;
 
-      setIsLoading(true);
+      setIsLoadingFields(true);
       try {
         const response = await fetch("/api/applicant/get-cols", {
           method: "POST",
@@ -45,25 +44,50 @@ export default function CreateAnonymizedAppDialog({
           throw new Error("Failed to fetch available fields");
         }
 
-        // Ensure the response is an array of strings
         const fields = await response.json();
-        
-        // Check if the response is an array; fallback to an empty array if not
-        setAvailableFields(fields.columns);
+        setAvailableFields(fields.columns || []);
       } catch (error) {
         console.error("Error fetching fields:", error);
-        setAvailableFields([]); // Fallback to an empty array in case of error
+        setAvailableFields([]);
       } finally {
-        setIsLoading(false);
+        setIsLoadingFields(false);
       }
     };
 
     fetchFields();
-  }, [recruitment_round_id, applicant_id]);
+  }, [applicant_id]);
+
+  // Fetch slug if it exists
+  useEffect(() => {
+    const fetchSlug = async () => {
+      if (!recruitment_round_id) return;
+
+      try {
+        const response = await fetch("/api/anonymous/get-slug", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ recruitment_round_id }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch slug");
+        }
+
+        const { slug: existingSlug } = await response.json();
+        setSlug(existingSlug || null);
+      } catch (error) {
+        console.error("Error fetching slug:", error);
+        setSlug(null);
+      }
+    };
+
+    fetchSlug();
+  }, [recruitment_round_id]);
 
   const handleCreate = async () => {
     if (!recruitment_round_id) return;
-    
 
     try {
       const response = await fetch("/api/anonymous/create", {
@@ -80,46 +104,66 @@ export default function CreateAnonymizedAppDialog({
       }
 
       const result = await response.json();
-      console.log("Anonymized app created:", result);
+      setSlug(result.id);
+      toast.success("Successfully created Anonymized App Reading");
+
+      window.open(`/anonymous?id=${result.id}`, "_blank", "noopener,noreferrer");
     } catch (error) {
-      console.error("Error:", error);
+      console.error("Error creating anonymized app:", error);
     } finally {
-      onClose();
+      setIsDialogOpen(false);
     }
   };
 
+  if (slug) {
+    return (
+      <Button
+        onClick={() =>
+          window.open(`/anonymous?id=${slug}`, "_blank", "noopener,noreferrer")
+        }
+        variant="default"
+      >
+        Launch Anonymized App Reading
+      </Button>
+    );
+  }
+
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>
-            Create Anonymized App for{" "}
-            {recruitment_round_name || "Unknown Round"}
-          </DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4">
-          {isLoading ? (
-            <p>Loading fields...</p>
-          ) : (
-            <>
-              <p>Select the fields you want to include:</p>
-              <MultiSelect
-                options={availableFields} // Ensure this is an array of strings
-                selectedOptions={selectedFields}
-                onChange={setSelectedFields}
-              />
-            </>
-          )}
-        </div>
-        <DialogFooter>
-          <Button onClick={onClose} variant="outline">
-            Cancel
-          </Button>
-          <Button onClick={handleCreate} disabled={selectedFields.length === 0}>
-            Create
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    <>
+      <Button onClick={() => setIsDialogOpen(true)} variant="outline">
+        Create Anonymized App Reading
+      </Button>
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              Create Anonymized App for {recruitment_round_name || "Unknown Round"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {isLoadingFields ? (
+              <p>Loading fields...</p>
+            ) : (
+              <>
+                <p>Select the fields you want to include:</p>
+                <MultiSelect
+                  options={availableFields}
+                  selectedOptions={selectedFields}
+                  onChange={setSelectedFields}
+                />
+              </>
+            )}
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setIsDialogOpen(false)} variant="outline">
+              Cancel
+            </Button>
+            <Button onClick={handleCreate} disabled={selectedFields.length === 0}>
+              Create
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

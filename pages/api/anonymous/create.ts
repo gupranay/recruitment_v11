@@ -6,6 +6,7 @@ function generateRandomSlug() {
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  // Only allow POST
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
@@ -19,6 +20,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   // 1) Create a new row in `anonymous_readings`
   const slug = generateRandomSlug();
+
   const { data: readingData, error: readingError } = await supabase
     .from("anonymous_readings")
     .insert({
@@ -35,41 +37,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
   }
 
-  // readingData now has the generated 'id' from the DB
-  const { id: readingId } = readingData;
-
-  // 2) Fetch all applicants in the specified round
-  const { data: bridgingData, error: bridgingErr } = await supabase
-    .from("applicant_rounds")
-    .select("applicant_id")
-    .eq("recruitment_round_id", recruitment_round_id);
-
-  if (bridgingErr) {
-    return res.status(500).json({ error: bridgingErr.message });
-  }
-
-  const uniqueApplicantIds = Array.from(new Set(bridgingData.map(a => a.applicant_id)));
-
-  // 3) Insert into `anonymous_reading_applicants`
-  //    That table should also have a default gen_random_uuid() for id
-  const inserts = uniqueApplicantIds.map((appId, idx) => ({
-    reading_id: readingId,
-    applicant_id: appId,
-    anonymous_number: idx + 1,
-  }));
-
-  const { data: mappingRes, error: mapErr } = await supabase
-    .from("anonymous_reading_applicants")
-    .insert(inserts)
-    .select();
-
-  if (mapErr) {
-    return res.status(500).json({ error: mapErr.message });
-  }
-
+  // 2) Return the newly created reading
   return res.status(200).json({
-    message: "Anonymized reading created successfully.",
-    reading: readingData,        // includes {id, slug, omitted_fields}
-    total_applicants: mappingRes.length,
+    id: slug,            // You can rename this if desired
   });
 }

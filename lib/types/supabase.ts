@@ -9,6 +9,77 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      anonymous_reading_applicants: {
+        Row: {
+          anonymous_number: number
+          applicant_id: string
+          created_at: string
+          id: string
+          reading_id: string
+        }
+        Insert: {
+          anonymous_number: number
+          applicant_id: string
+          created_at?: string
+          id?: string
+          reading_id: string
+        }
+        Update: {
+          anonymous_number?: number
+          applicant_id?: string
+          created_at?: string
+          id?: string
+          reading_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "anonymous_reading_applicants_applicant_id_fkey"
+            columns: ["applicant_id"]
+            isOneToOne: false
+            referencedRelation: "applicants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "anonymous_reading_applicants_reading_id_fkey"
+            columns: ["reading_id"]
+            isOneToOne: false
+            referencedRelation: "anonymous_readings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      anonymous_readings: {
+        Row: {
+          created_at: string
+          id: string
+          omitted_fields: string[] | null
+          recruitment_round_id: string
+          slug: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          omitted_fields?: string[] | null
+          recruitment_round_id: string
+          slug: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          omitted_fields?: string[] | null
+          recruitment_round_id?: string
+          slug?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "anonymous_readings_recruitment_round_id_fkey"
+            columns: ["recruitment_round_id"]
+            isOneToOne: false
+            referencedRelation: "recruitment_rounds"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       applicant_rounds: {
         Row: {
           applicant_id: string
@@ -95,6 +166,7 @@ export type Database = {
           comment_text: string
           created_at: string
           id: string
+          is_anonymous: boolean | null
           updated_at: string
           user_id: string
         }
@@ -103,6 +175,7 @@ export type Database = {
           comment_text: string
           created_at?: string
           id?: string
+          is_anonymous?: boolean | null
           updated_at?: string
           user_id: string
         }
@@ -111,6 +184,7 @@ export type Database = {
           comment_text?: string
           created_at?: string
           id?: string
+          is_anonymous?: boolean | null
           updated_at?: string
           user_id?: string
         }
