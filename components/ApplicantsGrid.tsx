@@ -2,12 +2,13 @@
 
 import { useState, useCallback, useEffect } from "react";
 import ApplicantCard from "./ApplicantCard";
-import  LoadingModal  from "@/components/LoadingModal2";
+import LoadingModal from "@/components/LoadingModal2";
 import { ApplicantCardType } from "@/lib/types/ApplicantCardType";
 import { Button } from "./ui/button";
 import { exportToCSV } from "@/lib/utils/exportAppsToCSV";
 import { Separator } from "./ui/separator";
 import UploadApplicantsDialog3 from "./UploadApplicantsDialog3";
+import CreateAnonymizedAppDialog from "./CreateAnonymizedAppDialog";
 
 type ApplicantGridProps = {
   recruitment_round_id: string | undefined;
@@ -27,7 +28,7 @@ export default function ApplicantGrid({
   const [applicants, setApplicants] = useState<ApplicantCardType[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState("Loading applicants...");
-
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const fetchApplicants = useCallback(async () => {
     if (!recruitment_round_id) {
       setIsLoading(false);
@@ -92,10 +93,11 @@ export default function ApplicantGrid({
 
   return (
     <div className="relative">
-      {/* Export Button */}
+      {/* Action Buttons */}
       <div className="flex items-center justify-between mb-4 ">
         <div className="font-medium text-lg">Applicant Overview</div>
         <div className="flex items-center ml-auto space-x-2">
+          {/* Export to CSV Button */}
           <Button
             onClick={() => {
               const applicantsData = applicants || [];
@@ -104,19 +106,31 @@ export default function ApplicantGrid({
                   name: name || "N/A",
                   email: email || "N/A",
                   status: status || "N/A",
-                })), recruitment_round_name || "applicants"
+                })),
+                recruitment_round_name || "applicants"
               );
             }}
             variant="outline"
           >
             Export to CSV
           </Button>
-          <UploadApplicantsDialog3 
-          recruitment_round_id={recruitment_round_id} 
-          fetchApplicants={fetchApplicants} />
+
+          {/* Create Anonymized App Dialog Button */}
+          <CreateAnonymizedAppDialog
+            recruitment_round_id={recruitment_round_id || ""}
+            recruitment_round_name={recruitment_round_name || "Unknown Round"}
+            applicant_id={applicants[0]?.applicant_id || ""}
+          />
+
+          {/* Upload Applicants Dialog */}
+          <UploadApplicantsDialog3
+            recruitment_round_id={recruitment_round_id}
+            fetchApplicants={fetchApplicants}
+          />
         </div>
       </div>
       <Separator className="mb-4" />
+
       {/* Applicant Grid */}
       {applicants.length > 0 ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">

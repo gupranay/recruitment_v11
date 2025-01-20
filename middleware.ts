@@ -54,19 +54,24 @@ export async function middleware(request: NextRequest) {
       },
     }
   );
-  
 
   const { data } = await supabase.auth.getSession();
   const url = new URL(request.url);
+
+  // Reconstruct the `next` parameter, preserving query params
+  const nextPath = url.pathname + url.search;
+
   if (data?.session) {
+    // Redirect logged-in users away from the auth page
     if (url.pathname === "/auth") {
       return NextResponse.redirect(new URL("/", request.url));
     }
     return response;
   } else {
+    // Redirect unauthenticated users to /auth with the next path (including query params)
     if (protectedPaths.includes(url.pathname)) {
       return NextResponse.redirect(
-        new URL("/auth?next=" + url.pathname, request.url)
+        new URL(`/auth?next=${encodeURIComponent(nextPath)}`, request.url)
       );
     }
     return response;
