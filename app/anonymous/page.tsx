@@ -1,7 +1,7 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { useState, useEffect } from "react";
+import { Suspense, useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -19,11 +19,11 @@ interface AnonApplicant {
   number: number; // Sequential number for display
 }
 
-export default function ReadingPage() {
-  // Hooks must always be called unconditionally
+function ReadingPageContent() {
   const { data: user } = useUser();
   const searchParams = useSearchParams();
-  const slug = searchParams?.get("id"); // Allow `slug` to be null initially
+  const slug = searchParams?.get("id");
+
   const [applicants, setApplicants] = useState<AnonApplicant[]>([]);
   const [readingDetails, setReadingDetails] = useState<any>(null);
   const [selectedApplicant, setSelectedApplicant] = useState<{
@@ -39,13 +39,12 @@ export default function ReadingPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Ensure slug is valid before fetching data
-    if (!slug) {
-      setIsLoading(false);
-      return;
-    }
-
     const fetchData = async () => {
+      if (!slug) {
+        setIsLoading(false);
+        return;
+      }
+
       try {
         const response = await fetch("/api/anonymous/get", {
           method: "POST",
@@ -263,5 +262,13 @@ export default function ReadingPage() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+export default function ReadingPage() {
+  return (
+    <Suspense fallback={<p>Loading page...</p>}>
+      <ReadingPageContent />
+    </Suspense>
   );
 }
