@@ -1,4 +1,3 @@
-// components/ApplicationDialog.tsx
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Loader2, Send } from "lucide-react";
 import { useState, useEffect } from "react";
@@ -10,7 +9,7 @@ import { Separator } from "./ui/separator";
 
 export default function ApplicationDialog({
   applicantId,
-  applicantRoundId, // Pass the applicant_round_id for creating comments
+  applicantRoundId, // Pass the applicant_round_id for creating comments and fetching scores
   userId, // Pass the current user's ID
   isOpen,
   onClose,
@@ -27,13 +26,30 @@ export default function ApplicationDialog({
     data: Record<string, string>;
   } | null>(null);
   const [comments, setComments] = useState<
-    { comment_text: string; user_name: string | null; created_at: string; round_name: string }[]
+    {
+      comment_text: string;
+      user_name: string | null;
+      created_at: string;
+      round_name: string;
+      anonymous: boolean;
+    }[]
+  >([]);
+  const [scores, setScores] = useState<
+    {
+      user_id: string;
+      user_name: string | null;
+      scores: {
+        metric_name: string;
+        score_value: number;
+        created_at: string;
+      }[];
+    }[]
   >([]);
   const [newComment, setNewComment] = useState<string>(""); // New comment input
   const [isAddingComment, setIsAddingComment] = useState(false); // Loading state for adding a comment
   const [isLoading, setIsLoading] = useState(false);
 
-  // Fetch applicant details and comments
+  // Fetch applicant details, comments, and scores
   useEffect(() => {
     const fetchApplicantDetails = async () => {
       setIsLoading(true);
@@ -68,17 +84,37 @@ export default function ApplicationDialog({
           body: JSON.stringify({ applicant_id: applicantId }),
         });
         const data = await response.json();
-        // Filter comments for the current applicant round
-
         setComments(data || []);
       } catch (error) {
         console.error("Error fetching comments:", error);
       }
     };
 
+    const fetchScores = async () => {
+      try {
+        const response = await fetch("/api/scores/get", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ applicant_round_id: applicantRoundId }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch scores");
+        }
+
+        const data = await response.json();
+        setScores(data || []);
+      } catch (error) {
+        console.error("Error fetching scores:", error);
+      }
+    };
+
     if (isOpen) {
       fetchApplicantDetails();
       fetchComments();
+      fetchScores();
     }
   }, [isOpen, applicantId, applicantRoundId]);
 
@@ -109,6 +145,7 @@ export default function ApplicationDialog({
           user_name: "You",
           created_at: comment.created_at,
           round_name: "Current Round",
+          anonymous: false,
         },
       ]);
       setNewComment(""); // Clear input after adding
@@ -180,6 +217,33 @@ export default function ApplicationDialog({
                 )}
               </div>
               <Separator className="my-6" />
+              {/* Scores Section */}
+              <div className="mb-6">
+                <h4 className="text-lg font-medium mb-2">Scores</h4>
+                {scores.length > 0 ? (
+                  scores.map((user) => (
+                    <div key={user.user_id} className="mb-4">
+                      <p className="font-bold text-gray-800">
+                        {user.user_name || "Anonymous User"}
+                      </p>
+                      <ul className="list-disc list-inside">
+                        {user.scores.map((score, index) => (
+                          <li key={`${score.metric_name}-${index}`}>
+                            Metric: {score.metric_name}, Score:{" "}
+                            {score.score_value}, Date:{" "}
+                            {new Date(score.created_at).toLocaleString()}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    No scores submitted yet.
+                  </p>
+                )}
+              </div>
+              <Separator className="my-6" />
               {/* Comments Section */}
               <div>
                 <h4 className="text-lg font-medium mb-2">Comments</h4>
@@ -197,6 +261,7 @@ export default function ApplicationDialog({
                           {comment.round_name ? (
                             <span className="font-semibold">
                               Round: {comment.round_name}
+                              {comment.anonymous ? " (Anonymous)" : ""}
                             </span>
                           ) : (
                             "No round information"
