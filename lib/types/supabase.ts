@@ -9,45 +9,6 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      anonymous_reading_applicants: {
-        Row: {
-          anonymous_number: number
-          applicant_id: string
-          created_at: string
-          id: string
-          reading_id: string
-        }
-        Insert: {
-          anonymous_number: number
-          applicant_id: string
-          created_at?: string
-          id?: string
-          reading_id: string
-        }
-        Update: {
-          anonymous_number?: number
-          applicant_id?: string
-          created_at?: string
-          id?: string
-          reading_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "anonymous_reading_applicants_applicant_id_fkey"
-            columns: ["applicant_id"]
-            isOneToOne: false
-            referencedRelation: "applicants"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "anonymous_reading_applicants_reading_id_fkey"
-            columns: ["reading_id"]
-            isOneToOne: false
-            referencedRelation: "anonymous_readings"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       anonymous_readings: {
         Row: {
           created_at: string
@@ -205,6 +166,35 @@ export type Database = {
           },
         ]
       }
+      metrics: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          recruitment_cycle_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          recruitment_cycle_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          recruitment_cycle_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "metrics_recruitment_cycle_id_fkey"
+            columns: ["recruitment_cycle_id"]
+            isOneToOne: false
+            referencedRelation: "recruitment_cycles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organization_users: {
         Row: {
           created_at: string | null
@@ -322,6 +312,55 @@ export type Database = {
             columns: ["recruitment_cycle_id"]
             isOneToOne: false
             referencedRelation: "recruitment_cycles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      scores: {
+        Row: {
+          applicant_round_id: string
+          created_at: string
+          id: string
+          metric_id: string
+          score_value: number | null
+          user_id: string | null
+        }
+        Insert: {
+          applicant_round_id: string
+          created_at?: string
+          id?: string
+          metric_id: string
+          score_value?: number | null
+          user_id?: string | null
+        }
+        Update: {
+          applicant_round_id?: string
+          created_at?: string
+          id?: string
+          metric_id?: string
+          score_value?: number | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scores_applicant_round_id_fkey"
+            columns: ["applicant_round_id"]
+            isOneToOne: false
+            referencedRelation: "applicant_rounds"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scores_metric_id_fkey"
+            columns: ["metric_id"]
+            isOneToOne: false
+            referencedRelation: "metrics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scores_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]

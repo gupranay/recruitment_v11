@@ -21,7 +21,7 @@ function LoginPageContent() {
   }, [params]);
 
   const handleLoginwithGoogle = async () => {
-    console.log("Login button clicked");
+    // console.log("Login button clicked");
     const supabase = supabaseBrowser();
     const redirectTo = `${HOSTNAME}/auth/callback?next=${next}`;
     const { data, error } = await supabase.auth.signInWithOAuth({
@@ -32,9 +32,7 @@ function LoginPageContent() {
     });
     if (error) {
       console.log("Error during sign-in:", error);
-    } else {
-      console.log("Sign-in initiated:", data);
-    }
+    } 
   };
 
   return (
