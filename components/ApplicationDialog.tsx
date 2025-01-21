@@ -9,8 +9,8 @@ import { Separator } from "./ui/separator";
 
 export default function ApplicationDialog({
   applicantId,
-  applicantRoundId, // Pass the applicant_round_id for creating comments and fetching scores
-  userId, // Pass the current user's ID
+  applicantRoundId, 
+  userId, 
   isOpen,
   onClose,
 }: {
@@ -226,7 +226,7 @@ export default function ApplicationDialog({
                       <p className="font-bold text-gray-800">
                         {user.user_name || "Anonymous User"}
                       </p>
-                      <ul className="list-disc list-inside">
+                      <ul className="list-disc list-inside">ujj
                         {user.scores.map((score, index) => (
                           <li key={`${score.metric_name}-${index}`}>
                             Metric: {score.metric_name}, Score:{" "}

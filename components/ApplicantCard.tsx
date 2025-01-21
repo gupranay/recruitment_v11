@@ -18,6 +18,7 @@ interface ApplicantCardProps {
   onReject: (id: string) => void;
   fetchApplicants: () => Promise<void>;
   isLastRound: boolean;
+  onClick?: () => void;
 }
 
 export default function ApplicantCard({
