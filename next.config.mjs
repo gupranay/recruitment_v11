@@ -10,6 +10,10 @@ const nextConfig = {
         protocol: "https",
         hostname: "storage.tally.so", // Add this line
       },
+      {
+        protocol: "https",
+        hostname: "media.licdn.com", // Add this line
+      },
     ],
   },
 };
