@@ -24,7 +24,9 @@ interface Applicant {
 export default function ApplicantsGridPage() {
   const { data: user } = useUser(); // Get user data
   const [applicants, setApplicants] = useState<Applicant[]>([]);
-  const [selectedApplicant, setSelectedApplicant] = useState<Applicant | null>(null);
+  const [selectedApplicant, setSelectedApplicant] = useState<Applicant | null>(
+    null
+  );
   const [newComment, setNewComment] = useState<string>("");
   const [comments, setComments] = useState<
     { comment_text: string; created_at: string }[]
@@ -157,31 +159,37 @@ export default function ApplicantsGridPage() {
                   className="w-full h-80 object-cover rounded-lg mb-4" // Ensures consistent height
                 />
               )}
-              <p className="text-lg font-semibold text-center">{applicant.name}</p>
+              <p className="text-lg font-semibold text-center">
+                {applicant.name}
+              </p>
             </button>
           ))}
         </div>
       ) : (
-        <p className="text-center text-muted-foreground">No applicants found.</p>
+        <p className="text-center text-muted-foreground">
+          No applicants found.
+        </p>
       )}
 
       <Dialog open={isDialogOpen} onOpenChange={closeDialog}>
         <DialogContent className="max-w-3xl">
           <DialogHeader>
-            <DialogTitle>{selectedApplicant?.name || "Applicant Details"}</DialogTitle>
+            <DialogTitle>
+              {selectedApplicant?.name || "Applicant Details"}
+            </DialogTitle>
           </DialogHeader>
           <div className="py-4 space-y-4 max-h-[70vh] overflow-auto">
             {selectedApplicant && (
               <>
                 {selectedApplicant.headshot_url && (
-                  <Image
-                    src={selectedApplicant.headshot_url}
-                    alt={`${selectedApplicant.name}'s headshot`}
-                    width={600}
-                    height={500} // Increased height for consistency
-                    className="w-full h-auto object-cover rounded-lg mx-auto mb-4"
-                  />
-                )}
+            <div className="mx-auto mb-4 rounded-lg overflow-hidden w-64">
+              <img
+                src={selectedApplicant.headshot_url}
+                alt={`${selectedApplicant.name}'s headshot`}
+                className="object-cover w-full h-full"
+              />
+            </div>
+          )}
                 <p className="text-sm">
                   <strong>Name:</strong> {selectedApplicant.name}
                 </p>
