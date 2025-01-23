@@ -9,8 +9,8 @@ import { Separator } from "./ui/separator";
 
 export default function ApplicationDialog({
   applicantId,
-  applicantRoundId, 
-  userId, 
+  applicantRoundId,
+  userId,
   isOpen,
   onClose,
 }: {
@@ -34,22 +34,11 @@ export default function ApplicationDialog({
       anonymous: boolean;
     }[]
   >([]);
-  const [scores, setScores] = useState<
-    {
-      user_id: string;
-      user_name: string | null;
-      scores: {
-        metric_name: string;
-        score_value: number;
-        created_at: string;
-      }[];
-    }[]
-  >([]);
   const [newComment, setNewComment] = useState<string>(""); // New comment input
   const [isAddingComment, setIsAddingComment] = useState(false); // Loading state for adding a comment
   const [isLoading, setIsLoading] = useState(false);
 
-  // Fetch applicant details, comments, and scores
+  // Fetch applicant details and comments
   useEffect(() => {
     const fetchApplicantDetails = async () => {
       setIsLoading(true);
@@ -90,33 +79,11 @@ export default function ApplicationDialog({
       }
     };
 
-    const fetchScores = async () => {
-      try {
-        const response = await fetch("/api/scores/get", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ applicant_round_id: applicantRoundId }),
-        });
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch scores");
-        }
-
-        const data = await response.json();
-        setScores(data || []);
-      } catch (error) {
-        console.error("Error fetching scores:", error);
-      }
-    };
-
     if (isOpen) {
       fetchApplicantDetails();
       fetchComments();
-      fetchScores();
     }
-  }, [isOpen, applicantId, applicantRoundId]);
+  }, [isOpen, applicantId]);
 
   const handleAddComment = async () => {
     if (!newComment.trim()) return;
@@ -217,72 +184,41 @@ export default function ApplicationDialog({
                 )}
               </div>
               <Separator className="my-6" />
-              {/* Scores Section */}
-              <div className="mb-6">
-                <h4 className="text-lg font-medium mb-2">Scores</h4>
-                {scores.length > 0 ? (
-                  scores.map((user) => (
-                    <div key={user.user_id} className="mb-4">
-                      <p className="font-bold text-gray-800">
-                        {user.user_name || "Anonymous User"}
+              {/* Comments Section */}
+              <div>
+                <h4 className="text-lg font-medium mb-4">Comments</h4>
+                {comments.length > 0 ? (
+                  comments.map((comment, index) => (
+                    <div key={index} className="p-2 bg-muted/10 rounded-lg mb-2">
+                      <p className="text-sm">
+                        <span className="font-medium">
+                          {comment.user_name || "Anonymous"}:
+                        </span>{" "}
+                        {comment.comment_text}
                       </p>
-                      <ul className="list-disc list-inside">ujj
-                        {user.scores.map((score, index) => (
-                          <li key={`${score.metric_name}-${index}`}>
-                            Metric: {score.metric_name}, Score:{" "}
-                            {score.score_value}, Date:{" "}
-                            {new Date(score.created_at).toLocaleString()}
-                          </li>
-                        ))}
-                      </ul>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {comment.round_name && (
+                          <span className="font-semibold">
+                            Round: {comment.round_name}
+                            {comment.anonymous ? " (Anonymous)" : ""}
+                          </span>
+                        )}
+                        <span className="ml-2">
+                          {new Date(comment.created_at).toLocaleString()}
+                        </span>
+                      </p>
                     </div>
                   ))
                 ) : (
                   <p className="text-sm text-muted-foreground">
-                    No scores submitted yet.
+                    No comments yet.
                   </p>
                 )}
-              </div>
-              <Separator className="my-6" />
-              {/* Comments Section */}
-              <div>
-                <h4 className="text-lg font-medium mb-2">Comments</h4>
-                <div className="space-y-2 max-h-32 overflow-y-auto mb-4">
-                  {comments.length > 0 ? (
-                    comments.map((comment, index) => (
-                      <div key={index} className="text-sm text-gray-700">
-                        <div>
-                          <span className="font-medium">
-                            {comment.user_name || "Anonymous"}:
-                          </span>{" "}
-                          {comment.comment_text}
-                        </div>
-                        <div className="text-xs text-gray-500 mt-1">
-                          {comment.round_name ? (
-                            <span className="font-semibold">
-                              Round: {comment.round_name}
-                              {comment.anonymous ? " (Anonymous)" : ""}
-                            </span>
-                          ) : (
-                            "No round information"
-                          )}
-                          <span className="ml-2">
-                            {new Date(comment.created_at).toLocaleString()}
-                          </span>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-sm text-muted-foreground">
-                      No comments yet.
-                    </p>
-                  )}
-                </div>
                 <Textarea
                   placeholder="Add a new comment..."
                   value={newComment}
                   onChange={(e) => setNewComment(e.target.value)}
-                  className="mb-2"
+                  className="mb-4 mt-4"
                 />
                 <Button
                   onClick={handleAddComment}
