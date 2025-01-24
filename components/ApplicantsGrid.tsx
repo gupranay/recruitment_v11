@@ -115,7 +115,7 @@ export default function ApplicantGrid({
             }}
             variant="outline"
           >
-            Export to CSV
+            Export Decisions
           </Button>
           <CreateAnonymizedAppDialog
             recruitment_round_id={recruitment_round_id || ""}
