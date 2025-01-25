@@ -23,7 +23,7 @@ function LoginPageContent() {
   const handleLoginwithGoogle = async () => {
     // console.log("Login button clicked");
     const supabase = supabaseBrowser();
-    const redirectTo = `${HOSTNAME}/auth/callback?next=${next}`;
+    const redirectTo = `${window.location.origin}/auth/callback?next=${next}`;
     console.log("Redirecting to:", redirectTo);
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: "google",
