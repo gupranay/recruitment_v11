@@ -14,6 +14,10 @@ const nextConfig = {
         protocol: "https",
         hostname: "media.licdn.com", // Add this line
       },
+    {
+      protocol: "https",
+      hostname: "drive.usercontent.google.com", // Add this line
+    },
     ],
   },
 };
