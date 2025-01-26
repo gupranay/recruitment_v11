@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Toaster } from "react-hot-toast";
-// import { Textarea } from "@/components/ui/textarea";
 import useUser from "../hook/useUser";
 import { Organization } from "@/contexts/OrganizationContext";
 import React from "react";
@@ -16,21 +15,6 @@ import ApplicantGrid from "@/components/ApplicantsGrid";
 import Header from "@/components/Header";
 
 import LoadingModal from "@/components/LoadingModal2";
-import { DialogHeader, DialogFooter } from "@/components/ui/dialog";
-import { Dialog, DialogContent, DialogTitle } from "@radix-ui/react-dialog";
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-} from "@/components/ui/dropdown-menu";
-import { MoreVertical } from "lucide-react";
-import { MultiSelect } from "@/components/ui/MultiSelect";
-import CreateAnonymizedAppDialog from "@/components/CreateAnonymizedAppDialog";
-interface LoadingModalProps {
-  isOpen: boolean;
-  message?: string;
-}
 
 interface Applicant {
   id: string;
@@ -109,6 +93,28 @@ export default function Component() {
 
   const finishLoading = () => {
     setIsLoading(false);
+  };
+
+  const saveCurrentRoundToLocalStorage = () => {
+    if (currentOrg && currentCycle) {
+      localStorage.setItem(
+        `lastUsedRound_${user?.id}_${currentOrg.id}_${currentCycle.id}`,
+        JSON.stringify(currentRound)
+      );
+    }
+  };
+
+  const loadCurrentRoundFromLocalStorage = () => {
+    if (currentOrg && currentCycle) {
+      const lastUsedRound = localStorage.getItem(
+        `lastUsedRound_${user?.id}_${currentOrg.id}_${currentCycle.id}`
+      );
+      if (lastUsedRound) {
+        setCurrentRound(parseInt(lastUsedRound, 10) || 0);
+      } else {
+        setCurrentRound(0);
+      }
+    }
   };
 
   // Fetch Organizations
@@ -210,9 +216,7 @@ export default function Component() {
         const data: RecruitmentRound[] = await response.json();
 
         setRecruitmentRounds(data);
-        if (data.length === 0) {
-          setIsLoading(false); // Stop loading if no rounds exist
-        }
+        loadCurrentRoundFromLocalStorage(); // Load the last used round
       } catch (error) {
         console.error((error as Error).message);
       } finally {
@@ -223,9 +227,10 @@ export default function Component() {
     fetchRecruitmentRounds();
   }, [currentCycle]);
 
+  // Save current round whenever it changes
   useEffect(() => {
-    console.log("Updated recruitmentRounds:", recruitmentRounds);
-  }, [recruitmentRounds]);
+    saveCurrentRoundToLocalStorage();
+  }, [currentRound]);
 
   if (isLoading) {
     return <LoadingModal isOpen={isLoading} message={loadingMessage} />;

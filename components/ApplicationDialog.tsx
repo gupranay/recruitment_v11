@@ -38,7 +38,6 @@ export default function ApplicationDialog({
   const [isAddingComment, setIsAddingComment] = useState(false); // Loading state for adding a comment
   const [isLoading, setIsLoading] = useState(false);
 
-  // Fetch applicant details and comments
   useEffect(() => {
     const fetchApplicantDetails = async () => {
       setIsLoading(true);
@@ -134,37 +133,57 @@ export default function ApplicationDialog({
     }
   };
 
+  const closeDialog = () => {
+    onClose();
+  };
+
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-screen overflow-y-auto p-8">
+    <Dialog open={isOpen} onOpenChange={closeDialog}>
+      <DialogContent className="mt-5 max-w-5xl mx-auto p-0">
         {isLoading ? (
-          <div className="flex items-center justify-center h-full">
+          <div className="flex items-center justify-center h-full p-8">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
         ) : (
           applicantData && (
-            <>
-              {/* Name and Headshot */}
-              <div className="flex flex-col items-center mb-8">
-                <Image
-                  src={
-                    applicantData.headshot_url ||
-                    "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png"
-                  }
-                  alt={`Headshot of ${applicantData.name}`}
-                  width={192}
-                  height={192}
-                  className="w-48 h-48 rounded-full object-cover mb-4 shadow-md"
-                />
-                <h2 className="text-2xl font-bold text-gray-800">
+            <div className="flex flex-col bg-white rounded-lg shadow-md h-[80vh]">
+              {/* Sticky Header */}
+              <div className="sticky top-0 bg-white z-10 shadow px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+                <h2 className="text-2xl font-bold text-gray-800 truncate">
                   {applicantData.name}
                 </h2>
+                <button
+                  onClick={closeDialog}
+                  className="text-gray-500 hover:text-gray-800 transition"
+                  aria-label="Close dialog"
+                >
+                  ✕
+                </button>
               </div>
 
-              {/* Dynamic Data Fields */}
-              <div className="grid grid-cols-1 gap-y-6 mb-8">
-                {Object.entries(applicantData.data || {}).map(
-                  ([key, value]) => (
+              {/* Scrollable Content */}
+              <div className="overflow-y-auto p-6">
+                {/* Headshot Section */}
+                <div className="flex justify-center mb-8">
+                  <div className="w-[250px] h-[250px] relative">
+                    <Image
+                      src={
+                        applicantData.headshot_url ||
+                        "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png"
+                      }
+                      alt={`Headshot of ${applicantData.name}`}
+                      layout="fill"
+                      objectFit="cover"
+                      className="rounded-lg shadow-md"
+                      placeholder="blur"
+                      blurDataURL="/placeholder-image.png"
+                    />
+                  </div>
+                </div>
+
+                {/* Dynamic Data Fields */}
+                <div className="grid grid-cols-1 gap-y-6 mb-8">
+                  {Object.entries(applicantData.data || {}).map(([key, value]) => (
                     <div key={key} className="flex flex-col">
                       <h3 className="text-sm font-bold text-black">{key}</h3>
                       {isValidUrl(value) ? (
@@ -180,59 +199,61 @@ export default function ApplicationDialog({
                         <p className="text-gray-700 mt-1">{value}</p>
                       )}
                     </div>
-                  )
-                )}
-              </div>
-              <Separator className="my-6" />
-              {/* Comments Section */}
-              <div>
-                <h4 className="text-lg font-medium mb-4">Comments</h4>
-                {comments.length > 0 ? (
-                  comments.map((comment, index) => (
-                    <div key={index} className="p-2 bg-muted/10 rounded-lg mb-2">
-                      <p className="text-sm">
-                        <span className="font-medium">
-                          {comment.user_name || "Anonymous"}:
-                        </span>{" "}
-                        {comment.comment_text}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {comment.round_name && (
-                          <span className="font-semibold">
-                            Round: {comment.round_name}
-                            {comment.anonymous ? " (Anonymous)" : ""}
+                  ))}
+                </div>
+                <Separator className="my-6" />
+
+                {/* Comments Section */}
+                <div>
+                  <h4 className="text-lg font-medium mb-4">Comments</h4>
+                  {comments.length > 0 ? (
+                    comments.map((comment, index) => (
+                      <div
+                        key={index}
+                        className="p-2 bg-gray-100 rounded-lg mb-2"
+                      >
+                        <p className="text-sm">
+                          <span className="font-medium">
+                            {comment.user_name || "Anonymous"}:
+                          </span>{" "}
+                          {comment.comment_text}
+                        </p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          {comment.round_name && (
+                            <span className="font-semibold">
+                              Round: {comment.round_name}
+                              {comment.anonymous ? " (Anonymous)" : ""}
+                            </span>
+                          )}
+                          <span className="ml-2">
+                            {new Date(comment.created_at).toLocaleString()}
                           </span>
-                        )}
-                        <span className="ml-2">
-                          {new Date(comment.created_at).toLocaleString()}
-                        </span>
-                      </p>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-sm text-muted-foreground">
-                    No comments yet.
-                  </p>
-                )}
-                <Textarea
-                  placeholder="Add a new comment..."
-                  value={newComment}
-                  onChange={(e) => setNewComment(e.target.value)}
-                  className="mb-4 mt-4"
-                />
-                <Button
-                  onClick={handleAddComment}
-                  disabled={isAddingComment}
-                  className="w-full flex items-center justify-center"
-                >
-                  {isAddingComment && (
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        </p>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-sm text-gray-500">No comments yet.</p>
                   )}
-                  <Send className="h-4 w-4 mr-2" />
-                  Add Comment
-                </Button>
+                  <Textarea
+                    placeholder="Add a new comment..."
+                    value={newComment}
+                    onChange={(e) => setNewComment(e.target.value)}
+                    className="mb-4 mt-4"
+                  />
+                  <Button
+                    onClick={handleAddComment}
+                    disabled={isAddingComment}
+                    className="w-full flex items-center justify-center"
+                  >
+                    {isAddingComment && (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    )}
+                    <Send className="h-4 w-4 mr-2" />
+                    Add Comment
+                  </Button>
+                </div>
               </div>
-            </>
+            </div>
           )
         )}
       </DialogContent>
