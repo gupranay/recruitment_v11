@@ -16,17 +16,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     recruitment_round_id
   } = req.body;
 
-  console.log("recruitmend_round_id: ", recruitment_round_id);
+  console.log("recruitment_round_id: ", recruitment_round_id);
 
   if (!parsedData || !nameHeader || !emailHeader || !recruitment_round_id) {
     return res.status(400).json({ error: "Missing required fields" });
   }
 
+  // Function to convert Google Drive link format
+  const convertGoogleDriveLink = (url: string | null) => {
+    if (url && url.includes("https://drive.google.com/open?id=")) {
+      const id = url.split("id=")[1];
+      return `https://drive.usercontent.google.com/download?id=${id}&export=view`;
+    }
+    return url; // Return as-is if it doesn't match the Google Drive format
+  };
+
   // Create applicant objects
   const applicants = parsedData.map((record: any) => ({
     name: record[nameHeader],
     email: record[emailHeader],
-    headshot_url: headShotHeader ? record[headShotHeader] : null,
+    headshot_url: headShotHeader ? convertGoogleDriveLink(record[headShotHeader]) : null,
     data: record
     /*
       No longer storing recruitment_round_id in the applicants table,
@@ -39,7 +48,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     .from("applicants")
     .insert(applicants)
     .select(); // .select() returns the newly inserted rows
-    console.log(insertError)
+
+  console.log(insertError);
 
   if (insertError) {
     console.error("Error inserting applicants:", insertError.message);
@@ -51,8 +61,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const bridgingData = insertedApplicants.map((applicant) => ({
     applicant_id: applicant.id,
     recruitment_round_id: recruitment_round_id,
-    // Add any default status or timestamps you need. For example:
-    status: "in_progress" // or 'pending', etc.
+    status: "in_progress" 
   }));
 
   const { data: bridgingRes, error: bridgingError } = await supabase
@@ -62,12 +71,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (bridgingError) {
     console.error("Error inserting applicant_rounds:", bridgingError.message);
-    // Optionally, you could attempt a cleanup of inserted applicants here 
-    // or handle partial failures as needed.
     return res.status(500).json({ error: bridgingError.message });
   }
 
-  // Both inserts succeeded, return success
+  
   return res.status(200).json({
     message: "Applicants uploaded and linked to the round successfully.",
     applicants: insertedApplicants,
