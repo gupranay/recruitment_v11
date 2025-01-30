@@ -30,7 +30,7 @@ export default function RootLayout({
         </head>
         <body>
           <QueryProvider>
-            <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+            <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
               <main className=" min-h-screen mx-auto py-10">
                 {children}
               </main>

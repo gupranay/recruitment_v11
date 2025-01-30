@@ -48,6 +48,7 @@ export default function ApplicantGrid({
   const [selectedApplicant, setSelectedApplicant] =
     useState<ApplicantCardType | null>(null);
   const [sortOption, setSortOption] = useState<SortOption>("status");
+  const [selectedRoundId, setSelectedRoundId] = useState<string | null>(null);
 
   const fetchApplicants = useCallback(async () => {
     if (!rounds[currentRound]?.id) {
@@ -58,13 +59,17 @@ export default function ApplicantGrid({
     setIsLoading(true);
     setLoadingMessage("Loading applicants...");
     try {
-      const lastRoundID = currentRound === 0 ? null : rounds[currentRound - 1]?.id;
+      const lastRoundID =
+        currentRound === 0 ? null : rounds[currentRound - 1]?.id;
       const response = await fetch("/api/applicants/index2", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ recruitment_round_id: rounds[currentRound].id, last_round_id: lastRoundID }),
+        body: JSON.stringify({
+          recruitment_round_id: rounds[currentRound].id,
+          last_round_id: lastRoundID,
+        }),
       });
 
       if (!response.ok) {
@@ -83,6 +88,19 @@ export default function ApplicantGrid({
   useEffect(() => {
     fetchApplicants();
   }, [fetchApplicants]);
+
+  // Effect to open demographics when the selected round changes
+  useEffect(() => {
+    if (selectedRoundId) {
+      const encodedRoundId = encodeURIComponent(selectedRoundId);
+      const url = `/demographics/?id=${encodedRoundId}`;
+      window.open(url, "_blank"); // Open in a new tab
+    }
+  }, [selectedRoundId]);
+
+  const handleRoundChange = (roundId: string) => {
+    setSelectedRoundId(roundId); // Set the selected round ID
+  };
 
   // Sorting logic
   const sortedApplicants = useMemo(() => {
@@ -134,6 +152,12 @@ export default function ApplicantGrid({
       <div className="flex items-center justify-between mb-4">
         <div className="font-medium text-lg">Applicant Overview</div>
         <div className="flex items-center ml-auto space-x-2">
+          <Button
+            onClick={() => handleRoundChange(rounds[currentRound].id)}
+            className="bg-blue-500 text-white"
+          >
+            View Demographics
+          </Button>
           <Button
             onClick={() => {
               exportToCSV(

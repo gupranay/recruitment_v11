@@ -49,7 +49,7 @@ export type Database = {
           recruitment_round_id: string
           status: string
           updated_at: string
-          weighted_score: number
+          weighted_score: number | null
         }
         Insert: {
           applicant_id: string
@@ -58,7 +58,7 @@ export type Database = {
           recruitment_round_id: string
           status?: string
           updated_at?: string
-          weighted_score?: number
+          weighted_score?: number | null
         }
         Update: {
           applicant_id?: string
@@ -67,7 +67,7 @@ export type Database = {
           recruitment_round_id?: string
           status?: string
           updated_at?: string
-          weighted_score?: number
+          weighted_score?: number | null
         }
         Relationships: [
           {
@@ -400,7 +400,18 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_demographics: {
+        Args: {
+          field_name: string
+          round_id: string
+        }
+        Returns: {
+          status: string
+          field_value: string
+          count: number
+          percentage: number
+        }[]
+      }
     }
     Enums: {
       role_type: "Owner" | "Admin" | "Member"
