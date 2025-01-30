@@ -30,12 +30,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(500).json({ error: "Failed to retrieve recruitment cycle ID" });
   }
 
-  const { error: roundError } = await supabase
-    .from("recruitment_rounds")
-    .insert({ name: "Initial Applicants", recruitment_cycle_id: recruitmentCycleId, sort_order: 0 });
+  // const { error: roundError } = await supabase
+  //   .from("recruitment_rounds")
+  //   .insert({ name: "Initial Applicants", recruitment_cycle_id: recruitmentCycleId, sort_order: 0 });
 
-  if (roundError) {
-    return res.status(400).json({ error: roundError.message });
+  // if (roundError) {
+  //   return res.status(400).json({ error: roundError.message });
   }
 
   res.status(201).json(data);
