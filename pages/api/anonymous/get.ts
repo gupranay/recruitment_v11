@@ -1,7 +1,10 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { supabaseBrowser } from "@/lib/supabase/browser";
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse
+) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
@@ -28,23 +31,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(404).json({ error: "Reading not found" });
     }
 
-    // 2) Fetch applicant_ids for that round
+    // 2) Fetch applicant_ids and created_at for that round
     const { data: bridgingRows, error: bridgingErr } = await supabase
       .from("applicant_rounds")
-      .select("applicant_id")
+      .select("applicant_id, created_at")
       .eq("recruitment_round_id", reading.recruitment_round_id);
 
     if (bridgingErr) {
       return res.status(500).json({ error: bridgingErr.message });
     }
 
-    // Extract the applicant_ids into an array
-    const applicants = bridgingRows.map(row => row.applicant_id);
+    // Extract the applicant_ids and created_at into an array of objects
+    const applicants = bridgingRows.map((row) => ({
+      applicant_id: row.applicant_id,
+      created_at: row.created_at,
+    }));
 
-    // 3) Return the reading plus the applicant IDs
+    // 3) Return the reading plus the applicant IDs and their created_at
+    console.log("Returning reading:", reading);
     return res.status(200).json({
-      reading,        // e.g. { id, recruitment_round_id, omitted_fields }
-      applicants      // array of applicant_id (uuid)
+      reading, // e.g. { id, recruitment_round_id, omitted_fields }
+      applicants, // array of objects { applicant_id, created_at }
     });
   } catch (err) {
     console.error("Unexpected error:", err);

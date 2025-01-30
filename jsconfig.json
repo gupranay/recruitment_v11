@@ -1,0 +1,1 @@
+{"compilerOptions": {"baseUrl": ".", "paths": {"@/*": ["./*"]}, "module": "commonjs", "moduleResolution": "node"}}

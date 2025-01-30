@@ -9,8 +9,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const {
     applicant_id,
     recruitment_round_id,
-    user_id,   // optional if you track who creates the score
-    scores     // array of { metric_id, score_value }
+    user_id,
+    scores // array of { metric_id, score_value, weight }
   } = req.body;
 
   // Basic validation
@@ -23,7 +23,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const supabase = supabaseBrowser();
 
   try {
-    // 1) Find the applicant_rounds record
+    // 1) Find or verify the applicant_rounds record
     const { data: applicantRound, error: bridgingError } = await supabase
       .from("applicant_rounds")
       .select("id")
@@ -44,15 +44,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const applicantRoundId = applicantRound.id;
 
     // 2) Build the insert data for scores
+    //    e.g. { applicant_round_id, metric_id, score_value, user_id }
+    //    ignoring weight on the DB side (unless you store it in 'scores' or 'metrics' as well).
     const insertData = scores.map((item) => ({
       applicant_round_id: applicantRoundId,
       metric_id: item.metric_id,
       score_value: item.score_value,
-      user_id: user_id || null, // optional
+      user_id: user_id || null, // if you track the user
     }));
 
-    // 3) Insert into 'scores'
-    //    If you want to upsert (update existing rows), consider using onConflict(...) + unique constraints
+    // 3) Insert (or upsert) into 'scores'
+    //    If you want to allow updates for existing rows, you can do onConflict:
+    //      .upsert(insertData, { onConflict: "metric_id,applicant_round_id" })
+    //    Otherwise, a plain insert might fail if there's a unique constraint for the same metric+round.
     const { data: insertedScores, error: insertError } = await supabase
       .from("scores")
       .insert(insertData)
@@ -63,11 +67,41 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(500).json({ error: insertError.message });
     }
 
-    // 4) Return the newly inserted rows
-    return res.status(200).json({
-      message: "Scores created successfully",
-      scores: insertedScores,
+    // 4) Compute the new weighted average from request data
+    //    sum(score_value * weight) / sum(weight)
+    //    But since the user said all metrics' weights sum to 1, we can do just sum(score_value * weight).
+    let numerator = 0;
+    let denominator = 0;
+    scores.forEach((item) => {
+      // if you trust all metrics add up to 1, denominator can remain 1
+      // but we'll do a real sum if needed
+      numerator += (item.score_value ?? 0) * (item.weight ?? 0);
+      denominator += (item.weight ?? 0);
     });
+
+    let weightedAverage = null;
+    if (denominator > 0) {
+      weightedAverage = numerator / denominator;
+    }
+
+    // 5) Update applicant_rounds.weighted_score
+    const { error: updateErr } = await supabase
+      .from("applicant_rounds")
+      .update({ weighted_score: weightedAverage ?? undefined })
+      .eq("id", applicantRoundId);
+
+    if (updateErr) {
+      console.error("Error updating weighted_score:", updateErr);
+      return res.status(500).json({ error: updateErr.message });
+    }
+
+    // 6) Return success
+    return res.status(200).json({
+      message: "Scores created and weighted average updated successfully",
+      scores: insertedScores,
+      weighted_score: weightedAverage
+    });
+
   } catch (err) {
     console.error("Unexpected error in creating scores:", err);
     return res.status(500).json({ error: "Internal server error" });

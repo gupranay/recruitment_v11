@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import toast from "react-hot-toast";
 import { Separator } from "./ui/separator";
+import { Input } from "@/components/ui/input";
 
 export default function ApplicationDialog({
   applicantId,
@@ -37,6 +38,12 @@ export default function ApplicationDialog({
   const [newComment, setNewComment] = useState<string>(""); // New comment input
   const [isAddingComment, setIsAddingComment] = useState(false); // Loading state for adding a comment
   const [isLoading, setIsLoading] = useState(false);
+  const [fetchedScores, setFetchedScores] = useState<any[]>([]); // State to hold fetched scores
+  const [scoringMetrics, setScoringMetrics] = useState<any[]>([]); // State for metrics
+  const [scores, setScores] = useState<{
+    [metricId: string]: { score_value: number; weight: number };
+  }>({}); // State for scores
+  const [scoreSubmitted, setScoreSubmitted] = useState<boolean>(false); // State for score submission status
 
   useEffect(() => {
     const fetchApplicantDetails = async () => {
@@ -78,11 +85,62 @@ export default function ApplicationDialog({
       }
     };
 
+    const fetchScores = async () => {
+      if (!applicantId || !applicantRoundId) return;
+
+      try {
+        const response = await fetch("/api/scores/get", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            applicant_round_id: applicantRoundId,
+          }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setFetchedScores(data); // Assuming the API returns an array of scores
+        } else {
+          console.error("Failed to fetch scores");
+        }
+      } catch (error) {
+        console.error("Error fetching scores:", error);
+      }
+    };
+
     if (isOpen) {
       fetchApplicantDetails();
       fetchComments();
+      fetchScores();
     }
-  }, [isOpen, applicantId]);
+  }, [isOpen, applicantId, applicantRoundId]);
+
+  useEffect(() => {
+    const fetchMetrics = async () => {
+      if (!applicantRoundId) return;
+
+      try {
+        const response = await fetch("/api/metrics/index2", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ applicant_round_id: applicantRoundId }),
+        });
+
+        if (response.ok) {
+          const metrics = await response.json();
+          setScoringMetrics(metrics); // Assuming the API returns an array of metrics
+        } else {
+          console.error("Failed to fetch metrics");
+        }
+      } catch (error) {
+        console.error("Error fetching metrics:", error);
+      }
+    };
+
+    if (isOpen && fetchedScores.length === 0) {
+      fetchMetrics();
+    }
+  }, [isOpen, fetchedScores.length, applicantRoundId]);
 
   const handleAddComment = async () => {
     if (!newComment.trim()) return;
@@ -137,6 +195,51 @@ export default function ApplicationDialog({
     onClose();
   };
 
+  const submitScores = async () => {
+    if (!applicantId) return;
+
+    try {
+      const response = await fetch(`/api/scores/create2`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          applicant_round_id: applicantRoundId,
+          user_id: userId,
+          scores: Object.entries(scores).map(
+            ([metricId, { score_value, weight }]) => ({
+              metric_id: metricId,
+              score_value,
+              weight,
+            })
+          ),
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to submit scores");
+      }
+
+      // Update fetchedScores with the new scores
+      const newScores = Object.entries(scores).map(
+        ([metricId, { score_value, weight }]) => ({
+          metric_id: metricId,
+          score_value,
+          weight,
+          metric_name: scoringMetrics.find((metric) => metric.id === metricId)
+            ?.name, // Get the metric name
+        })
+      );
+
+      setFetchedScores((prevScores) => [...prevScores, ...newScores]); // Append new scores to the existing scores
+      setScoreSubmitted(true);
+      setScores({}); // Clear the scores after successful submission
+      toast.success("Scores submitted successfully!"); // Show toast notification
+    } catch (error) {
+      console.error("Error submitting scores:", error);
+      toast.error("Failed to submit scores.");
+    }
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={closeDialog}>
       <DialogContent className="mt-5 max-w-5xl mx-auto p-0">
@@ -183,25 +286,78 @@ export default function ApplicationDialog({
 
                 {/* Dynamic Data Fields */}
                 <div className="grid grid-cols-1 gap-y-6 mb-8">
-                  {Object.entries(applicantData.data || {}).map(([key, value]) => (
-                    <div key={key} className="flex flex-col">
-                      <h3 className="text-sm font-bold text-black">{key}</h3>
-                      {isValidUrl(value) ? (
-                        <a
-                          href={value}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-600 underline"
-                        >
-                          View {key}
-                        </a>
-                      ) : (
-                        <p className="text-gray-700 mt-1">{value}</p>
-                      )}
-                    </div>
-                  ))}
+                  {Object.entries(applicantData.data || {}).map(
+                    ([key, value]) => (
+                      <div key={key} className="flex flex-col">
+                        <h3 className="text-sm font-bold text-black">{key}</h3>
+                        {isValidUrl(value) ? (
+                          <a
+                            href={value}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 underline"
+                          >
+                            View {key}
+                          </a>
+                        ) : (
+                          <p className="text-gray-700 mt-1">{value}</p>
+                        )}
+                      </div>
+                    )
+                  )}
                 </div>
                 <Separator className="my-6" />
+
+                {/* Scores Section */}
+                <div className="bg-white shadow-md rounded-lg p-4 mt-4">
+                  <h2 className="text-lg font-semibold mb-2">Scores</h2>
+                  {fetchedScores.length > 0 ? (
+                    fetchedScores.map((score) => (
+                      <div key={score.metric_id} className="border-b py-2">
+                        <p className="font-medium">{score.metric_name}</p>
+                        <p>Score: {score.score_value}</p>
+                        <p>Weight: {score.weight}</p>
+                      </div>
+                    ))
+                  ) : (
+                    <>
+                      <p>
+                        No scores available for this applicant. Please submit
+                        scores:
+                      </p>
+                      <form className="space-y-4">
+                        {scoringMetrics.map((metric) => (
+                          <div key={metric.id} className="flex flex-col">
+                            <label className="text-sm font-medium">
+                              {metric.name} (Weight: {metric.weight})
+                            </label>
+                            <Input
+                              type="number"
+                              value={scores[metric.id]?.score_value || ""}
+                              onChange={(e) =>
+                                setScores((prev) => ({
+                                  ...prev,
+                                  [metric.id]: {
+                                    score_value: Number(e.target.value),
+                                    weight: metric.weight,
+                                  },
+                                }))
+                              }
+                            />
+                          </div>
+                        ))}
+                        <Button
+                          type="button"
+                          onClick={submitScores}
+                          disabled={Object.keys(scores).length === 0}
+                          className="w-full"
+                        >
+                          Submit Scores
+                        </Button>
+                      </form>
+                    </>
+                  )}
+                </div>
 
                 {/* Comments Section */}
                 <div>

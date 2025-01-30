@@ -15,25 +15,21 @@ import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 import toast, { Toaster } from "react-hot-toast";
 import useUser from "../hook/useUser";
+import { create } from "domain";
 
 interface AnonApplicant {
   id: string; // The actual UUID of the applicant
   number: number; // Sequential number for display
 }
 
-const scoringMetrics = [
-  { id: "46c45cdc-72c9-4985-b86a-bb108b9cecc4", name: "Ambition: 1-4" },
-  { id: "6db2526a-c410-4a62-803a-57c5bceab66c", name: "Cultural Fit: 1-4" },
-  { id: "cb1c3d8e-9bf3-4455-9af6-7934fad55ac0", name: "Technical Ability: 1-4" },
-  { id: "f93aa642-85ea-41bc-9a56-6fed0fc5b82c", name: "Talent Index: 1-4" },
-];
-
-function ReadingPageContent() {
+const ReadingPageContent = () => {
   const { data: user } = useUser();
   const searchParams = useSearchParams();
   const slug = searchParams?.get("id");
 
-  const [applicants, setApplicants] = useState<AnonApplicant[]>([]);
+  const [applicants, setApplicants] = useState<
+    { id: string; created_at: string; number: number }[]
+  >([]);
   const [readingDetails, setReadingDetails] = useState<any>(null);
   const [selectedApplicant, setSelectedApplicant] = useState<{
     id: string;
@@ -44,9 +40,15 @@ function ReadingPageContent() {
     { comment_text: string; created_at: string }[]
   >([]);
   const [newComment, setNewComment] = useState<string>("");
-  const [scores, setScores] = useState<{ [metricId: string]: number }>({});
+  const [scores, setScores] = useState<{
+    [metricId: string]: { score_value: number; weight: number };
+  }>({});
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [scoringMetrics, setScoringMetrics] = useState<any[]>([]);
+  const [scoreSubmitted, setScoreSubmitted] = useState<boolean>(false);
+  const [scoreMessage, setScoreMessage] = useState<string>("");
+  const [fetchedScores, setFetchedScores] = useState<any[]>([]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -66,14 +68,21 @@ function ReadingPageContent() {
           throw new Error("Failed to fetch data");
         }
 
-        const { reading, applicants: fetchedApplicants } = await response.json();
+        const { reading, applicants: fetchedApplicants } =
+          await response.json();
 
         setReadingDetails(reading);
         setApplicants(
-          fetchedApplicants.map((applicantId: string, index: number) => ({
-            id: applicantId,
-            number: index + 1,
-          }))
+          fetchedApplicants.map(
+            (
+              applicant: { applicant_id: string; created_at: string },
+              index: number
+            ) => ({
+              id: applicant.applicant_id,
+              created_at: applicant.created_at,
+              number: index + 1,
+            })
+          )
         );
       } catch (error) {
         console.error("Error fetching data:", error);
@@ -85,7 +94,74 @@ function ReadingPageContent() {
     fetchData();
   }, [slug]);
 
-  const fetchApplicantData = async (applicant: AnonApplicant) => {
+  useEffect(() => {
+    const fetchMetrics = async () => {
+      if (!slug) return;
+
+      try {
+        const response = await fetch("/api/metrics", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            recruitment_round_id: readingDetails?.recruitment_round_id,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch metrics");
+        }
+
+        const metrics = await response.json();
+        const updatedMetrics = metrics.map(
+          (metric: { id: any; name: any; weight: any }) => ({
+            id: metric.id,
+            name: metric.name,
+            weight: metric.weight,
+          })
+        );
+        setScoringMetrics(updatedMetrics);
+      } catch (error) {
+        console.error("Error fetching metrics:", error);
+      }
+    };
+
+    fetchMetrics();
+  }, [slug, readingDetails]);
+
+  useEffect(() => {
+    const checkScore = async () => {
+      if (!selectedApplicant || !readingDetails) return;
+
+      try {
+        const response = await fetch("/api/scores/check", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            applicant_id: selectedApplicant.id,
+            recruitment_round_id: readingDetails.recruitment_round_id,
+          }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setScoreSubmitted(data.hasScore); // Check if a score exists
+          setScoreMessage(data.message); // Set the message from the response
+        } else {
+          console.error("Failed to check score status");
+        }
+      } catch (error) {
+        console.error("Error checking score status:", error);
+      }
+    };
+
+    checkScore();
+  }, [selectedApplicant, readingDetails]);
+
+  const fetchApplicantData = async (applicant: {
+    id: string;
+    created_at: string;
+    number: number;
+  }) => {
     try {
       const response = await fetch(`/api/applicant/`, {
         method: "POST",
@@ -168,10 +244,7 @@ function ReadingPageContent() {
 
   const validateScores = () => {
     return scoringMetrics.every(
-      (metric) =>
-        scores[metric.id] &&
-        scores[metric.id] >= 1 &&
-        scores[metric.id] <= 4
+      (metric) => scores[metric.id] !== undefined // Check if score exists for each metric
     );
   };
 
@@ -179,7 +252,7 @@ function ReadingPageContent() {
     if (!selectedApplicant) return;
 
     if (!validateScores()) {
-      toast.error("All scores must be filled and between 1-4.");
+      toast.error("All scores must not be empty.");
       return;
     }
 
@@ -191,10 +264,13 @@ function ReadingPageContent() {
           applicant_id: selectedApplicant.id,
           recruitment_round_id: readingDetails.recruitment_round_id,
           user_id: user?.id,
-          scores: Object.entries(scores).map(([metricId, scoreValue]) => ({
-            metric_id: metricId,
-            score_value: scoreValue,
-          })),
+          scores: Object.entries(scores).map(
+            ([metricId, { score_value, weight }]) => ({
+              metric_id: metricId,
+              score_value,
+              weight,
+            })
+          ),
         }),
       });
 
@@ -202,15 +278,20 @@ function ReadingPageContent() {
         throw new Error("Failed to submit scores");
       }
 
-      toast.success("Scores submitted successfully!");
-      setScores({}); // Clear the scores after successful submission
+      setScoreSubmitted(true);
+      setScoreMessage("Scores submitted successfully!");
+      setScores({});
     } catch (error) {
       console.error("Error submitting scores:", error);
       toast.error("Failed to submit scores.");
     }
   };
 
-  const openDialog = (applicant: AnonApplicant) => {
+  const openDialog = (applicant: {
+    id: string;
+    created_at: string;
+    number: number;
+  }) => {
     fetchApplicantData(applicant);
   };
 
@@ -255,7 +336,9 @@ function ReadingPageContent() {
           ))}
         </div>
       ) : (
-        <p className="text-center text-muted-foreground">No applicants found.</p>
+        <p className="text-center text-muted-foreground">
+          No applicants found.
+        </p>
       )}
 
       <Dialog open={isDialogOpen} onOpenChange={closeDialog}>
@@ -306,33 +389,40 @@ function ReadingPageContent() {
                 </Button>
                 <Separator className="my-4" />
                 <h3 className="text-lg font-semibold">Submit Scores</h3>
-                <form className="space-y-4">
-                  {scoringMetrics.map((metric) => (
-                    <div key={metric.id} className="flex flex-col">
-                      <label className="text-sm font-medium">{metric.name}</label>
-                      <Input
-                        type="number"
-                        min={1}
-                        max={4}
-                        value={scores[metric.id] || ""}
-                        onChange={(e) =>
-                          setScores((prev) => ({
-                            ...prev,
-                            [metric.id]: Number(e.target.value),
-                          }))
-                        }
-                      />
-                    </div>
-                  ))}
-                  <Button
-                    type="button"
-                    onClick={submitScores}
-                    disabled={!validateScores()}
-                    className="w-full"
-                  >
-                    Submit Scores
-                  </Button>
-                </form>
+                {scoreSubmitted ? (
+                  <p className="text-center text-green-500">{scoreMessage}</p>
+                ) : (
+                  <form className="space-y-4">
+                    {scoringMetrics.map((metric) => (
+                      <div key={metric.id} className="flex flex-col">
+                        <label className="text-sm font-medium">
+                          {metric.name} (Weight: {metric.weight})
+                        </label>
+                        <Input
+                          type="number"
+                          value={scores[metric.id]?.score_value || ""}
+                          onChange={(e) =>
+                            setScores((prev) => ({
+                              ...prev,
+                              [metric.id]: {
+                                score_value: Number(e.target.value),
+                                weight: metric.weight,
+                              },
+                            }))
+                          }
+                        />
+                      </div>
+                    ))}
+                    <Button
+                      type="button"
+                      onClick={submitScores}
+                      disabled={!validateScores()}
+                      className="w-full"
+                    >
+                      Submit Scores
+                    </Button>
+                  </form>
+                )}
               </>
             )}
           </div>
@@ -345,7 +435,7 @@ function ReadingPageContent() {
       </Dialog>
     </div>
   );
-}
+};
 
 export default function ReadingPage() {
   return (

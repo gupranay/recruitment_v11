@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import ApplicantCard from "./ApplicantCard";
 import ApplicantListItem from "./ApplicantListItem";
 import LoadingModal from "@/components/LoadingModal2";
@@ -10,18 +10,33 @@ import UploadApplicantsDialog3 from "./UploadApplicantsDialog3";
 import CreateAnonymizedAppDialog from "./CreateAnonymizedAppDialog";
 import ApplicationDialog from "./ApplicationDialog";
 import { exportToCSV } from "@/lib/utils/exportAppsToCSV";
+import { RecruitmentRound } from "@/lib/types/RecruitmentRound";
+import React from "react";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
+
+type SortOption =
+  | "current_weighted_asc"
+  | "current_weighted_desc"
+  | "last_weighted_asc"
+  | "last_weighted_desc"
+  | "status";
 
 type ApplicantGridProps = {
-  recruitment_round_id: string | undefined;
-  recruitment_round_name: string | undefined;
+  rounds: RecruitmentRound[];
+  currentRound: number;
   onMoveToNextRound: (applicantId: string) => Promise<void>;
   onReject: (applicantId: string) => Promise<void>;
   isLastRound: boolean;
 };
 
 export default function ApplicantGrid({
-  recruitment_round_id,
-  recruitment_round_name,
+  rounds,
+  currentRound,
   onMoveToNextRound,
   onReject,
   isLastRound,
@@ -29,12 +44,13 @@ export default function ApplicantGrid({
   const [applicants, setApplicants] = useState<ApplicantCardType[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState("Loading applicants...");
-  const [isListView, setIsListView] = useState(false); // Toggle between grid and list views
+  const [isListView, setIsListView] = useState(false);
   const [selectedApplicant, setSelectedApplicant] =
     useState<ApplicantCardType | null>(null);
+  const [sortOption, setSortOption] = useState<SortOption>("status");
 
   const fetchApplicants = useCallback(async () => {
-    if (!recruitment_round_id) {
+    if (!rounds[currentRound]?.id) {
       setIsLoading(false);
       return;
     }
@@ -42,12 +58,13 @@ export default function ApplicantGrid({
     setIsLoading(true);
     setLoadingMessage("Loading applicants...");
     try {
+      const lastRoundID = currentRound === 0 ? null : rounds[currentRound - 1]?.id;
       const response = await fetch("/api/applicants/index2", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ recruitment_round_id }),
+        body: JSON.stringify({ recruitment_round_id: rounds[currentRound].id, last_round_id: lastRoundID }),
       });
 
       if (!response.ok) {
@@ -55,25 +72,41 @@ export default function ApplicantGrid({
       }
 
       const data: ApplicantCardType[] = await response.json();
-      const sortedData = [...data].sort((a, b) => {
-        if (a.status === "accepted" && b.status !== "accepted") return -1;
-        if (a.status !== "accepted" && b.status === "accepted") return 1;
-        if (a.status === "rejected" && b.status !== "rejected") return 1;
-        if (a.status !== "rejected" && b.status === "rejected") return -1;
-        return 0;
-      });
-
-      setApplicants(sortedData);
+      setApplicants(data);
     } catch (error) {
       console.error("Error fetching applicants:", error);
     } finally {
       setIsLoading(false);
     }
-  }, [recruitment_round_id]);
+  }, [rounds, currentRound]);
 
   useEffect(() => {
     fetchApplicants();
-  }, [fetchApplicants, recruitment_round_id]);
+  }, [fetchApplicants]);
+
+  // Sorting logic
+  const sortedApplicants = useMemo(() => {
+    return [...applicants].sort((a, b) => {
+      if (sortOption === "status") {
+        // Default sorting: Accepted first, then Pending, then Rejected
+        if (a.status === "accepted" && b.status !== "accepted") return -1;
+        if (a.status !== "accepted" && b.status === "accepted") return 1;
+        if (a.status === "rejected" && b.status !== "rejected") return 1;
+        if (a.status !== "rejected" && b.status === "rejected") return -1;
+        return 0;
+      }
+
+      // Sorting by weighted scores
+      const isAscending = sortOption.includes("asc");
+      const key = sortOption.includes("last_weighted")
+        ? "last_round_weighted"
+        : "current_round_weighted";
+
+      return isAscending
+        ? (a[key] ?? -Infinity) - (b[key] ?? -Infinity)
+        : (b[key] ?? -Infinity) - (a[key] ?? -Infinity);
+    });
+  }, [applicants, sortOption]);
 
   const handleOpenDialog = (applicant: ApplicantCardType) => {
     setSelectedApplicant(applicant);
@@ -87,7 +120,7 @@ export default function ApplicantGrid({
     return <LoadingModal isOpen={true} message={loadingMessage} />;
   }
 
-  if (!recruitment_round_id) {
+  if (!rounds[currentRound]?.id) {
     return (
       <div className="text-center text-muted-foreground">
         No recruitment round selected.
@@ -103,14 +136,13 @@ export default function ApplicantGrid({
         <div className="flex items-center ml-auto space-x-2">
           <Button
             onClick={() => {
-              const applicantsData = applicants || [];
               exportToCSV(
-                applicantsData.map(({ name, email, status }) => ({
+                applicants.map(({ name, email, status }) => ({
                   name: name || "N/A",
                   email: email || "N/A",
                   status: status || "N/A",
                 })),
-                recruitment_round_name || "applicants"
+                rounds[currentRound].name || "applicants"
               );
             }}
             variant="outline"
@@ -118,14 +150,51 @@ export default function ApplicantGrid({
             Export Decisions
           </Button>
           <CreateAnonymizedAppDialog
-            recruitment_round_id={recruitment_round_id || ""}
-            recruitment_round_name={recruitment_round_name || "Unknown Round"}
+            recruitment_round_id={rounds[currentRound].id || ""}
+            recruitment_round_name={
+              rounds[currentRound].name || "Unknown Round"
+            }
             applicant_id={applicants[0]?.applicant_id || ""}
           />
           <UploadApplicantsDialog3
-            recruitment_round_id={recruitment_round_id}
+            recruitment_round_id={rounds[currentRound].id}
             fetchApplicants={fetchApplicants}
           />
+          {/* Sorting Dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline">Sort Applicants</Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem
+                onClick={() => setSortOption("current_weighted_asc")}
+              >
+                Current Round Weighted (Ascending)
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => setSortOption("current_weighted_desc")}
+              >
+                Current Round Weighted (Descending)
+              </DropdownMenuItem>
+              {currentRound > 0 && (
+                <>
+                  <DropdownMenuItem
+                    onClick={() => setSortOption("last_weighted_asc")}
+                  >
+                    Last Round Weighted (Ascending)
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => setSortOption("last_weighted_desc")}
+                  >
+                    Last Round Weighted (Descending)
+                  </DropdownMenuItem>
+                </>
+              )}
+              <DropdownMenuItem onClick={() => setSortOption("status")}>
+                Accepted / Rejected (Default)
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           {/* View Toggle */}
           <div className="flex items-center space-x-2">
             <span className="text-sm">Grid View</span>
@@ -140,10 +209,10 @@ export default function ApplicantGrid({
       </div>
       <Separator className="mb-4" />
 
-      {applicants.length > 0 ? (
+      {sortedApplicants.length > 0 ? (
         isListView ? (
           <div className="space-y-2">
-            {applicants.map((applicant) => (
+            {sortedApplicants.map((applicant) => (
               <ApplicantListItem
                 key={applicant.applicant_id}
                 applicant={applicant}
@@ -157,7 +226,7 @@ export default function ApplicantGrid({
           </div>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {applicants.map((applicant) => (
+            {sortedApplicants.map((applicant) => (
               <ApplicantCard
                 key={applicant.applicant_id}
                 applicant={applicant}
@@ -174,16 +243,6 @@ export default function ApplicantGrid({
         <div className="text-center text-muted-foreground">
           Please upload applicants.
         </div>
-      )}
-
-      {selectedApplicant && (
-        <ApplicationDialog
-          applicantId={selectedApplicant.applicant_id}
-          applicantRoundId={selectedApplicant.applicant_round_id}
-          userId={undefined} // Pass the correct userId if available
-          isOpen={!!selectedApplicant}
-          onClose={handleCloseDialog}
-        />
       )}
     </div>
   );

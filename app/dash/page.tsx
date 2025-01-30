@@ -267,8 +267,8 @@ export default function Component() {
         <main className="flex-1">
           <div className="p-6">
             <ApplicantGrid
-              recruitment_round_id={recruitmentRounds[currentRound]?.id}
-              recruitment_round_name={recruitmentRounds[currentRound]?.name}
+              rounds={recruitmentRounds}
+              currentRound={currentRound}
               onMoveToNextRound={(id) => Promise.resolve()}
               onReject={(id) => Promise.resolve()}
               isLastRound={currentRound === recruitmentRounds.length - 1}

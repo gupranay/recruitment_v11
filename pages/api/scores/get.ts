@@ -8,7 +8,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const { applicant_round_id } = req.body;
 
-  // Basic validation
+  console.log("Fetching scores for applicant_round_id:", applicant_round_id);
+
+  // Validate input
   if (!applicant_round_id) {
     return res.status(400).json({
       error: "Missing required field: applicant_round_id",
@@ -18,8 +20,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const supabase = supabaseBrowser();
 
   try {
-    // 1) Fetch scores for this applicant_round_id
-    //    We also nest user info AND metric info (the metric name instead of metric_id)
+    /*
+      We fetch from "scores", referencing:
+        - user: referencing the "users" table
+        - metric: referencing the "metrics" table
+
+      Often, you need the explicit constraint name like:
+        user:users!scores_user_id_fkey ( full_name )
+        metric:metrics!scores_metric_id_fkey ( id, name, weight )
+
+      The exact constraint name depends on your DB. 
+      Adjust to match your actual foreign key names if Supabase can’t auto-detect them.
+    */
+
     const { data: scoreRows, error: scoreError } = await supabase
       .from("scores")
       .select(`
@@ -28,63 +41,42 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         created_at,
         user_id,
 
-        user:users (
+        user:users!scores_user_id_fkey (
           full_name
         ),
 
-        metric:metrics (
-          name
+        metric:metrics!scores_metric_id_fkey (
+          id,
+          name,
+          weight
         )
       `)
       .eq("applicant_round_id", applicant_round_id);
 
     if (scoreError) {
+      console.error("Error fetching scores:", scoreError.message);
       return res.status(500).json({ error: scoreError.message });
     }
 
-    // If no scores found, return empty array
+    // If no scores found, return an empty array
     if (!scoreRows || scoreRows.length === 0) {
       return res.status(200).json([]);
     }
 
-    // 2) Group them by user_id
-    const groupedByUser: Record<string, {
-      user_id: string | null;
-      user_name: string | null;
-      scores: {
-        score_id: string;
-        metric_name: string | null;
-        score_value: number | null;
-        created_at: string;
-      }[];
-    }> = {};
+    // Build a flat array of score objects
+    const results = scoreRows.map((row) => ({
+      score_id: row.id,
+      score_value: row.score_value,
+      created_at: row.created_at,
+      user_id: row.user_id || null,
+      user_name: row.user?.full_name || null,
+      metric_id: row.metric?.id || null,
+      metric_name: row.metric?.name || null,
+      metric_weight: row.metric?.weight || null
+    }));
+    console.log("Fetched scores:", results);
 
-    for (const row of scoreRows) {
-      const uid = row.user_id || "no-user-id";
-
-      // If this is the first time we see this user_id, initialize
-      if (!groupedByUser[uid]) {
-        groupedByUser[uid] = {
-          user_id: uid === "no-user-id" ? null : uid,
-          user_name: row.user?.full_name ?? null,
-          scores: []
-        };
-      }
-
-      // Push the score object
-      groupedByUser[uid].scores.push({
-        score_id: row.id,
-        metric_name: row.metric?.name ?? null, // We now have the metric name
-        score_value: row.score_value,
-        created_at: row.created_at
-      });
-    }
-
-    // 3) Convert the map to an array
-    const groupedArray = Object.values(groupedByUser);
-
-    // 4) Return the grouped array
-    return res.status(200).json(groupedArray);
+    return res.status(200).json(results);
 
   } catch (err) {
     console.error("Unexpected error fetching scores:", err);

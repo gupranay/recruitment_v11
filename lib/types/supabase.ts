@@ -49,6 +49,7 @@ export type Database = {
           recruitment_round_id: string
           status: string
           updated_at: string
+          weighted_score: number
         }
         Insert: {
           applicant_id: string
@@ -57,6 +58,7 @@ export type Database = {
           recruitment_round_id: string
           status?: string
           updated_at?: string
+          weighted_score?: number
         }
         Update: {
           applicant_id?: string
@@ -65,6 +67,7 @@ export type Database = {
           recruitment_round_id?: string
           status?: string
           updated_at?: string
+          weighted_score?: number
         }
         Relationships: [
           {
@@ -171,26 +174,29 @@ export type Database = {
           created_at: string
           id: string
           name: string
-          recruitment_cycle_id: string
+          recruitment_round_id: string
+          weight: number
         }
         Insert: {
           created_at?: string
           id?: string
           name: string
-          recruitment_cycle_id: string
+          recruitment_round_id: string
+          weight?: number
         }
         Update: {
           created_at?: string
           id?: string
           name?: string
-          recruitment_cycle_id?: string
+          recruitment_round_id?: string
+          weight?: number
         }
         Relationships: [
           {
-            foreignKeyName: "metrics_recruitment_cycle_id_fkey"
-            columns: ["recruitment_cycle_id"]
+            foreignKeyName: "metrics_recruitment_round_id_fkey"
+            columns: ["recruitment_round_id"]
             isOneToOne: false
-            referencedRelation: "recruitment_cycles"
+            referencedRelation: "recruitment_rounds"
             referencedColumns: ["id"]
           },
         ]
