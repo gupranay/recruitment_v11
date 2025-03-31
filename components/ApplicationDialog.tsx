@@ -1,5 +1,5 @@
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { Loader2, Send } from "lucide-react";
+import { Loader2, Send, Trash2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import { Textarea } from "@/components/ui/textarea";
@@ -7,6 +7,16 @@ import { Button } from "@/components/ui/button";
 import toast from "react-hot-toast";
 import { Separator } from "./ui/separator";
 import { Input } from "@/components/ui/input";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export default function ApplicationDialog({
   applicantId,
@@ -28,6 +38,8 @@ export default function ApplicationDialog({
   } | null>(null);
   const [comments, setComments] = useState<
     {
+      id: string;
+      user_id: string;
       comment_text: string;
       user_name: string | null;
       created_at: string;
@@ -44,6 +56,8 @@ export default function ApplicationDialog({
     [metricId: string]: { score_value: number; weight: number };
   }>({}); // State for scores
   const [scoreSubmitted, setScoreSubmitted] = useState<boolean>(false); // State for score submission status
+  const [commentToDelete, setCommentToDelete] = useState<string | null>(null);
+  const [isDeletingComment, setIsDeletingComment] = useState(false);
 
   useEffect(() => {
     const fetchApplicantDetails = async () => {
@@ -162,16 +176,16 @@ export default function ApplicationDialog({
       }
 
       const { comment } = await response.json();
-      setComments((prev) => [
-        ...prev,
-        {
-          comment_text: comment.comment_text,
-          user_name: "You",
-          created_at: comment.created_at,
-          round_name: "Current Round",
-          anonymous: false,
-        },
-      ]);
+      const newCommentObj = {
+        id: comment.id,
+        user_id: userId || "",
+        comment_text: comment.comment_text,
+        user_name: "You",
+        created_at: comment.created_at,
+        round_name: "Current Round",
+        anonymous: false,
+      };
+      setComments((prev) => [...prev, newCommentObj]);
       setNewComment(""); // Clear input after adding
       toast.success("Comment added successfully!");
     } catch (error) {
@@ -237,6 +251,41 @@ export default function ApplicationDialog({
     } catch (error) {
       console.error("Error submitting scores:", error);
       toast.error("Failed to submit scores.");
+    }
+  };
+
+  const handleDeleteComment = async () => {
+    if (!commentToDelete || !userId) return;
+
+    setIsDeletingComment(true);
+    try {
+      const response = await fetch("/api/comments/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          comment_id: commentToDelete,
+          user_id: userId,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to delete comment");
+      }
+
+      // Remove the comment from the local state
+      setComments((prev) =>
+        prev.filter((comment) => comment.id !== commentToDelete)
+      );
+      toast.success("Comment deleted successfully");
+      setCommentToDelete(null);
+    } catch (error) {
+      console.error("Error deleting comment:", error);
+      toast.error(
+        error instanceof Error ? error.message : "Failed to delete comment"
+      );
+    } finally {
+      setIsDeletingComment(false);
     }
   };
 
@@ -309,16 +358,36 @@ export default function ApplicationDialog({
                 <Separator className="my-6" />
 
                 {/* Scores Section */}
-                <div className="bg-white shadow-md rounded-lg p-4 mt-4">
+                <div className="bg-white shadow-md rounded-lg p-4 mt-4 mb-8">
                   <h2 className="text-lg font-semibold mb-2">Scores</h2>
                   {fetchedScores.length > 0 ? (
-                    fetchedScores.map((score) => (
-                      <div key={score.metric_id} className="border-b py-2">
-                        <p className="font-medium">{score.metric_name}</p>
-                        <p>Score: {score.score_value}</p>
-                        <p>Weight: {score.weight}</p>
+                    <>
+                      <div className="bg-gray-50 rounded-lg p-4 mb-4">
+                        <h3 className="text-md font-semibold text-gray-700 mb-2">
+                          Weighted Average Score
+                        </h3>
+                        <p className="text-2xl font-bold text-primary">
+                          {(
+                            fetchedScores.reduce(
+                              (acc, score) =>
+                                acc + score.score_value * score.metric_weight,
+                              0
+                            ) /
+                            fetchedScores.reduce(
+                              (acc, score) => acc + score.metric_weight,
+                              0
+                            )
+                          ).toFixed(2)}
+                        </p>
                       </div>
-                    ))
+                      {fetchedScores.map((score) => (
+                        <div key={score.metric_id} className="border-b py-2">
+                          <p className="font-medium">{score.metric_name}</p>
+                          <p>Score: {score.score_value}</p>
+                          <p>Weight: {score.metric_weight}</p>
+                        </div>
+                      ))}
+                    </>
                   ) : (
                     <>
                       <p>
@@ -366,7 +435,7 @@ export default function ApplicationDialog({
                     comments.map((comment, index) => (
                       <div
                         key={index}
-                        className="p-2 bg-gray-100 rounded-lg mb-2"
+                        className="p-2 bg-gray-100 rounded-lg mb-2 relative group"
                       >
                         <p className="text-sm">
                           <span className="font-medium">
@@ -385,6 +454,15 @@ export default function ApplicationDialog({
                             {new Date(comment.created_at).toLocaleString()}
                           </span>
                         </p>
+                        {comment.user_id === userId && (
+                          <button
+                            onClick={() => setCommentToDelete(comment.id)}
+                            className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity text-red-500 hover:text-red-700"
+                            title="Delete comment"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        )}
                       </div>
                     ))
                   ) : (
@@ -408,6 +486,37 @@ export default function ApplicationDialog({
                     Add Comment
                   </Button>
                 </div>
+
+                {/* Delete Comment Confirmation Dialog */}
+                <AlertDialog
+                  open={!!commentToDelete}
+                  onOpenChange={() => setCommentToDelete(null)}
+                >
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete Comment</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Are you sure you want to delete this comment? This
+                        action cannot be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={handleDeleteComment}
+                        disabled={isDeletingComment}
+                        className="bg-red-500 hover:bg-red-600"
+                      >
+                        {isDeletingComment ? (
+                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        ) : (
+                          <Trash2 className="h-4 w-4 mr-2" />
+                        )}
+                        Delete
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </div>
             </div>
           )
