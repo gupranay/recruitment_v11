@@ -272,6 +272,7 @@ export default function Component() {
               onMoveToNextRound={(id) => Promise.resolve()}
               onReject={(id) => Promise.resolve()}
               isLastRound={currentRound === recruitmentRounds.length - 1}
+              currentCycle={currentCycle}
             />
           </div>
         </main>

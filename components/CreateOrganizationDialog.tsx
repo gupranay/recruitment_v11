@@ -62,6 +62,7 @@ export function CreateOrganizationDialog({
         name: data[0].name,
         owner_id: data[0].owner_id,
         created_at: data[0].created_at,
+        role: "Owner", // Add the role property since the creator is always the owner
       };
 
       setOrganizations([...organizations, newOrganization]);
@@ -78,7 +79,9 @@ export function CreateOrganizationDialog({
           'duplicate key value violates unique constraint "organizations_name_key"'
         )
       ) {
-        setError("Organization name already exists. Please choose a different name.");
+        setError(
+          "Organization name already exists. Please choose a different name."
+        );
       } else {
         setError(err.message);
       }
