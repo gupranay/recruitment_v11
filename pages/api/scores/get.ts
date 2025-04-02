@@ -8,7 +8,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const { applicant_round_id } = req.body;
 
-  console.log("Fetching scores for applicant_round_id:", applicant_round_id);
+  //console.log("Fetching scores for applicant_round_id:", applicant_round_id);
 
   // Validate input
   if (!applicant_round_id) {

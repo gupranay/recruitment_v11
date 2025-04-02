@@ -41,7 +41,10 @@ export default async function handler(
     // Update the comment
     const { data, error: updateError } = await supabase
       .from("comments")
-      .update({ comment_text })
+      .update({
+        comment_text,
+        updated_at: new Date().toISOString(),
+      })
       .eq("id", comment_id)
       .select()
       .single();

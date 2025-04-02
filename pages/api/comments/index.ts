@@ -29,6 +29,7 @@ export default async function handler(
         user_id,
         comment_text,
         created_at,
+        updated_at,
         is_anonymous,
         user:users!comments_user_id_fkey (
           full_name
@@ -56,6 +57,7 @@ export default async function handler(
         user_id: c.user_id,
         comment_text: c.comment_text,
         created_at: c.created_at,
+        updated_at: c.updated_at,
         user_name: c.user?.full_name ?? null,
         round_name: roundName,
         anonymous: c.is_anonymous,

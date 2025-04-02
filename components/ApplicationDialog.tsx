@@ -18,6 +18,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useOrganization } from "@/contexts/OrganizationContext";
+import RichTextEditor from "./RichTextEditor";
 
 interface ApplicationDialogProps {
   applicantId: string;
@@ -49,6 +50,7 @@ export default function ApplicationDialog({
       created_at: string;
       round_name: string;
       anonymous: boolean;
+      updated_at?: string;
     }[]
   >([]);
   const [newComment, setNewComment] = useState<string>(""); // New comment input
@@ -349,7 +351,11 @@ export default function ApplicationDialog({
       setComments((prev) =>
         prev.map((c) =>
           c.id === editingCommentId
-            ? { ...c, comment_text: comment.comment_text }
+            ? {
+                ...c,
+                comment_text: comment.comment_text,
+                updated_at: comment.updated_at,
+              }
             : c
         )
       );
@@ -514,12 +520,9 @@ export default function ApplicationDialog({
                       >
                         {editingCommentId === comment.id ? (
                           <div className="space-y-2">
-                            <Textarea
-                              value={editingCommentText}
-                              onChange={(e) =>
-                                setEditingCommentText(e.target.value)
-                              }
-                              className="w-full"
+                            <RichTextEditor
+                              content={editingCommentText}
+                              onChange={setEditingCommentText}
                             />
                             <div className="flex justify-end space-x-2">
                               <Button
@@ -551,7 +554,11 @@ export default function ApplicationDialog({
                                 <span className="font-medium">
                                   {comment.user_name || "Anonymous"}:
                                 </span>{" "}
-                                {comment.comment_text}
+                                <span
+                                  dangerouslySetInnerHTML={{
+                                    __html: comment.comment_text,
+                                  }}
+                                />
                               </p>
                               <p className="text-xs text-gray-500 mt-1">
                                 {comment.round_name && (
@@ -564,6 +571,13 @@ export default function ApplicationDialog({
                                   {new Date(
                                     comment.created_at
                                   ).toLocaleString()}
+                                  {comment.updated_at &&
+                                    new Date(comment.updated_at) >
+                                      new Date(comment.created_at) && (
+                                      <span className="ml-1 text-gray-400">
+                                        (edited)
+                                      </span>
+                                    )}
                                 </span>
                               </p>
                             </div>
@@ -614,11 +628,10 @@ export default function ApplicationDialog({
                   ) : (
                     <p className="text-sm text-gray-500">No comments yet.</p>
                   )}
-                  <Textarea
+                  <RichTextEditor
+                    content={newComment}
+                    onChange={setNewComment}
                     placeholder="Add a new comment..."
-                    value={newComment}
-                    onChange={(e) => setNewComment(e.target.value)}
-                    className="mb-4 mt-4"
                   />
                   <Button
                     onClick={handleAddComment}
