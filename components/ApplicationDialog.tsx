@@ -1,5 +1,5 @@
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { Loader2, Send, Trash2 } from "lucide-react";
+import { Loader2, Send, Trash2, Edit2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import { Textarea } from "@/components/ui/textarea";
@@ -17,6 +17,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { useOrganization } from "@/contexts/OrganizationContext";
+
+interface ApplicationDialogProps {
+  applicantId: string;
+  applicantRoundId: string;
+  userId: string | undefined;
+  isOpen: boolean;
+  onClose: () => void;
+}
 
 export default function ApplicationDialog({
   applicantId,
@@ -24,13 +33,8 @@ export default function ApplicationDialog({
   userId,
   isOpen,
   onClose,
-}: {
-  applicantId: string;
-  applicantRoundId: string;
-  userId: string | undefined;
-  isOpen: boolean;
-  onClose: () => void;
-}) {
+}: ApplicationDialogProps) {
+  const { selectedOrganization } = useOrganization();
   const [applicantData, setApplicantData] = useState<{
     name: string;
     headshot_url: string;
@@ -58,6 +62,10 @@ export default function ApplicationDialog({
   const [scoreSubmitted, setScoreSubmitted] = useState<boolean>(false); // State for score submission status
   const [commentToDelete, setCommentToDelete] = useState<string | null>(null);
   const [isDeletingComment, setIsDeletingComment] = useState(false);
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+  const [editingCommentText, setEditingCommentText] = useState<string>("");
+  const [isEditingComment, setIsEditingComment] = useState(false);
+  const [isOrgOwner, setIsOrgOwner] = useState(false);
 
   useEffect(() => {
     const fetchApplicantDetails = async () => {
@@ -99,6 +107,33 @@ export default function ApplicationDialog({
       }
     };
 
+    const checkOrgOwner = async () => {
+      if (!userId || !selectedOrganization?.id) return;
+
+      try {
+        const response = await fetch("/api/organizations/check-owner", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            user_id: userId,
+            organization_id: selectedOrganization.id,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to check organization owner status");
+        }
+
+        const { isOwner } = await response.json();
+        setIsOrgOwner(isOwner);
+      } catch (error) {
+        console.error("Error checking organization owner status:", error);
+        setIsOrgOwner(false);
+      }
+    };
+
     const fetchScores = async () => {
       if (!applicantId || !applicantRoundId) return;
 
@@ -125,9 +160,10 @@ export default function ApplicationDialog({
     if (isOpen) {
       fetchApplicantDetails();
       fetchComments();
+      checkOrgOwner();
       fetchScores();
     }
-  }, [isOpen, applicantId, applicantRoundId]);
+  }, [isOpen, applicantId, applicantRoundId, userId, selectedOrganization?.id]);
 
   useEffect(() => {
     const fetchMetrics = async () => {
@@ -255,7 +291,7 @@ export default function ApplicationDialog({
   };
 
   const handleDeleteComment = async () => {
-    if (!commentToDelete || !userId) return;
+    if (!commentToDelete || !userId || !selectedOrganization?.id) return;
 
     setIsDeletingComment(true);
     try {
@@ -265,6 +301,7 @@ export default function ApplicationDialog({
         body: JSON.stringify({
           comment_id: commentToDelete,
           user_id: userId,
+          organization_id: selectedOrganization.id,
         }),
       });
 
@@ -286,6 +323,44 @@ export default function ApplicationDialog({
       );
     } finally {
       setIsDeletingComment(false);
+    }
+  };
+
+  const handleEditComment = async () => {
+    if (!editingCommentId || !editingCommentText.trim() || !userId) return;
+
+    setIsEditingComment(true);
+    try {
+      const response = await fetch("/api/comments/update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          comment_id: editingCommentId,
+          user_id: userId,
+          comment_text: editingCommentText.trim(),
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update comment");
+      }
+
+      const { comment } = await response.json();
+      setComments((prev) =>
+        prev.map((c) =>
+          c.id === editingCommentId
+            ? { ...c, comment_text: comment.comment_text }
+            : c
+        )
+      );
+      toast.success("Comment updated successfully!");
+      setEditingCommentId(null);
+      setEditingCommentText("");
+    } catch (error) {
+      console.error("Error updating comment:", error);
+      toast.error("Failed to update comment");
+    } finally {
+      setIsEditingComment(false);
     }
   };
 
@@ -435,33 +510,104 @@ export default function ApplicationDialog({
                     comments.map((comment, index) => (
                       <div
                         key={index}
-                        className="p-2 bg-gray-100 rounded-lg mb-2 relative group"
+                        className="p-4 bg-gray-100 rounded-lg mb-2 relative group"
                       >
-                        <p className="text-sm">
-                          <span className="font-medium">
-                            {comment.user_name || "Anonymous"}:
-                          </span>{" "}
-                          {comment.comment_text}
-                        </p>
-                        <p className="text-xs text-gray-500 mt-1">
-                          {comment.round_name && (
-                            <span className="font-semibold">
-                              Round: {comment.round_name}
-                              {comment.anonymous ? " (Anonymous)" : ""}
-                            </span>
-                          )}
-                          <span className="ml-2">
-                            {new Date(comment.created_at).toLocaleString()}
-                          </span>
-                        </p>
-                        {comment.user_id === userId && (
-                          <button
-                            onClick={() => setCommentToDelete(comment.id)}
-                            className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity text-red-500 hover:text-red-700"
-                            title="Delete comment"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
+                        {editingCommentId === comment.id ? (
+                          <div className="space-y-2">
+                            <Textarea
+                              value={editingCommentText}
+                              onChange={(e) =>
+                                setEditingCommentText(e.target.value)
+                              }
+                              className="w-full"
+                            />
+                            <div className="flex justify-end space-x-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  setEditingCommentId(null);
+                                  setEditingCommentText("");
+                                }}
+                              >
+                                Cancel
+                              </Button>
+                              <Button
+                                size="sm"
+                                onClick={handleEditComment}
+                                disabled={isEditingComment}
+                              >
+                                {isEditingComment ? (
+                                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                ) : null}
+                                Save
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="pr-8">
+                              <p className="text-sm">
+                                <span className="font-medium">
+                                  {comment.user_name || "Anonymous"}:
+                                </span>{" "}
+                                {comment.comment_text}
+                              </p>
+                              <p className="text-xs text-gray-500 mt-1">
+                                {comment.round_name && (
+                                  <span className="font-semibold">
+                                    Round: {comment.round_name}
+                                    {comment.anonymous ? " (Anonymous)" : ""}
+                                  </span>
+                                )}
+                                <span className="ml-2">
+                                  {new Date(
+                                    comment.created_at
+                                  ).toLocaleString()}
+                                </span>
+                              </p>
+                            </div>
+                            {(comment.user_id === userId || isOrgOwner) && (
+                              <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity space-x-2">
+                                {comment.user_id === userId && (
+                                  <>
+                                    <button
+                                      onClick={() => {
+                                        setEditingCommentId(comment.id);
+                                        setEditingCommentText(
+                                          comment.comment_text
+                                        );
+                                      }}
+                                      className="text-blue-500 hover:text-blue-700"
+                                      title="Edit comment"
+                                    >
+                                      <Edit2 className="h-4 w-4" />
+                                    </button>
+                                    <button
+                                      onClick={() =>
+                                        setCommentToDelete(comment.id)
+                                      }
+                                      className="text-red-500 hover:text-red-700"
+                                      title="Delete comment"
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </button>
+                                  </>
+                                )}
+                                {isOrgOwner && comment.user_id !== userId && (
+                                  <button
+                                    onClick={() =>
+                                      setCommentToDelete(comment.id)
+                                    }
+                                    className="text-red-500 hover:text-red-700"
+                                    title="Delete comment"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </button>
+                                )}
+                              </div>
+                            )}
+                          </>
                         )}
                       </div>
                     ))

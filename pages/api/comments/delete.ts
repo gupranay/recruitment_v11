@@ -9,21 +9,34 @@ export default async function handler(
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const { comment_id, user_id } = req.body;
+  const { comment_id, user_id, organization_id } = req.body;
 
-  if (!comment_id) {
+  if (!comment_id || !user_id || !organization_id) {
     return res
       .status(400)
-      .json({ error: "Missing required field: comment_id" });
+      .json({
+        error: "Missing required fields: comment_id, user_id, organization_id",
+      });
   }
 
   const supabase = supabaseBrowser();
 
   try {
-    // First check if the comment exists and if the user has permission to delete it
+    // First check if the comment exists and get its details
     const { data: comment, error: fetchError } = await supabase
       .from("comments")
-      .select("user_id")
+      .select(
+        `
+        user_id,
+        applicant_rounds!comments_applicant_round_id_fkey (
+          recruitment_rounds!applicant_rounds_recruitment_round_id_fkey (
+            recruitment_cycles!recruitment_rounds_recruitment_cycle_id_fkey (
+              organization_id
+            )
+          )
+        )
+      `
+      )
       .eq("id", comment_id)
       .single();
 
@@ -32,7 +45,24 @@ export default async function handler(
     }
 
     // Check if the user has permission to delete the comment
-    if (comment.user_id !== user_id) {
+    // Either they are the comment owner or they are an organization owner
+    const isCommentOwner = comment.user_id === user_id;
+
+    // Check if user is an organization owner
+    const { data: userRole, error: roleError } = await supabase
+      .from("organization_users")
+      .select("role")
+      .eq("organization_id", organization_id)
+      .eq("user_id", user_id)
+      .single();
+
+    if (roleError) {
+      return res.status(500).json({ error: "Error checking user role" });
+    }
+
+    const isOrgOwner = userRole?.role === "Owner";
+
+    if (!isCommentOwner && !isOrgOwner) {
       return res
         .status(403)
         .json({ error: "Not authorized to delete this comment" });

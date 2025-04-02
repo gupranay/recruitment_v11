@@ -4,9 +4,9 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import QueryProvider from "@/components/query-provider";
-import { Analytics } from "@vercel/analytics/react"
+import { Analytics } from "@vercel/analytics/react";
 import NavBar from "@/components/NavBar";
-
+import { OrganizationProvider } from "@/contexts/OrganizationContext";
 
 export const metadata: Metadata = {
   title: "Recruitify",
@@ -21,7 +21,7 @@ export default function RootLayout({
   return (
     <>
       <html lang="en" suppressHydrationWarning>
-        <Analytics/>
+        <Analytics />
         <head>
           <link
             rel="icon"
@@ -31,9 +31,9 @@ export default function RootLayout({
         <body>
           <QueryProvider>
             <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
-              <main className=" min-h-screen mx-auto py-10">
-                {children}
-              </main>
+              <OrganizationProvider>
+                <main className=" min-h-screen mx-auto py-10">{children}</main>
+              </OrganizationProvider>
             </ThemeProvider>
           </QueryProvider>
         </body>

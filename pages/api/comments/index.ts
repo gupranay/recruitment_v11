@@ -25,6 +25,8 @@ export default async function handler(
       status,
       applicant_id,
       comments (
+        id,
+        user_id,
         comment_text,
         created_at,
         is_anonymous,
@@ -50,6 +52,8 @@ export default async function handler(
 
     for (const c of round.comments ?? []) {
       allComments.push({
+        id: c.id,
+        user_id: c.user_id,
         comment_text: c.comment_text,
         created_at: c.created_at,
         user_name: c.user?.full_name ?? null,

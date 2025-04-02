@@ -1,6 +1,13 @@
 //components/ApplicantCard.tsx
 import { ApplicantCardType } from "@/lib/types/ApplicantCardType";
-import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogTitle, AlertDialogDescription, AlertDialogCancel } from "@/components/ui/alert-dialog";
+import {
+  AlertDialog,
+  AlertDialogTrigger,
+  AlertDialogContent,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogCancel,
+} from "@/components/ui/alert-dialog";
 import { Expand, ChevronRight, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useState } from "react";
@@ -8,7 +15,13 @@ import toast from "react-hot-toast";
 import { AlertDialogHeader, AlertDialogFooter } from "./ui/alert-dialog";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
-import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "./ui/card";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+  CardFooter,
+} from "./ui/card";
 import ApplicationDialog from "./ApplicationDialog";
 import useUser from "@/app/hook/useUser";
 

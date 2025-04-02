@@ -43,7 +43,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const columns = Object.keys(applicantData);
 
     // 4) Return them
-    console.log("Columns:", columns);
+    //console.log("Columns:", columns);
     return res.status(200).json({ columns });
   } catch (err) {
     console.error("Unexpected error:", err);

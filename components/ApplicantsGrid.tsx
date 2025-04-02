@@ -18,6 +18,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
+import { RecruitmentCycle } from "@/lib/types/RecruitmentCycle";
 
 type SortOption =
   | "current_weighted_asc"
@@ -32,6 +33,7 @@ type ApplicantGridProps = {
   onMoveToNextRound: (applicantId: string) => Promise<void>;
   onReject: (applicantId: string) => Promise<void>;
   isLastRound: boolean;
+  currentCycle: RecruitmentCycle | null;
 };
 
 export default function ApplicantGrid({
@@ -40,6 +42,7 @@ export default function ApplicantGrid({
   onMoveToNextRound,
   onReject,
   isLastRound,
+  currentCycle,
 }: ApplicantGridProps) {
   const [applicants, setApplicants] = useState<ApplicantCardType[]>([]);
   const [isLoading, setIsLoading] = useState(false);
