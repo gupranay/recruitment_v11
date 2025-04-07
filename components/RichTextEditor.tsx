@@ -15,6 +15,7 @@ import {
   Heading2,
   Quote,
 } from "lucide-react";
+import { useEffect } from "react";
 
 interface RichTextEditorProps {
   content: string;
@@ -50,6 +51,13 @@ export default function RichTextEditor({
       },
     },
   });
+
+  // Add effect to handle content changes from parent
+  useEffect(() => {
+    if (editor && content !== editor.getHTML()) {
+      editor.commands.setContent(content);
+    }
+  }, [content, editor]);
 
   if (!editor) {
     return null;

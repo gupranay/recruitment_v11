@@ -2,46 +2,55 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { supabaseBrowser } from "@/lib/supabase/browser";
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  // Only allow POST requests
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse
+) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  // Extract fields from request body
-  const { applicant_round_id, user_id, comment_text } = req.body;
+  const {
+    applicant_round_id,
+    comment_text,
+    user_id,
+    source = "R", // Default to regular for this endpoint
+  } = req.body;
 
-  // Basic validation
-  if (!applicant_round_id || !user_id || !comment_text) {
+  if (!applicant_round_id || !comment_text || !user_id) {
     return res.status(400).json({
-      error: "Missing required fields: applicant_round_id, user_id, comment_text",
+      error:
+        "Missing required fields: applicant_round_id, comment_text, user_id",
     });
   }
 
-  // Initialize Supabase client
   const supabase = supabaseBrowser();
 
-  // Insert a new comment
-  const { data, error } = await supabase
-    .from("comments")
-    .insert([
-      {
-        applicant_round_id,
-        user_id,
-        comment_text
-      },
-    ])
-    .select()
-    .single();
+  try {
+    // Insert the comment
+    const { data, error } = await supabase
+      .from("comments")
+      .insert([
+        {
+          applicant_round_id,
+          user_id,
+          comment_text,
+          source,
+        },
+      ])
+      .select()
+      .single();
 
-  // Handle errors
-  if (error) {
-    return res.status(500).json({ error: error.message });
+    if (error) {
+      return res.status(500).json({ error: error.message });
+    }
+
+    return res.status(200).json({
+      message: "Comment created successfully",
+      comment: data,
+    });
+  } catch (err) {
+    console.error("Error creating comment:", err);
+    return res.status(500).json({ error: "Internal server error" });
   }
-
-  // Success
-  return res.status(200).json({
-    message: "Comment created successfully",
-    comment: data,
-  });
 }

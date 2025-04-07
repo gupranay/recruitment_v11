@@ -30,7 +30,6 @@ export default async function handler(
         comment_text,
         created_at,
         updated_at,
-        is_anonymous,
         user:users!comments_user_id_fkey (
           full_name
         )
@@ -60,10 +59,18 @@ export default async function handler(
         updated_at: c.updated_at,
         user_name: c.user?.full_name ?? null,
         round_name: roundName,
-        anonymous: c.is_anonymous,
+        source: "R", // Default to "R" until source column is added
+        is_edited:
+          c.updated_at && new Date(c.updated_at) > new Date(c.created_at),
       });
     }
   }
+
+  // Sort comments by created_at date (earliest to latest)
+  allComments.sort(
+    (a, b) =>
+      new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+  );
 
   return res.status(200).json(allComments);
 }

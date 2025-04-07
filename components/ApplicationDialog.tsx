@@ -73,6 +73,7 @@ export default function ApplicationDialog({
       round_name: string;
       anonymous: boolean;
       updated_at?: string;
+      source: string;
     }[]
   >([]);
   const [newComment, setNewComment] = useState<string>(""); // New comment input
@@ -235,6 +236,7 @@ export default function ApplicationDialog({
           applicant_round_id: applicantRoundId,
           user_id: userId,
           comment_text: newComment.trim(),
+          source: "R", // Regular application source
         }),
       });
 
@@ -251,6 +253,7 @@ export default function ApplicationDialog({
         created_at: comment.created_at,
         round_name: "Current Round",
         anonymous: false,
+        source: "R", // Regular application source
       };
       setComments((prev) => [...prev, newCommentObj]);
       setNewComment(""); // Clear input after adding
@@ -809,7 +812,11 @@ export default function ApplicationDialog({
                                   {comment.round_name && (
                                     <span className="font-semibold">
                                       Round: {comment.round_name}
-                                      {comment.anonymous ? " (Anonymous)" : ""}
+                                      {comment.source === "F"
+                                        ? " (Feedback Form)"
+                                        : comment.source === "A"
+                                        ? " (Anonymous)"
+                                        : ""}
                                     </span>
                                   )}
                                   <span className="ml-2">

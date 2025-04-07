@@ -169,6 +169,17 @@ export default function ApplicantGrid({
           </Button>
           <Button
             onClick={() => {
+              const encodedRoundId = encodeURIComponent(
+                rounds[currentRound].id
+              );
+              window.open(`/feedback/?id=${encodedRoundId}`, "_blank");
+            }}
+            className="bg-orange-500 text-white"
+          >
+            Launch Feedback Form
+          </Button>
+          <Button
+            onClick={() => {
               exportToCSV(
                 applicants.map(({ name, email, status }) => ({
                   name: name || "N/A",

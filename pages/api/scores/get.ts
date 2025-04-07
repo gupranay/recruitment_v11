@@ -45,8 +45,8 @@ export default async function handler(
     return res.status(400).json({ error: "Applicant round ID is required" });
   }
 
-  console.log("Received request with applicant_round_id:", applicant_round_id);
-  console.log("User ID:", userId);
+  // console.log("Received request with applicant_round_id:", applicant_round_id);
+  // console.log("User ID:", userId);
 
   const supabase = supabaseBrowser();
 
@@ -78,10 +78,10 @@ export default async function handler(
     // console.log("Raw scores from database:", scores);
 
     if (!scores || scores.length === 0) {
-      console.log(
-        "No scores found for applicant_round_id:",
-        applicant_round_id
-      );
+      // console.log(
+      //   "No scores found for applicant_round_id:",
+      //   applicant_round_id
+      // );
       return res.status(200).json([]);
     }
 
