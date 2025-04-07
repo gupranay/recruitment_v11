@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import {
   Dialog,
   DialogContent,
@@ -31,7 +31,7 @@ interface Comment {
   round_name?: string;
 }
 
-export default function FeedbackPage() {
+function FeedbackContent() {
   const searchParams = useSearchParams();
   const recruitmentRoundId = searchParams?.get("id");
   const { data: user } = useUser();
@@ -276,5 +276,15 @@ export default function FeedbackPage() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+export default function FeedbackPage() {
+  return (
+    <Suspense
+      fallback={<p className="text-center text-muted-foreground">Loading...</p>}
+    >
+      <FeedbackContent />
+    </Suspense>
   );
 }
