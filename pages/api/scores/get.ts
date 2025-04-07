@@ -1,85 +1,141 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { supabaseBrowser } from "@/lib/supabase/browser";
+import { Database } from "@/types/supabase";
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+interface Score {
+  id: string;
+  score_value: number;
+  metric_id: string;
+  metrics: {
+    name: string;
+    weight: number;
+  };
+  user_id: string;
+  created_at: string;
+  submission_id?: string;
+}
+
+interface Submission {
+  submission_id: string;
+  created_at: string;
+  user_id: string;
+  user_name: string | null;
+  scores: {
+    score_id: string;
+    score_value: number;
+    metric_id: string;
+    metric_name: string;
+    metric_weight: number;
+  }[];
+  weighted_average: number;
+}
+
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse
+) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
   const { applicant_round_id } = req.body;
+  const userId = req.headers["x-user-id"] as string;
 
-  //console.log("Fetching scores for applicant_round_id:", applicant_round_id);
-
-  // Validate input
   if (!applicant_round_id) {
-    return res.status(400).json({
-      error: "Missing required field: applicant_round_id",
-    });
+    return res.status(400).json({ error: "Applicant round ID is required" });
   }
+
+  console.log("Received request with applicant_round_id:", applicant_round_id);
+  console.log("User ID:", userId);
 
   const supabase = supabaseBrowser();
 
   try {
-    /*
-      We fetch from "scores", referencing:
-        - user: referencing the "users" table
-        - metric: referencing the "metrics" table
-
-      Often, you need the explicit constraint name like:
-        user:users!scores_user_id_fkey ( full_name )
-        metric:metrics!scores_metric_id_fkey ( id, name, weight )
-
-      The exact constraint name depends on your DB. 
-      Adjust to match your actual foreign key names if Supabase can’t auto-detect them.
-    */
-
-    const { data: scoreRows, error: scoreError } = await supabase
+    const { data: scores, error } = await supabase
       .from("scores")
-      .select(`
+      .select(
+        `
         id,
         score_value,
-        created_at,
-        user_id,
-
-        user:users!scores_user_id_fkey (
-          full_name
-        ),
-
-        metric:metrics!scores_metric_id_fkey (
-          id,
+        metric_id,
+        metrics (
           name,
           weight
-        )
-      `)
-      .eq("applicant_round_id", applicant_round_id);
+        ),
+        user_id,
+        created_at,
+        submission_id
+      `
+      )
+      .eq("applicant_round_id", applicant_round_id)
+      .order("created_at", { ascending: false });
 
-    if (scoreError) {
-      console.error("Error fetching scores:", scoreError.message);
-      return res.status(500).json({ error: scoreError.message });
+    if (error) {
+      console.error("Supabase error:", error);
+      throw error;
     }
 
-    // If no scores found, return an empty array
-    if (!scoreRows || scoreRows.length === 0) {
+    // console.log("Raw scores from database:", scores);
+
+    if (!scores || scores.length === 0) {
+      console.log(
+        "No scores found for applicant_round_id:",
+        applicant_round_id
+      );
       return res.status(200).json([]);
     }
 
-    // Build a flat array of score objects
-    const results = scoreRows.map((row) => ({
-      score_id: row.id,
-      score_value: row.score_value,
-      created_at: row.created_at,
-      user_id: row.user_id || null,
-      user_name: row.user?.full_name || null,
-      metric_id: row.metric?.id || null,
-      metric_name: row.metric?.name || null,
-      metric_weight: row.metric?.weight || null
-    }));
-    console.log("Fetched scores:", results);
+    // Group scores by submission_id if it exists, otherwise by created_at
+    const submissions = scores.reduce(
+      (acc: Record<string, Submission>, score: any) => {
+        // Use submission_id if it exists, otherwise use created_at as a fallback
+        const submissionId = score.submission_id || score.created_at;
 
-    return res.status(200).json(results);
+        if (!acc[submissionId]) {
+          acc[submissionId] = {
+            submission_id: submissionId,
+            created_at: score.created_at,
+            user_id: score.user_id,
+            user_name: score.user_id === userId ? "You" : null,
+            scores: [],
+            weighted_average: 0,
+          };
+        }
 
-  } catch (err) {
-    console.error("Unexpected error fetching scores:", err);
-    return res.status(500).json({ error: "Internal server error" });
+        acc[submissionId].scores.push({
+          score_id: score.id,
+          score_value: score.score_value,
+          metric_id: score.metric_id,
+          metric_name: score.metrics.name,
+          metric_weight: score.metrics.weight,
+        });
+
+        return acc;
+      },
+      {}
+    );
+
+    // console.log("Grouped submissions:", submissions);
+
+    // Calculate weighted average for each submission
+    Object.values(submissions).forEach((submission) => {
+      const totalWeight = submission.scores.reduce(
+        (sum, score) => sum + (score.metric_weight || 0),
+        0
+      );
+      const weightedSum = submission.scores.reduce(
+        (sum, score) =>
+          sum + (score.score_value * (score.metric_weight || 0)) / totalWeight,
+        0
+      );
+      submission.weighted_average = weightedSum;
+    });
+
+    const finalResponse = Object.values(submissions);
+    // console.log("Final API response:", finalResponse);
+    return res.status(200).json(finalResponse);
+  } catch (error) {
+    console.error("Error fetching scores:", error);
+    return res.status(500).json({ error: "Failed to fetch scores" });
   }
 }

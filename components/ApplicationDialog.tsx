@@ -1,5 +1,5 @@
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { Loader2, Send, Trash2, Edit2 } from "lucide-react";
+import { Loader2, Send, Trash2, Edit2, Pencil } from "lucide-react";
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import { Textarea } from "@/components/ui/textarea";
@@ -26,6 +26,28 @@ interface ApplicationDialogProps {
   userId: string | undefined;
   isOpen: boolean;
   onClose: () => void;
+}
+
+interface Score {
+  score_id: string;
+  metric_id: string;
+  metric_name: string | null;
+  score_value: number;
+  metric_weight: number | null;
+}
+
+interface Submission {
+  submission_id: string;
+  created_at: string;
+  user_name: string;
+  user_id: string;
+  scores: Score[];
+  weighted_average: number;
+}
+
+interface EditingScore {
+  score_id: string;
+  score_value: number;
 }
 
 export default function ApplicationDialog({
@@ -56,7 +78,7 @@ export default function ApplicationDialog({
   const [newComment, setNewComment] = useState<string>(""); // New comment input
   const [isAddingComment, setIsAddingComment] = useState(false); // Loading state for adding a comment
   const [isLoading, setIsLoading] = useState(false);
-  const [fetchedScores, setFetchedScores] = useState<any[]>([]); // State to hold fetched scores
+  const [fetchedScores, setFetchedScores] = useState<Submission[]>([]); // State to hold fetched scores
   const [scoringMetrics, setScoringMetrics] = useState<any[]>([]); // State for metrics
   const [scores, setScores] = useState<{
     [metricId: string]: { score_value: number; weight: number };
@@ -68,6 +90,8 @@ export default function ApplicationDialog({
   const [editingCommentText, setEditingCommentText] = useState<string>("");
   const [isEditingComment, setIsEditingComment] = useState(false);
   const [isOrgOwner, setIsOrgOwner] = useState(false);
+  const [editingScore, setEditingScore] = useState<EditingScore | null>(null);
+  const [isDeletingSubmission, setIsDeletingSubmission] = useState(false);
 
   useEffect(() => {
     const fetchApplicantDetails = async () => {
@@ -142,20 +166,25 @@ export default function ApplicationDialog({
       try {
         const response = await fetch("/api/scores/get", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            "x-user-id": userId || "",
+          },
           body: JSON.stringify({
             applicant_round_id: applicantRoundId,
           }),
         });
 
-        if (response.ok) {
-          const data = await response.json();
-          setFetchedScores(data); // Assuming the API returns an array of scores
-        } else {
-          console.error("Failed to fetch scores");
+        if (!response.ok) {
+          throw new Error("Failed to fetch scores");
         }
+
+        const data = await response.json();
+        console.log("Fetched scores in ApplicationDialog:", data);
+        setFetchedScores(data);
       } catch (error) {
         console.error("Error fetching scores:", error);
+        toast.error("Failed to fetch scores");
       }
     };
 
@@ -271,21 +300,32 @@ export default function ApplicationDialog({
         throw new Error("Failed to submit scores");
       }
 
-      // Update fetchedScores with the new scores
-      const newScores = Object.entries(scores).map(
-        ([metricId, { score_value, weight }]) => ({
-          metric_id: metricId,
-          score_value,
-          weight,
-          metric_name: scoringMetrics.find((metric) => metric.id === metricId)
-            ?.name, // Get the metric name
-        })
-      );
+      const { scores: newScores, submission_weighted_average } =
+        await response.json();
 
-      setFetchedScores((prevScores) => [...prevScores, ...newScores]); // Append new scores to the existing scores
+      // Create a new submission object with the correct structure
+      const newSubmission = {
+        submission_id: newScores[0]?.submission_id || new Date().toISOString(),
+        created_at: new Date().toISOString(),
+        user_name: "You",
+        user_id: userId || "",
+        scores: newScores.map((score: any) => ({
+          score_id: score.id,
+          score_value: score.score_value,
+          metric_id: score.metric_id,
+          metric_name: scoringMetrics.find((m) => m.id === score.metric_id)
+            ?.name,
+          metric_weight: scoringMetrics.find((m) => m.id === score.metric_id)
+            ?.weight,
+        })),
+        weighted_average: submission_weighted_average,
+      };
+
+      // Update the fetchedScores state with the new submission
+      setFetchedScores((prevScores) => [newSubmission, ...prevScores]);
       setScoreSubmitted(true);
       setScores({}); // Clear the scores after successful submission
-      toast.success("Scores submitted successfully!"); // Show toast notification
+      toast.success("Scores submitted successfully!");
     } catch (error) {
       console.error("Error submitting scores:", error);
       toast.error("Failed to submit scores.");
@@ -370,6 +410,86 @@ export default function ApplicationDialog({
     }
   };
 
+  const handleDeleteSubmission = async (submissionId: string) => {
+    if (!userId) return;
+
+    setIsDeletingSubmission(true);
+    try {
+      const response = await fetch("/api/scores/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          submission_id: submissionId,
+          user_id: userId,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to delete submission");
+      }
+
+      // Remove the deleted submission from the state
+      setFetchedScores((prevScores) =>
+        prevScores.filter((score) => score.submission_id !== submissionId)
+      );
+      toast.success("Submission deleted successfully!");
+    } catch (error) {
+      console.error("Error deleting submission:", error);
+      toast.error("Failed to delete submission");
+    } finally {
+      setIsDeletingSubmission(false);
+    }
+  };
+
+  const handleUpdateScore = async (scoreId: string, newValue: number) => {
+    if (!userId) return;
+
+    try {
+      const response = await fetch("/api/scores/update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          score_id: scoreId,
+          score_value: newValue,
+          user_id: userId,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update score");
+      }
+
+      const { weighted_average } = await response.json();
+
+      // Update the score in the state
+      setFetchedScores((prevScores) =>
+        prevScores.map((submission) => {
+          if (submission.scores.some((score) => score.score_id === scoreId)) {
+            return {
+              ...submission,
+              scores: submission.scores.map((score) =>
+                score.score_id === scoreId
+                  ? { ...score, score_value: newValue }
+                  : score
+              ),
+              weighted_average,
+            };
+          }
+          return submission;
+        })
+      );
+
+      setEditingScore(null);
+      toast.success("Score updated successfully!");
+    } catch (error) {
+      console.error("Error updating score:", error);
+      toast.error("Failed to update score");
+    }
+  };
+
+  // Add debug logging for scores rendering
+  console.log("Current fetchedScores state:", fetchedScores);
+
   return (
     <Dialog open={isOpen} onOpenChange={closeDialog}>
       <DialogContent className="mt-5 max-w-5xl mx-auto p-0">
@@ -441,162 +561,299 @@ export default function ApplicationDialog({
                 {/* Scores Section */}
                 <div className="bg-white shadow-md rounded-lg p-4 mt-4 mb-8">
                   <h2 className="text-lg font-semibold mb-2">Scores</h2>
-                  {fetchedScores.length > 0 ? (
+
+                  {/* Score Submission Form - Always visible */}
+                  <div className="bg-gray-50 rounded-lg p-4 mb-6">
+                    <h3 className="text-md font-semibold text-gray-700 mb-4">
+                      Submit New Scores
+                    </h3>
+                    <form className="space-y-4">
+                      {scoringMetrics.map((metric) => (
+                        <div key={metric.id} className="flex flex-col">
+                          <label className="text-sm font-medium">
+                            {metric.name} (Weight: {metric.weight})
+                          </label>
+                          <Input
+                            type="number"
+                            value={scores[metric.id]?.score_value || ""}
+                            onChange={(e) =>
+                              setScores((prev) => ({
+                                ...prev,
+                                [metric.id]: {
+                                  score_value: Number(
+                                    parseFloat(e.target.value) || 0
+                                  ),
+                                  weight: metric.weight,
+                                },
+                              }))
+                            }
+                            min={0}
+                            max={100}
+                            className="w-full"
+                          />
+                        </div>
+                      ))}
+                      <Button
+                        type="button"
+                        onClick={submitScores}
+                        disabled={Object.keys(scores).length === 0}
+                        className="w-full"
+                      >
+                        Submit Scores
+                      </Button>
+                    </form>
+                  </div>
+
+                  {/* Existing Scores Display */}
+                  {fetchedScores.length > 0 && (
                     <>
                       <div className="bg-gray-50 rounded-lg p-4 mb-4">
                         <h3 className="text-md font-semibold text-gray-700 mb-2">
-                          Weighted Average Score
+                          Overall Weighted Average Score
                         </h3>
                         <p className="text-2xl font-bold text-primary">
                           {(
                             fetchedScores.reduce(
-                              (acc, score) =>
-                                acc + score.score_value * score.metric_weight,
+                              (acc, submission) =>
+                                acc + submission.weighted_average,
                               0
-                            ) /
-                            fetchedScores.reduce(
-                              (acc, score) => acc + score.metric_weight,
-                              0
-                            )
+                            ) / fetchedScores.length
                           ).toFixed(2)}
                         </p>
                       </div>
-                      {fetchedScores.map((score) => (
-                        <div key={score.metric_id} className="border-b py-2">
-                          <p className="font-medium">{score.metric_name}</p>
-                          <p>Score: {score.score_value}</p>
-                          <p>Weight: {score.metric_weight}</p>
-                        </div>
-                      ))}
-                    </>
-                  ) : (
-                    <>
-                      <p>
-                        No scores available for this applicant. Please submit
-                        scores:
-                      </p>
-                      <form className="space-y-4">
-                        {scoringMetrics.map((metric) => (
-                          <div key={metric.id} className="flex flex-col">
-                            <label className="text-sm font-medium">
-                              {metric.name} (Weight: {metric.weight})
-                            </label>
-                            <Input
-                              type="number"
-                              value={scores[metric.id]?.score_value || ""}
-                              onChange={(e) =>
-                                setScores((prev) => ({
-                                  ...prev,
-                                  [metric.id]: {
-                                    score_value: Number(e.target.value),
-                                    weight: metric.weight,
-                                  },
-                                }))
-                              }
-                            />
+                      <div className="space-y-6">
+                        {fetchedScores.map((submission, index) => (
+                          <div
+                            key={submission.submission_id}
+                            className="border rounded-lg p-4"
+                          >
+                            <div className="flex justify-between items-center mb-2">
+                              <h4 className="font-medium">
+                                Submission {index + 1}
+                              </h4>
+                              <div className="flex items-center gap-2">
+                                <div className="text-sm text-gray-500">
+                                  {new Date(
+                                    submission.created_at
+                                  ).toLocaleString()}
+                                  {submission.user_name && (
+                                    <span className="ml-2">
+                                      by {submission.user_name}
+                                    </span>
+                                  )}
+                                </div>
+                                {submission.user_id === userId && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() =>
+                                      handleDeleteSubmission(
+                                        submission.submission_id
+                                      )
+                                    }
+                                    disabled={isDeletingSubmission}
+                                  >
+                                    {isDeletingSubmission ? (
+                                      <Loader2 className="h-4 w-4 animate-spin" />
+                                    ) : (
+                                      <Trash2 className="h-4 w-4" />
+                                    )}
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                              {submission.scores?.map((score: Score) => (
+                                <div
+                                  key={score.metric_id}
+                                  className="border-b py-2"
+                                >
+                                  <div className="flex justify-between items-start">
+                                    <div>
+                                      <p className="font-medium">
+                                        {score.metric_name}
+                                      </p>
+                                      {editingScore?.score_id ===
+                                      score.score_id ? (
+                                        <div className="flex items-center gap-2 mt-1">
+                                          <Input
+                                            type="number"
+                                            value={editingScore.score_value}
+                                            onChange={(e) =>
+                                              setEditingScore({
+                                                ...editingScore,
+                                                score_value: Number(
+                                                  parseFloat(e.target.value) ||
+                                                    0
+                                                ),
+                                              })
+                                            }
+                                            min={0}
+                                            max={100}
+                                            className="w-20"
+                                          />
+                                          <Button
+                                            size="sm"
+                                            onClick={() =>
+                                              handleUpdateScore(
+                                                score.score_id,
+                                                editingScore.score_value
+                                              )
+                                            }
+                                          >
+                                            Save
+                                          </Button>
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() =>
+                                              setEditingScore(null)
+                                            }
+                                          >
+                                            Cancel
+                                          </Button>
+                                        </div>
+                                      ) : (
+                                        <p>Score: {score.score_value}</p>
+                                      )}
+                                    </div>
+                                    {submission.user_id === userId &&
+                                      !editingScore && (
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() =>
+                                            setEditingScore({
+                                              score_id: score.score_id,
+                                              score_value: score.score_value,
+                                            })
+                                          }
+                                        >
+                                          <Pencil className="h-4 w-4" />
+                                        </Button>
+                                      )}
+                                  </div>
+                                  <p>Weight: {score.metric_weight}</p>
+                                </div>
+                              ))}
+                            </div>
+                            <div className="mt-2 pt-2 border-t">
+                              <p className="text-sm text-gray-600">
+                                Submission Weighted Average:{" "}
+                                <span className="font-semibold">
+                                  {submission.weighted_average?.toFixed(2) ??
+                                    "N/A"}
+                                </span>
+                              </p>
+                            </div>
                           </div>
                         ))}
-                        <Button
-                          type="button"
-                          onClick={submitScores}
-                          disabled={Object.keys(scores).length === 0}
-                          className="w-full"
-                        >
-                          Submit Scores
-                        </Button>
-                      </form>
+                      </div>
                     </>
                   )}
                 </div>
 
                 {/* Comments Section */}
-                <div>
-                  <h4 className="text-lg font-medium mb-4">Comments</h4>
-                  {comments.length > 0 ? (
-                    comments.map((comment, index) => (
-                      <div
-                        key={index}
-                        className="p-4 bg-gray-100 rounded-lg mb-2 relative group"
-                      >
-                        {editingCommentId === comment.id ? (
-                          <div className="space-y-2">
-                            <RichTextEditor
-                              content={editingCommentText}
-                              onChange={setEditingCommentText}
-                            />
-                            <div className="flex justify-end space-x-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => {
-                                  setEditingCommentId(null);
-                                  setEditingCommentText("");
-                                }}
-                              >
-                                Cancel
-                              </Button>
-                              <Button
-                                size="sm"
-                                onClick={handleEditComment}
-                                disabled={isEditingComment}
-                              >
-                                {isEditingComment ? (
-                                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                                ) : null}
-                                Save
-                              </Button>
-                            </div>
-                          </div>
-                        ) : (
-                          <>
-                            <div className="pr-8">
-                              <p className="text-sm">
-                                <span className="font-medium">
-                                  {comment.user_name || "Anonymous"}:
-                                </span>{" "}
-                                <span
-                                  dangerouslySetInnerHTML={{
-                                    __html: comment.comment_text,
+                <div className="bg-white shadow-md rounded-lg p-4 mt-4">
+                  <h2 className="text-lg font-semibold mb-4">Comments</h2>
+                  <div className="space-y-4 mb-6">
+                    {comments.length > 0 ? (
+                      comments.map((comment, index) => (
+                        <div
+                          key={index}
+                          className="p-4 bg-gray-50 rounded-lg relative group"
+                        >
+                          {editingCommentId === comment.id ? (
+                            <div className="space-y-2">
+                              <RichTextEditor
+                                content={editingCommentText}
+                                onChange={setEditingCommentText}
+                              />
+                              <div className="flex justify-end space-x-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    setEditingCommentId(null);
+                                    setEditingCommentText("");
                                   }}
-                                />
-                              </p>
-                              <p className="text-xs text-gray-500 mt-1">
-                                {comment.round_name && (
-                                  <span className="font-semibold">
-                                    Round: {comment.round_name}
-                                    {comment.anonymous ? " (Anonymous)" : ""}
-                                  </span>
-                                )}
-                                <span className="ml-2">
-                                  {new Date(
-                                    comment.created_at
-                                  ).toLocaleString()}
-                                  {comment.updated_at &&
-                                    new Date(comment.updated_at) >
-                                      new Date(comment.created_at) && (
-                                      <span className="ml-1 text-gray-400">
-                                        (edited)
-                                      </span>
-                                    )}
-                                </span>
-                              </p>
+                                >
+                                  Cancel
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  onClick={handleEditComment}
+                                  disabled={isEditingComment}
+                                >
+                                  {isEditingComment ? (
+                                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                  ) : null}
+                                  Save
+                                </Button>
+                              </div>
                             </div>
-                            {(comment.user_id === userId || isOrgOwner) && (
-                              <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity space-x-2">
-                                {comment.user_id === userId && (
-                                  <>
-                                    <button
-                                      onClick={() => {
-                                        setEditingCommentId(comment.id);
-                                        setEditingCommentText(
-                                          comment.comment_text
-                                        );
-                                      }}
-                                      className="text-blue-500 hover:text-blue-700"
-                                      title="Edit comment"
-                                    >
-                                      <Edit2 className="h-4 w-4" />
-                                    </button>
+                          ) : (
+                            <>
+                              <div className="pr-8">
+                                <p className="text-sm">
+                                  <span className="font-medium">
+                                    {comment.user_name || "Anonymous"}:
+                                  </span>{" "}
+                                  <span
+                                    dangerouslySetInnerHTML={{
+                                      __html: comment.comment_text,
+                                    }}
+                                  />
+                                </p>
+                                <p className="text-xs text-gray-500 mt-1">
+                                  {comment.round_name && (
+                                    <span className="font-semibold">
+                                      Round: {comment.round_name}
+                                      {comment.anonymous ? " (Anonymous)" : ""}
+                                    </span>
+                                  )}
+                                  <span className="ml-2">
+                                    {new Date(
+                                      comment.created_at
+                                    ).toLocaleString()}
+                                    {comment.updated_at &&
+                                      new Date(comment.updated_at) >
+                                        new Date(comment.created_at) && (
+                                        <span className="ml-1 text-gray-400">
+                                          (edited)
+                                        </span>
+                                      )}
+                                  </span>
+                                </p>
+                              </div>
+                              {(comment.user_id === userId || isOrgOwner) && (
+                                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity space-x-2">
+                                  {comment.user_id === userId && (
+                                    <>
+                                      <button
+                                        onClick={() => {
+                                          setEditingCommentId(comment.id);
+                                          setEditingCommentText(
+                                            comment.comment_text
+                                          );
+                                        }}
+                                        className="text-blue-500 hover:text-blue-700"
+                                        title="Edit comment"
+                                      >
+                                        <Edit2 className="h-4 w-4" />
+                                      </button>
+                                      <button
+                                        onClick={() =>
+                                          setCommentToDelete(comment.id)
+                                        }
+                                        className="text-red-500 hover:text-red-700"
+                                        title="Delete comment"
+                                      >
+                                        <Trash2 className="h-4 w-4" />
+                                      </button>
+                                    </>
+                                  )}
+                                  {isOrgOwner && comment.user_id !== userId && (
                                     <button
                                       onClick={() =>
                                         setCommentToDelete(comment.id)
@@ -606,44 +863,39 @@ export default function ApplicationDialog({
                                     >
                                       <Trash2 className="h-4 w-4" />
                                     </button>
-                                  </>
-                                )}
-                                {isOrgOwner && comment.user_id !== userId && (
-                                  <button
-                                    onClick={() =>
-                                      setCommentToDelete(comment.id)
-                                    }
-                                    className="text-red-500 hover:text-red-700"
-                                    title="Delete comment"
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </button>
-                                )}
-                              </div>
-                            )}
-                          </>
-                        )}
+                                  )}
+                                </div>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      ))
+                    ) : (
+                      <div className="p-4 bg-gray-50 rounded-lg">
+                        <p className="text-sm text-gray-500">
+                          No comments yet.
+                        </p>
                       </div>
-                    ))
-                  ) : (
-                    <p className="text-sm text-gray-500">No comments yet.</p>
-                  )}
-                  <RichTextEditor
-                    content={newComment}
-                    onChange={setNewComment}
-                    placeholder="Add a new comment..."
-                  />
-                  <Button
-                    onClick={handleAddComment}
-                    disabled={isAddingComment}
-                    className="w-full flex items-center justify-center"
-                  >
-                    {isAddingComment && (
-                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
                     )}
-                    <Send className="h-4 w-4 mr-2" />
-                    Add Comment
-                  </Button>
+                  </div>
+                  <div className="space-y-4">
+                    <RichTextEditor
+                      content={newComment}
+                      onChange={setNewComment}
+                      placeholder="Add a new comment..."
+                    />
+                    <Button
+                      onClick={handleAddComment}
+                      disabled={isAddingComment}
+                      className="w-full flex items-center justify-center"
+                    >
+                      {isAddingComment && (
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      )}
+                      <Send className="h-4 w-4 mr-2" />
+                      Add Comment
+                    </Button>
+                  </div>
                 </div>
 
                 {/* Delete Comment Confirmation Dialog */}
