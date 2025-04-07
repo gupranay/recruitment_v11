@@ -100,6 +100,8 @@ export default function ApplicantGrid({
       const encodedRoundId = encodeURIComponent(selectedRoundId);
       const url = `/demographics/?id=${encodedRoundId}`;
       window.open(url, "_blank"); // Open in a new tab
+      // Reset the selectedRoundId after opening the page
+      setSelectedRoundId(null);
     }
   }, [selectedRoundId]);
 

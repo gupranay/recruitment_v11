@@ -7,7 +7,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   const { field, recruitment_round_id } = req.body;
-  console.log("Fetching demographics for field:", field, "round_id:", recruitment_round_id);
+  // console.log("Fetching demographics for field:", field, "round_id:", recruitment_round_id);
   if (!field || !recruitment_round_id) {
     return res.status(400).json({
       error: "Missing required fields: field, recruitment_round_id"
@@ -27,7 +27,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.error("Error fetching demographics:", error.message);
     return res.status(500).json({ error: error.message });
   }
-  console.log("Demographics data:", data);
+  // console.log("Demographics data:", data);
 
   // data should be an array of { status, field_value, count, percentage }
   return res.status(200).json(data || []);

@@ -182,7 +182,12 @@ function DemographicsContent() {
                 >
                   <ResponsiveContainer width="100%" height={400}>
                     <BarChart data={data}>
-                      <XAxis dataKey="field_value" />
+                      <XAxis
+                        dataKey="field_value"
+                        tickFormatter={(value, index) =>
+                          `${value} | ${data[index].status}`
+                        }
+                      />
                       <YAxis />
                       <Tooltip content={<ChartTooltipContent />} />
                       <ChartLegend />
