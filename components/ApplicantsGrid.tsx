@@ -19,6 +19,7 @@ import {
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
 import { RecruitmentCycle } from "@/lib/types/RecruitmentCycle";
+import useUser from "@/app/hook/useUser";
 
 type SortOption =
   | "current_weighted_asc"
@@ -44,6 +45,7 @@ export default function ApplicantGrid({
   isLastRound,
   currentCycle,
 }: ApplicantGridProps) {
+  const { data: user } = useUser();
   const [applicants, setApplicants] = useState<ApplicantCardType[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState("Loading applicants...");
@@ -130,10 +132,12 @@ export default function ApplicantGrid({
   }, [applicants, sortOption]);
 
   const handleOpenDialog = (applicant: ApplicantCardType) => {
+    console.log("handleOpenDialog called with applicant:", applicant);
     setSelectedApplicant(applicant);
   };
 
   const handleCloseDialog = () => {
+    console.log("handleCloseDialog called");
     setSelectedApplicant(null);
   };
 
@@ -237,35 +241,48 @@ export default function ApplicantGrid({
       <Separator className="mb-4" />
 
       {sortedApplicants.length > 0 ? (
-        isListView ? (
-          <div className="space-y-2">
-            {sortedApplicants.map((applicant) => (
-              <ApplicantListItem
-                key={applicant.applicant_id}
-                applicant={applicant}
-                onClick={() => handleOpenDialog(applicant)}
-                onMoveToNextRound={onMoveToNextRound}
-                onReject={onReject}
-                isLastRound={isLastRound}
-                fetchApplicants={fetchApplicants}
-              />
-            ))}
-          </div>
-        ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {sortedApplicants.map((applicant) => (
-              <ApplicantCard
-                key={applicant.applicant_id}
-                applicant={applicant}
-                onMoveToNextRound={onMoveToNextRound}
-                onReject={onReject}
-                fetchApplicants={fetchApplicants}
-                isLastRound={isLastRound}
-                onClick={() => handleOpenDialog(applicant)}
-              />
-            ))}
-          </div>
-        )
+        <>
+          {isListView ? (
+            <div className="space-y-2">
+              {sortedApplicants.map((applicant) => (
+                <ApplicantListItem
+                  key={applicant.applicant_id}
+                  applicant={applicant}
+                  onClick={() => handleOpenDialog(applicant)}
+                  onMoveToNextRound={onMoveToNextRound}
+                  onReject={onReject}
+                  isLastRound={isLastRound}
+                  fetchApplicants={fetchApplicants}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {sortedApplicants.map((applicant) => (
+                <ApplicantCard
+                  key={applicant.applicant_id}
+                  applicant={applicant}
+                  onMoveToNextRound={onMoveToNextRound}
+                  onReject={onReject}
+                  fetchApplicants={fetchApplicants}
+                  isLastRound={isLastRound}
+                  onClick={() => handleOpenDialog(applicant)}
+                />
+              ))}
+            </div>
+          )}
+
+          {/* Add ApplicationDialog */}
+          {selectedApplicant && user?.id && (
+            <ApplicationDialog
+              applicantId={selectedApplicant.applicant_id}
+              applicantRoundId={selectedApplicant.applicant_round_id}
+              userId={user.id}
+              isOpen={!!selectedApplicant}
+              onClose={handleCloseDialog}
+            />
+          )}
+        </>
       ) : (
         <div className="text-center text-muted-foreground">
           Please upload applicants.

@@ -1,8 +1,17 @@
 import { ApplicantCardType } from "@/lib/types/ApplicantCardType";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel } from "@/components/ui/alert-dialog";
-import { Loader2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogTrigger,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+} from "@/components/ui/alert-dialog";
+import { Loader2, ChevronRight } from "lucide-react";
 import { useState } from "react";
 import toast from "react-hot-toast";
 
@@ -96,31 +105,46 @@ export default function ApplicantListItem({
   };
 
   return (
-    <div
-      onClick={onClick}
-      className="flex items-center justify-between p-4 bg-card hover:shadow-md border rounded-lg cursor-pointer transition-all"
-    >
+    <div className="flex items-center justify-between p-4 bg-card hover:shadow-md border rounded-lg cursor-pointer transition-all">
       {/* Left: Applicant Name and Status */}
-      <div>
-        <h3 className="text-lg font-medium">{applicant.name || "Unnamed Applicant"}</h3>
-        <Badge
-          variant={
-            applicant.status === "accepted"
-              ? "default"
-              : applicant.status === "rejected"
-              ? "destructive"
-              : "secondary"
-          }
-        >
-          {applicant.status}
-        </Badge>
+      <div className="flex items-center space-x-4 flex-grow" onClick={onClick}>
+        <div>
+          <h3 className="text-lg font-medium">
+            {applicant.name || "Unnamed Applicant"}
+          </h3>
+          <Badge
+            variant={
+              applicant.status === "accepted"
+                ? "default"
+                : applicant.status === "rejected"
+                ? "destructive"
+                : "secondary"
+            }
+          >
+            {applicant.status}
+          </Badge>
+        </div>
       </div>
 
       {/* Right: Action Buttons */}
       <div className="flex items-center space-x-2">
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={(e) => {
+            e.stopPropagation();
+            onClick();
+          }}
+        >
+          <ChevronRight className="h-4 w-4" />
+          <span className="ml-2">View</span>
+        </Button>
         {applicant.status === "in_progress" && (
           <>
-            <AlertDialog open={isAlertDialogOpen} onOpenChange={setIsAlertDialogOpen}>
+            <AlertDialog
+              open={isAlertDialogOpen}
+              onOpenChange={setIsAlertDialogOpen}
+            >
               <AlertDialogTrigger asChild>
                 <Button
                   size="sm"
@@ -138,7 +162,8 @@ export default function ApplicantListItem({
                 <AlertDialogHeader>
                   <AlertDialogTitle>Confirm Action</AlertDialogTitle>
                   <AlertDialogDescription>
-                    What do you want to do with {applicant.name || "this applicant"}?
+                    What do you want to do with{" "}
+                    {applicant.name || "this applicant"}?
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter className="flex justify-end space-x-4">
