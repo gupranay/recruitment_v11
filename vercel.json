@@ -1,0 +1,21 @@
+{
+  "rewrites": [
+    {
+      "source": "/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "dashboard.(?<domain>.*)"
+        }
+      ],
+      "destination": "/dash/:path*"
+    }
+  ],
+  "env": {
+    "NEXT_PUBLIC_SITE_URL": {
+      "development": "http://localhost:3000",
+      "preview": "https://www.recruitify.tech",
+      "production": "https://www.recruitify.tech"
+    }
+  }
+} 
