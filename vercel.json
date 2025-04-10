@@ -1,14 +1,13 @@
 {
-  "rewrites": [
+  "headers": [
     {
       "source": "/:path*",
-      "has": [
+      "headers": [
         {
-          "type": "host",
-          "value": "dashboard.(?<domain>.*)"
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
         }
-      ],
-      "destination": "/dash/:path*"
+      ]
     }
   ]
 } 

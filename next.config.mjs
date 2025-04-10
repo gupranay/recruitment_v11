@@ -8,17 +8,31 @@ const nextConfig = {
       },
       {
         protocol: "https",
-        hostname: "storage.tally.so", // Add this line
+        hostname: "storage.tally.so",
       },
       {
         protocol: "https",
-        hostname: "media.licdn.com", // Add this line
+        hostname: "media.licdn.com",
       },
-    {
-      protocol: "https",
-      hostname: "drive.usercontent.google.com", // Add this line
-    },
+      {
+        protocol: "https",
+        hostname: "drive.usercontent.google.com",
+      },
     ],
+  },
+  async rewrites() {
+    return [
+      {
+        source: "/",
+        destination: "/dash",
+        has: [
+          {
+            type: "host",
+            value: "dashboard.recruitify.tech",
+          },
+        ],
+      },
+    ];
   },
 };
 
