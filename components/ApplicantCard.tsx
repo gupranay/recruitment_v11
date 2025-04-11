@@ -7,12 +7,14 @@ import {
   AlertDialogTitle,
   AlertDialogDescription,
   AlertDialogCancel,
+  AlertDialogClose,
+  AlertDialogHeader,
+  AlertDialogFooter,
 } from "@/components/ui/alert-dialog";
-import { Expand, ChevronRight, Loader2 } from "lucide-react";
+import { Expand, ChevronRight, Loader2, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useState } from "react";
 import toast from "react-hot-toast";
-import { AlertDialogHeader, AlertDialogFooter } from "./ui/alert-dialog";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import {
@@ -43,9 +45,39 @@ export default function ApplicantCard({
 }: ApplicantCardProps) {
   const [isAlertDialogOpen, setIsAlertDialogOpen] = useState(false);
   const [isApplicationDialogOpen, setIsApplicationDialogOpen] = useState(false);
-  const [isAccepting, setIsAccepting] = useState(false); // Loading state for accepting
-  const [isRejecting, setIsRejecting] = useState(false); // Loading state for rejecting
+  const [isAccepting, setIsAccepting] = useState(false);
+  const [isRejecting, setIsRejecting] = useState(false);
+  const [isSettingMaybe, setIsSettingMaybe] = useState(false);
+  const [showRejectConfirm, setShowRejectConfirm] = useState(false);
   const { data: user } = useUser();
+
+  const handleSetMaybe = async () => {
+    setIsSettingMaybe(true);
+    try {
+      const response = await fetch("/api/applicant/maybe", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          applicant_id: applicant.applicant_id,
+          applicant_round_id: applicant.applicant_round_id,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to set the applicant as maybe.");
+      }
+    } catch (error) {
+      console.error("Error setting applicant as maybe:", error);
+      alert("An error occurred while setting the applicant as maybe.");
+    } finally {
+      setIsSettingMaybe(false);
+      setIsAlertDialogOpen(false);
+      toast.success("Applicant marked as maybe");
+      fetchApplicants();
+    }
+  };
 
   const handleMoveToNextRound = async () => {
     setIsAccepting(true); // Start loading state for accepting
@@ -130,8 +162,10 @@ export default function ApplicantCard({
           ? "border-green-500"
           : applicant.status === "rejected"
           ? "border-destructive"
+          : applicant.status === "maybe"
+          ? "border-yellow-500"
           : ""
-      } flex flex-col justify-between mx-auto w-[250px]`} // Fixed card width
+      } flex flex-col justify-between mx-auto w-[250px]`}
     >
       <CardHeader>
         <CardTitle className="text-sm flex items-center justify-between">
@@ -144,6 +178,11 @@ export default function ApplicantCard({
           {applicant.status === "accepted" && (
             <Badge variant="default" className="text-xs">
               Accepted
+            </Badge>
+          )}
+          {applicant.status === "maybe" && (
+            <Badge variant="outline" className="text-xs bg-yellow-100">
+              Maybe
             </Badge>
           )}
         </CardTitle>
@@ -171,7 +210,8 @@ export default function ApplicantCard({
             <Expand className="h-3 w-3" />
             <span className="sr-only">Expand application</span>
           </Button>
-          {applicant.status === "in_progress" && (
+          {(applicant.status === "in_progress" ||
+            applicant.status === "maybe") && (
             <AlertDialog
               open={isAlertDialogOpen}
               onOpenChange={setIsAlertDialogOpen}
@@ -187,40 +227,55 @@ export default function ApplicantCard({
                   <ChevronRight className="h-3 w-3" />
                 </Button>
               </AlertDialogTrigger>
-              <AlertDialogContent>
+              <AlertDialogContent className="max-w-md">
+                <AlertDialogClose onClick={() => setIsAlertDialogOpen(false)}>
+                  <X className="h-4 w-4" />
+                  <span className="sr-only">Close</span>
+                </AlertDialogClose>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Confirm Action</AlertDialogTitle>
+                  <AlertDialogTitle>Confirm Decision</AlertDialogTitle>
                   <AlertDialogDescription>
                     What do you want to do with{" "}
                     {applicant.name || "this applicant"}?
                   </AlertDialogDescription>
                 </AlertDialogHeader>
-                <AlertDialogFooter className="flex justify-end space-x-4">
-                  <AlertDialogCancel className="w-auto px-4 py-2">
-                    Cancel
-                  </AlertDialogCancel>
-                  <Button
-                    variant="outline"
-                    onClick={handleMoveToNextRound}
-                    disabled={isAccepting} // Disable the button while loading
-                    className="w-auto px-4 py-2 bg-green-500 text-white hover:bg-green-600"
-                  >
-                    {isAccepting ? (
-                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    ) : null}
-                    {isLastRound ? "Finalize Applicant" : "Move to Next Round"}
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    onClick={handleRejectApplicant}
-                    disabled={isRejecting} // Disable the button while loading
-                    className="w-auto px-4 py-2 bg-red-500 text-white hover:bg-red-600"
-                  >
-                    {isRejecting ? (
-                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    ) : null}
-                    Reject Applicant
-                  </Button>
+                <AlertDialogFooter className="flex-col space-y-2">
+                  <div className="flex flex-col space-y-2 w-full">
+                    <Button
+                      variant="outline"
+                      onClick={handleMoveToNextRound}
+                      disabled={isAccepting}
+                      className="w-full bg-green-500 text-white hover:bg-green-600"
+                    >
+                      {isAccepting ? (
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      ) : null}
+                      {isLastRound
+                        ? "Finalize Applicant"
+                        : "Move to Next Round"}
+                    </Button>
+                    {applicant.status !== "maybe" && (
+                      <Button
+                        variant="outline"
+                        onClick={handleSetMaybe}
+                        disabled={isSettingMaybe}
+                        className="w-full bg-yellow-500 text-white hover:bg-yellow-600"
+                      >
+                        {isSettingMaybe ? (
+                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        ) : null}
+                        Mark as Maybe
+                      </Button>
+                    )}
+
+                    <Button
+                      variant="destructive"
+                      onClick={() => setShowRejectConfirm(true)}
+                      className="w-full"
+                    >
+                      Reject Applicant
+                    </Button>
+                  </div>
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
@@ -244,6 +299,33 @@ export default function ApplicantCard({
         isOpen={isApplicationDialogOpen}
         onClose={() => setIsApplicationDialogOpen(false)}
       />
+      <AlertDialog open={showRejectConfirm} onOpenChange={setShowRejectConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Rejection</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to reject{" "}
+              {applicant.name || "this applicant"}? This action cannot be
+              undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setShowRejectConfirm(false)}>
+              Cancel
+            </AlertDialogCancel>
+            <Button
+              variant="destructive"
+              onClick={handleRejectApplicant}
+              disabled={isRejecting}
+            >
+              {isRejecting ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : null}
+              Yes, Reject Applicant
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }

@@ -113,9 +113,21 @@ export default function ApplicantGrid({
   const sortedApplicants = useMemo(() => {
     return [...applicants].sort((a, b) => {
       if (sortOption === "status") {
-        // Default sorting: Accepted first, then Pending, then Rejected
+        // Default sorting: Accepted first, then Maybe, then Pending, then Rejected
         if (a.status === "accepted" && b.status !== "accepted") return -1;
         if (a.status !== "accepted" && b.status === "accepted") return 1;
+        if (
+          a.status === "maybe" &&
+          b.status !== "maybe" &&
+          b.status !== "accepted"
+        )
+          return -1;
+        if (
+          a.status !== "maybe" &&
+          b.status === "maybe" &&
+          a.status !== "accepted"
+        )
+          return 1;
         if (a.status === "rejected" && b.status !== "rejected") return 1;
         if (a.status !== "rejected" && b.status === "rejected") return -1;
         return 0;
@@ -160,94 +172,103 @@ export default function ApplicantGrid({
       {/* Action Buttons */}
       <div className="flex items-center justify-between mb-4">
         <div className="font-medium text-lg">Applicant Overview</div>
-        <div className="flex items-center ml-auto space-x-2">
-          <Button
-            onClick={() => handleRoundChange(rounds[currentRound].id)}
-            className="bg-blue-500 text-white"
-          >
-            View Demographics
-          </Button>
-          <Button
-            onClick={() => {
-              const encodedRoundId = encodeURIComponent(
-                rounds[currentRound].id
-              );
-              window.open(`/feedback/?id=${encodedRoundId}`, "_blank");
-            }}
-            className="bg-orange-500 text-white"
-          >
-            Launch Feedback Form
-          </Button>
-          <Button
-            onClick={() => {
-              exportToCSV(
-                applicants.map(({ name, email, status }) => ({
-                  name: name || "N/A",
-                  email: email || "N/A",
-                  status: status || "N/A",
-                })),
-                rounds[currentRound].name || "applicants"
-              );
-            }}
-            variant="outline"
-          >
-            Export Decisions
-          </Button>
-          <CreateAnonymizedAppDialog
-            recruitment_round_id={rounds[currentRound].id || ""}
-            recruitment_round_name={
-              rounds[currentRound].name || "Unknown Round"
-            }
-            applicant_id={applicants[0]?.applicant_id || ""}
-          />
-          <UploadApplicantsDialog3
-            recruitment_round_id={rounds[currentRound].id}
-            fetchApplicants={fetchApplicants}
-          />
-          {/* Sorting Dropdown */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline">Sort Applicants</Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              <DropdownMenuItem
-                onClick={() => setSortOption("current_weighted_asc")}
-              >
-                Current Round Weighted (Ascending)
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => setSortOption("current_weighted_desc")}
-              >
-                Current Round Weighted (Descending)
-              </DropdownMenuItem>
-              {currentRound > 0 && (
-                <>
-                  <DropdownMenuItem
-                    onClick={() => setSortOption("last_weighted_asc")}
-                  >
-                    Last Round Weighted (Ascending)
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => setSortOption("last_weighted_desc")}
-                  >
-                    Last Round Weighted (Descending)
-                  </DropdownMenuItem>
-                </>
-              )}
-              <DropdownMenuItem onClick={() => setSortOption("status")}>
-                Accepted / Rejected (Default)
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          {/* View Toggle */}
-          <div className="flex items-center space-x-2">
-            <span className="text-sm">Grid View</span>
-            <Switch
-              checked={isListView}
-              onCheckedChange={setIsListView}
-              className="toggle-view"
+        <div className="flex flex-wrap items-center gap-2 ml-auto">
+          {/* Primary Actions Group */}
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              onClick={() => handleRoundChange(rounds[currentRound].id)}
+              className="bg-blue-500 text-white"
+            >
+              View Demographics
+            </Button>
+            <Button
+              onClick={() => {
+                const encodedRoundId = encodeURIComponent(
+                  rounds[currentRound].id
+                );
+                window.open(`/feedback/?id=${encodedRoundId}`, "_blank");
+              }}
+              className="bg-orange-500 text-white"
+            >
+              Launch Feedback Form
+            </Button>
+          </div>
+
+          {/* Secondary Actions Group */}
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              onClick={() => {
+                exportToCSV(
+                  applicants.map(({ name, email, status }) => ({
+                    name: name || "N/A",
+                    email: email || "N/A",
+                    status: status || "N/A",
+                  })),
+                  rounds[currentRound].name || "applicants"
+                );
+              }}
+              variant="outline"
+            >
+              Export Decisions
+            </Button>
+            <CreateAnonymizedAppDialog
+              recruitment_round_id={rounds[currentRound].id || ""}
+              recruitment_round_name={
+                rounds[currentRound].name || "Unknown Round"
+              }
+              applicant_id={applicants[0]?.applicant_id || ""}
             />
-            <span className="text-sm">List View</span>
+            <UploadApplicantsDialog3
+              recruitment_round_id={rounds[currentRound].id}
+              fetchApplicants={fetchApplicants}
+            />
+          </div>
+
+          {/* View Controls Group */}
+          <div className="flex flex-wrap items-center gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline">Sort Applicants</Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem
+                  onClick={() => setSortOption("current_weighted_asc")}
+                >
+                  Current Round Weighted (Ascending)
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => setSortOption("current_weighted_desc")}
+                >
+                  Current Round Weighted (Descending)
+                </DropdownMenuItem>
+                {currentRound > 0 && (
+                  <>
+                    <DropdownMenuItem
+                      onClick={() => setSortOption("last_weighted_asc")}
+                    >
+                      Last Round Weighted (Ascending)
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => setSortOption("last_weighted_desc")}
+                    >
+                      Last Round Weighted (Descending)
+                    </DropdownMenuItem>
+                  </>
+                )}
+                <DropdownMenuItem onClick={() => setSortOption("status")}>
+                  Accepted / Rejected (Default)
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <div className="flex items-center space-x-2">
+              <span className="text-sm">Grid View</span>
+              <Switch
+                checked={isListView}
+                onCheckedChange={setIsListView}
+                className="toggle-view"
+              />
+              <span className="text-sm">List View</span>
+            </div>
           </div>
         </div>
       </div>

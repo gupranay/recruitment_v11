@@ -10,8 +10,9 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogCancel,
+  AlertDialogClose,
 } from "@/components/ui/alert-dialog";
-import { Loader2, ChevronRight } from "lucide-react";
+import { Loader2, ChevronRight, X } from "lucide-react";
 import { useState } from "react";
 import toast from "react-hot-toast";
 
@@ -34,6 +35,7 @@ export default function ApplicantListItem({
 }: ApplicantListItemProps) {
   const [isAccepting, setIsAccepting] = useState(false); // Loading state for accepting
   const [isRejecting, setIsRejecting] = useState(false); // Loading state for rejecting
+  const [isSettingMaybe, setIsSettingMaybe] = useState(false);
   const [isAlertDialogOpen, setIsAlertDialogOpen] = useState(false); // Confirm dialog state
 
   const handleMoveToNextRound = async () => {
@@ -104,6 +106,34 @@ export default function ApplicantListItem({
     }
   };
 
+  const handleSetMaybe = async () => {
+    setIsSettingMaybe(true);
+    try {
+      const response = await fetch("/api/applicant/maybe", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          applicant_id: applicant.applicant_id,
+          applicant_round_id: applicant.applicant_round_id,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to set the applicant as maybe.");
+      }
+    } catch (error) {
+      console.error("Error setting applicant as maybe:", error);
+      alert("An error occurred while setting the applicant as maybe.");
+    } finally {
+      setIsSettingMaybe(false);
+      setIsAlertDialogOpen(false);
+      toast.success("Applicant marked as maybe");
+      fetchApplicants();
+    }
+  };
+
   return (
     <div className="flex items-center justify-between p-4 bg-card hover:shadow-md border rounded-lg cursor-pointer transition-all">
       {/* Left: Applicant Name and Status */}
@@ -118,7 +148,12 @@ export default function ApplicantListItem({
                 ? "default"
                 : applicant.status === "rejected"
                 ? "destructive"
+                : applicant.status === "maybe"
+                ? "outline"
                 : "secondary"
+            }
+            className={
+              applicant.status === "maybe" ? "bg-yellow-100" : undefined
             }
           >
             {applicant.status}
@@ -139,7 +174,8 @@ export default function ApplicantListItem({
           <ChevronRight className="h-4 w-4" />
           <span className="ml-2">View</span>
         </Button>
-        {applicant.status === "in_progress" && (
+        {(applicant.status === "in_progress" ||
+          applicant.status === "maybe") && (
           <>
             <AlertDialog
               open={isAlertDialogOpen}
@@ -151,56 +187,84 @@ export default function ApplicantListItem({
                   variant="outline"
                   className="p-1 text-xs"
                   onClick={(e) => {
-                    e.stopPropagation(); // Prevents triggering the parent onClick
+                    e.stopPropagation();
                     setIsAlertDialogOpen(true);
                   }}
                 >
                   Decide
                 </Button>
               </AlertDialogTrigger>
-              <AlertDialogContent>
+              <AlertDialogContent className="max-w-md">
+                <AlertDialogClose className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
+                  <X className="h-4 w-4" />
+                  <span className="sr-only">Close</span>
+                </AlertDialogClose>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Confirm Action</AlertDialogTitle>
+                  <AlertDialogTitle>
+                    {applicant.status === "maybe"
+                      ? "Confirm Decision"
+                      : "Confirm Action"}
+                  </AlertDialogTitle>
                   <AlertDialogDescription>
                     What do you want to do with{" "}
                     {applicant.name || "this applicant"}?
                   </AlertDialogDescription>
                 </AlertDialogHeader>
-                <AlertDialogFooter className="flex justify-end space-x-4">
-                  <AlertDialogCancel
-                    className="w-auto px-4 py-2"
-                    onClick={(e) => e.stopPropagation()} // Prevents parent click on cancel
-                  >
-                    Cancel
-                  </AlertDialogCancel>
-                  <Button
-                    variant="outline"
-                    onClick={(e) => {
-                      e.stopPropagation(); // Prevents parent click
-                      handleMoveToNextRound();
-                    }}
-                    disabled={isAccepting}
-                    className="w-auto px-4 py-2 bg-green-500 text-white hover:bg-green-600"
-                  >
-                    {isAccepting ? (
-                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    ) : null}
-                    {isLastRound ? "Finalize" : "Move to Next Round"}
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    onClick={(e) => {
-                      e.stopPropagation(); // Prevents parent click
-                      handleRejectApplicant();
-                    }}
-                    disabled={isRejecting}
-                    className="w-auto px-4 py-2 bg-red-500 text-white hover:bg-red-600"
-                  >
-                    {isRejecting ? (
-                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    ) : null}
-                    Reject
-                  </Button>
+                <AlertDialogFooter className="flex-col space-y-2">
+                  <div className="flex flex-col space-y-2 w-full">
+                    {applicant.status !== "maybe" && (
+                      <Button
+                        variant="outline"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleSetMaybe();
+                        }}
+                        disabled={isSettingMaybe}
+                        className="w-full bg-yellow-500 text-white hover:bg-yellow-600"
+                      >
+                        {isSettingMaybe ? (
+                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        ) : null}
+                        Mark as Maybe
+                      </Button>
+                    )}
+                    <Button
+                      variant="outline"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleMoveToNextRound();
+                      }}
+                      disabled={isAccepting}
+                      className="w-full bg-green-500 text-white hover:bg-green-600"
+                    >
+                      {isAccepting ? (
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      ) : null}
+                      {isLastRound ? "Finalize" : "Move to Next Round"}
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRejectApplicant();
+                      }}
+                      disabled={isRejecting}
+                      className="w-full"
+                    >
+                      {isRejecting ? (
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      ) : null}
+                      Reject
+                    </Button>
+                  </div>
+                  {applicant.status !== "maybe" && (
+                    <AlertDialogCancel
+                      className="w-full mt-2"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      Cancel
+                    </AlertDialogCancel>
+                  )}
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
