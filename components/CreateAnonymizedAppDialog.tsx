@@ -25,10 +25,10 @@ export default function CreateAnonymizedAppDialog({
   const [slug, setSlug] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  // Fetch available fields for anonymization
+  // Fetch available fields for anonymization only when dialog is opened
   useEffect(() => {
     const fetchFields = async () => {
-      if (!applicant_id) return;
+      if (!applicant_id || !isDialogOpen) return;
 
       setIsLoadingFields(true);
       try {
@@ -55,7 +55,7 @@ export default function CreateAnonymizedAppDialog({
     };
 
     fetchFields();
-  }, [applicant_id]);
+  }, [applicant_id, isDialogOpen]);
 
   // Fetch slug if it exists
   useEffect(() => {
@@ -107,7 +107,11 @@ export default function CreateAnonymizedAppDialog({
       setSlug(result.id);
       toast.success("Successfully created Anonymized App Reading");
 
-      window.open(`/anonymous?id=${result.id}`, "_blank", "noopener,noreferrer");
+      window.open(
+        `/anonymous?id=${result.id}`,
+        "_blank",
+        "noopener,noreferrer"
+      );
     } catch (error) {
       console.error("Error creating anonymized app:", error);
     } finally {
@@ -129,41 +133,34 @@ export default function CreateAnonymizedAppDialog({
   }
 
   return (
-    <>
-      <Button onClick={() => setIsDialogOpen(true)} variant="outline">
+    <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+      <Button onClick={() => setIsDialogOpen(true)} variant="default">
         Create Anonymized App Reading
       </Button>
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              Create Anonymized App for {recruitment_round_name || "Unknown Round"}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            {isLoadingFields ? (
-              <p>Loading fields...</p>
-            ) : (
-              <>
-                <p>Select the fields you want to include:</p>
-                <MultiSelect
-                  options={availableFields}
-                  selectedOptions={selectedFields}
-                  onChange={setSelectedFields}
-                />
-              </>
-            )}
-          </div>
-          <DialogFooter>
-            <Button onClick={() => setIsDialogOpen(false)} variant="outline">
-              Cancel
-            </Button>
-            <Button onClick={handleCreate} disabled={selectedFields.length === 0}>
-              Create
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Create Anonymized App Reading</DialogTitle>
+        </DialogHeader>
+        <div className="py-4">
+          <p className="text-sm text-muted-foreground mb-4">
+            Select fields to omit from the anonymized reading for{" "}
+            {recruitment_round_name}
+          </p>
+          {isLoadingFields ? (
+            <p>Loading available fields...</p>
+          ) : (
+            <MultiSelect
+              options={availableFields}
+              selectedOptions={selectedFields}
+              onChange={setSelectedFields}
+              placeholder="Select fields to omit..."
+            />
+          )}
+        </div>
+        <DialogFooter>
+          <Button onClick={handleCreate}>Create Reading</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

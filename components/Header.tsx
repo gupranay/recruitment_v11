@@ -20,6 +20,7 @@ import { ChevronDown, Settings } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { CreateOrganizationDialog } from "./CreateOrganizationDialog";
+import { ManageOrganizationDialog } from "./ManageOrganizationDialog";
 import {
   Dialog,
   DialogContent,
@@ -94,36 +95,7 @@ export default function Header({
               setOrganizations={setOrganizations}
               setCurrentOrg={handleOrgSelect}
             />
-            <Dialog>
-              <DialogTrigger asChild>
-                <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                  <Settings className="mr-2 h-4 w-4" />
-                  Manage Organization
-                </DropdownMenuItem>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Manage Organization</DialogTitle>
-                  <DialogDescription>
-                    Edit the details of your organization.
-                  </DialogDescription>
-                </DialogHeader>
-                <form onSubmit={(e) => e.preventDefault()}>
-                  <div className="grid gap-4 py-4">
-                    <div className="grid gap-2">
-                      <Label htmlFor="orgName">Organization Name</Label>
-                      <Input
-                        id="orgName"
-                        defaultValue={currentOrg?.name || ""}
-                      />
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <Button type="submit">Save Changes</Button>
-                  </DialogFooter>
-                </form>
-              </DialogContent>
-            </Dialog>
+            <ManageOrganizationDialog />
           </DropdownMenuContent>
         </DropdownMenu>
 

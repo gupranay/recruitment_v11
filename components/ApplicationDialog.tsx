@@ -229,6 +229,10 @@ export default function ApplicationDialog({
 
     setIsAddingComment(true);
     try {
+      // Source types:
+      // "R" - Regular comment from application dialog
+      // "A" - Anonymous comment from public form
+      // "F" - Feedback comment from candidate feedback form
       const response = await fetch("/api/comments/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -236,7 +240,7 @@ export default function ApplicationDialog({
           applicant_round_id: applicantRoundId,
           user_id: userId,
           comment_text: newComment.trim(),
-          source: "R", // Regular application source
+          source: "R", // Regular comment from application dialog
         }),
       });
 
