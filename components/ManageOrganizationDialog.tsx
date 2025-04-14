@@ -404,20 +404,15 @@ export function ManageOrganizationDialog() {
               <>
                 {(selectedOrganization?.role === "Owner" ||
                   selectedOrganization?.role === "Admin") && (
-                  <div className="flex-none py-4">
-                    <div
-                      className="relative mb-8 w-full"
-                      style={{ height: "200px" }}
-                    >
-                      <TallButton onClick={() => setShowAddMember(true)}>
-                        <div className="flex flex-col items-center justify-center gap-4">
-                          <Plus size={48} className="text-white" />
-                          <span className="text-white text-2xl font-semibold">
-                            Add Member
-                          </span>
-                        </div>
-                      </TallButton>
-                    </div>
+                  <div className="flex-none pb-6">
+                    <TallButton onClick={() => setShowAddMember(true)}>
+                      <div className="flex items-center justify-center gap-3 py-4">
+                        <Plus size={24} className="text-white" />
+                        <span className="text-white text-lg font-semibold">
+                          Add Member
+                        </span>
+                      </div>
+                    </TallButton>
                   </div>
                 )}
                 <div className="flex-1 space-y-3 overflow-y-auto">
