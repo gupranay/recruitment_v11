@@ -26,7 +26,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { TallButton } from "@/components/ui/tall-button";
 
 type Member = {
   id: string;
@@ -404,15 +403,14 @@ export function ManageOrganizationDialog() {
               <>
                 {(selectedOrganization?.role === "Owner" ||
                   selectedOrganization?.role === "Admin") && (
-                  <div className="flex-none pb-6">
-                    <TallButton onClick={() => setShowAddMember(true)}>
-                      <div className="flex items-center justify-center gap-3 py-4">
-                        <Plus size={24} className="text-white" />
-                        <span className="text-white text-lg font-semibold">
-                          Add Member
-                        </span>
-                      </div>
-                    </TallButton>
+                  <div className="flex-none mb-4">
+                    <Button
+                      onClick={() => setShowAddMember(true)}
+                      className="w-full"
+                    >
+                      <Plus className="h-4 w-4" />
+                      <span>Add member</span>
+                    </Button>
                   </div>
                 )}
                 <div className="flex-1 space-y-3 overflow-y-auto">
