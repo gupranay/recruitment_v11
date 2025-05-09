@@ -1,7 +1,10 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { supabaseBrowser } from "@/lib/supabase/browser";
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse
+) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
@@ -27,7 +30,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const recruitmentCycleId = data[0]?.id;
 
   if (!recruitmentCycleId) {
-    return res.status(500).json({ error: "Failed to retrieve recruitment cycle ID" });
+    return res
+      .status(500)
+      .json({ error: "Failed to retrieve recruitment cycle ID" });
   }
 
   // const { error: roundError } = await supabase

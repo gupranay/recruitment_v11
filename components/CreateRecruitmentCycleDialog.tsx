@@ -16,21 +16,25 @@ import { useState } from "react";
 import toast from "react-hot-toast";
 import { Organization } from "@/contexts/OrganizationContext";
 import { RecruitmentCycle } from "@/lib/types/RecruitmentCycle";
+import { useRecruitmentCycle } from "@/contexts/RecruitmentCycleContext";
 
 type CreateRecruitmentCycleDialogProps = {
   selectedOrganization: Organization;
   recruitmentCycles: RecruitmentCycle[];
   setRecruitmentCycles: (cycles: RecruitmentCycle[]) => void;
+  setCurrentCycle?: (cycle: RecruitmentCycle) => void;
 };
 
 export default function CreateRecruitmentCycleDialog({
   selectedOrganization,
   recruitmentCycles,
   setRecruitmentCycles,
+  setCurrentCycle,
 }: CreateRecruitmentCycleDialogProps) {
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
+  const { setSelectedRecruitmentCycle } = useRecruitmentCycle();
 
   const handleCreate = async () => {
     setLoading(true);
@@ -40,16 +44,22 @@ export default function CreateRecruitmentCycleDialog({
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ name, organization_id: selectedOrganization?.id }),
+        body: JSON.stringify({
+          name,
+          organization_id: selectedOrganization?.id,
+        }),
       });
 
       if (response.ok) {
         const resp = await response.json();
         const newCycle: RecruitmentCycle[] = resp;
-        //console.log("newCycle: ", newCycle);
 
         const updatedCycles = [...recruitmentCycles, newCycle[0]];
         setRecruitmentCycles(updatedCycles); // Update recruitment cycles dynamically
+        setSelectedRecruitmentCycle(newCycle[0]); // Set the newly created cycle as selected
+        if (setCurrentCycle) {
+          setCurrentCycle(newCycle[0]); // Set the current cycle in the dashboard
+        }
 
         toast.success("Recruitment cycle created successfully!");
         setOpen(false);

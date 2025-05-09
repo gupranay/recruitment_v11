@@ -135,6 +135,7 @@ export default function Header({
                 selectedOrganization={currentOrg}
                 recruitmentCycles={recruitmentCycles}
                 setRecruitmentCycles={setRecruitmentCycles}
+                setCurrentCycle={setCurrentCycle}
               />
             )}
             <Dialog>

@@ -7,6 +7,7 @@ import QueryProvider from "@/components/query-provider";
 import { Analytics } from "@vercel/analytics/react";
 import NavBar from "@/components/NavBar";
 import { OrganizationProvider } from "@/contexts/OrganizationContext";
+import { RecruitmentCycleProvider } from "@/contexts/RecruitmentCycleContext";
 
 export const metadata: Metadata = {
   title: "Recruitify",
@@ -32,7 +33,11 @@ export default function RootLayout({
           <QueryProvider>
             <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
               <OrganizationProvider>
-                <main className=" min-h-screen mx-auto py-10">{children}</main>
+                <RecruitmentCycleProvider>
+                  <main className=" min-h-screen mx-auto py-10">
+                    {children}
+                  </main>
+                </RecruitmentCycleProvider>
               </OrganizationProvider>
             </ThemeProvider>
           </QueryProvider>

@@ -58,10 +58,10 @@ export function CreateOrganizationDialog({
 
       // Add the new organization to the list
       const newOrganization: Organization = {
-        id: data[0].id,
-        name: data[0].name,
-        owner_id: data[0].owner_id,
-        created_at: data[0].created_at,
+        id: data.id,
+        name: data.name,
+        owner_id: data.owner_id,
+        created_at: data.created_at,
         role: "Owner", // Add the role property since the creator is always the owner
       };
 
