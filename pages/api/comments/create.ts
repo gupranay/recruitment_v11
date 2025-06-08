@@ -1,6 +1,6 @@
 // api/comments/create.ts
 import { NextApiRequest, NextApiResponse } from "next";
-import { supabaseBrowser } from "@/lib/supabase/browser";
+import { supabaseApi } from "@/lib/supabase/api";
 
 export default async function handler(
   req: NextApiRequest,
@@ -10,21 +10,23 @@ export default async function handler(
     return res.status(405).json({ error: "Method not allowed" });
   }
 
+  const supabase = supabaseApi(req, res);
   const {
-    applicant_round_id,
-    comment_text,
-    user_id,
-    source = "R", // Default to regular for this endpoint
-  } = req.body;
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
 
-  if (!applicant_round_id || !comment_text || !user_id) {
-    return res.status(400).json({
-      error:
-        "Missing required fields: applicant_round_id, comment_text, user_id",
-    });
+  if (authError || !user) {
+    return res.status(401).json({ error: "Unauthorized" });
   }
 
-  const supabase = supabaseBrowser();
+  const { applicant_round_id, comment_text, source = "R" } = req.body;
+
+  if (!applicant_round_id || !comment_text) {
+    return res.status(400).json({
+      error: "Missing required fields: applicant_round_id, comment_text",
+    });
+  }
 
   try {
     // Insert the comment
@@ -33,7 +35,7 @@ export default async function handler(
       .insert([
         {
           applicant_round_id,
-          user_id,
+          user_id: user.id,
           comment_text,
           source,
         },
@@ -42,6 +44,7 @@ export default async function handler(
       .single();
 
     if (error) {
+      console.log(error);
       return res.status(500).json({ error: error.message });
     }
 

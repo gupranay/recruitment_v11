@@ -182,14 +182,16 @@ export default function ApplicantsGridPage() {
             {selectedApplicant && (
               <>
                 {selectedApplicant.headshot_url && (
-            <div className="mx-auto mb-4 rounded-lg overflow-hidden w-64">
-              <img
-                src={selectedApplicant.headshot_url}
-                alt={`${selectedApplicant.name}'s headshot`}
-                className="object-cover w-full h-full"
-              />
-            </div>
-          )}
+                  <div className="mx-auto mb-4 rounded-lg overflow-hidden w-64">
+                    <Image
+                      src={selectedApplicant.headshot_url}
+                      alt={`${selectedApplicant.name}'s headshot`}
+                      width={256}
+                      height={256}
+                      className="object-cover w-full h-full"
+                    />
+                  </div>
+                )}
                 <p className="text-sm">
                   <strong>Name:</strong> {selectedApplicant.name}
                 </p>

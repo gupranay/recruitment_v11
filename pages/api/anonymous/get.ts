@@ -20,7 +20,17 @@ export default async function handler(
     // 1) Fetch the reading for the given slug
     const { data: reading, error: readingError } = await supabase
       .from("anonymous_readings")
-      .select("id, recruitment_round_id, omitted_fields")
+      .select(
+        `id, recruitment_round_id, omitted_fields,
+        recruitment_rounds (
+          id, name, recruitment_cycle_id,
+          recruitment_cycles (
+            id, name, organization_id,
+            organizations (id, name)
+          )
+        )
+      `
+      )
       .eq("slug", slug)
       .single();
 
@@ -34,7 +44,7 @@ export default async function handler(
     // 2) Fetch applicant_ids and created_at for that round
     const { data: bridgingRows, error: bridgingErr } = await supabase
       .from("applicant_rounds")
-      .select("applicant_id, created_at")
+      .select("id, applicant_id, created_at")
       .eq("recruitment_round_id", reading.recruitment_round_id);
 
     if (bridgingErr) {
@@ -45,13 +55,23 @@ export default async function handler(
     const applicants = bridgingRows.map((row) => ({
       applicant_id: row.applicant_id,
       created_at: row.created_at,
+      applicant_round_id: row.id,
     }));
 
     // 3) Return the reading plus the applicant IDs and their created_at
-    console.log("Returning reading:", reading);
+    // Extract names for organization, cycle, and round
+    const orgName =
+      reading?.recruitment_rounds?.recruitment_cycles?.organizations?.name ||
+      null;
+    const cycleName =
+      reading?.recruitment_rounds?.recruitment_cycles?.name || null;
+    const roundName = reading?.recruitment_rounds?.name || null;
     return res.status(200).json({
-      reading, // e.g. { id, recruitment_round_id, omitted_fields }
-      applicants, // array of objects { applicant_id, created_at }
+      reading,
+      applicants,
+      organization_name: orgName,
+      recruitment_cycle_name: cycleName,
+      recruitment_round_name: roundName,
     });
   } catch (err) {
     console.error("Unexpected error:", err);

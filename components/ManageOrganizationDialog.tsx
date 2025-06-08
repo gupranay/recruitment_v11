@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -151,13 +151,7 @@ export function ManageOrganizationDialog() {
   const [deletingOrg, setDeletingOrg] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
-  useEffect(() => {
-    if (open && selectedOrganization) {
-      fetchMembers();
-    }
-  }, [open, selectedOrganization?.id]);
-
-  const fetchMembers = async () => {
+  const fetchMembers = useCallback(async () => {
     if (!selectedOrganization) return;
 
     try {
@@ -180,7 +174,13 @@ export function ManageOrganizationDialog() {
     } catch (error) {
       toast.error("Failed to fetch organization members");
     }
-  };
+  }, [selectedOrganization]);
+
+  useEffect(() => {
+    if (open && selectedOrganization) {
+      fetchMembers();
+    }
+  }, [open, selectedOrganization, fetchMembers]);
 
   const removeMember = async (memberId: string) => {
     if (!selectedOrganization || !user) return;

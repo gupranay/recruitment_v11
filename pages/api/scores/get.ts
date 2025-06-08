@@ -38,7 +38,7 @@ export default async function handler(
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const { applicant_round_id } = req.body;
+  const { applicant_round_id, user_id: filterUserId } = req.body;
   const userId = req.headers["x-user-id"] as string;
 
   if (!applicant_round_id) {
@@ -77,7 +77,12 @@ export default async function handler(
 
     // console.log("Raw scores from database:", scores);
 
-    if (!scores || scores.length === 0) {
+    let filteredScores = scores;
+    if (filterUserId) {
+      filteredScores = scores.filter((score) => score.user_id === filterUserId);
+    }
+
+    if (!filteredScores || filteredScores.length === 0) {
       // console.log(
       //   "No scores found for applicant_round_id:",
       //   applicant_round_id
@@ -86,7 +91,7 @@ export default async function handler(
     }
 
     // Group scores by submission_id if it exists, otherwise by created_at
-    const submissions = scores.reduce(
+    const submissions = filteredScores.reduce(
       (acc: Record<string, Submission>, score: any) => {
         // Use submission_id if it exists, otherwise use created_at as a fallback
         const submissionId = score.submission_id || score.created_at;

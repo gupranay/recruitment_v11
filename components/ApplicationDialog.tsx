@@ -506,15 +506,15 @@ export default function ApplicationDialog({
           </div>
         ) : (
           applicantData && (
-            <div className="flex flex-col bg-white rounded-lg shadow-md h-[80vh]">
+            <div className="flex flex-col bg-card rounded-lg shadow-md h-[80vh]">
               {/* Sticky Header */}
-              <div className="sticky top-0 bg-white z-10 shadow px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-                <h2 className="text-2xl font-bold text-gray-800 truncate">
+              <div className="sticky top-0 bg-card z-10 shadow px-6 py-4 border-b border-border flex justify-between items-center">
+                <h2 className="text-2xl font-bold text-card-foreground truncate">
                   {applicantData.name}
                 </h2>
                 <button
                   onClick={closeDialog}
-                  className="text-gray-500 hover:text-gray-800 transition"
+                  className="text-muted-foreground hover:text-foreground transition"
                   aria-label="Close dialog"
                 >
                   ✕
@@ -546,18 +546,20 @@ export default function ApplicationDialog({
                   {Object.entries(applicantData.data || {}).map(
                     ([key, value]) => (
                       <div key={key} className="flex flex-col">
-                        <h3 className="text-sm font-bold text-black">{key}</h3>
+                        <h3 className="text-sm font-bold text-card-foreground">
+                          {key}
+                        </h3>
                         {isValidUrl(value) ? (
                           <a
                             href={value}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-blue-600 underline"
+                            className="text-primary underline"
                           >
                             View {key}
                           </a>
                         ) : (
-                          <p className="text-gray-700 mt-1">{value}</p>
+                          <p className="text-foreground mt-1">{value}</p>
                         )}
                       </div>
                     )
@@ -566,56 +568,18 @@ export default function ApplicationDialog({
                 <Separator className="my-6" />
 
                 {/* Scores Section */}
-                <div className="bg-white shadow-md rounded-lg p-4 mt-4 mb-8">
-                  <h2 className="text-lg font-semibold mb-2">Scores</h2>
+                <div className="bg-card shadow-md rounded-lg p-4 mt-4 mb-8">
+                  <h2 className="text-lg font-semibold mb-2 text-card-foreground">
+                    Scores
+                  </h2>
 
-                  {/* Score Submission Form - Always visible */}
-                  <div className="bg-gray-50 rounded-lg p-4 mb-6">
-                    <h3 className="text-md font-semibold text-gray-700 mb-4">
-                      Submit New Scores
-                    </h3>
-                    <form className="space-y-4">
-                      {scoringMetrics.map((metric) => (
-                        <div key={metric.id} className="flex flex-col">
-                          <label className="text-sm font-medium">
-                            {metric.name} (Weight: {metric.weight})
-                          </label>
-                          <Input
-                            type="number"
-                            value={scores[metric.id]?.score_value || ""}
-                            onChange={(e) =>
-                              setScores((prev) => ({
-                                ...prev,
-                                [metric.id]: {
-                                  score_value: Number(
-                                    parseFloat(e.target.value) || 0
-                                  ),
-                                  weight: metric.weight,
-                                },
-                              }))
-                            }
-                            min={0}
-                            max={100}
-                            className="w-full"
-                          />
-                        </div>
-                      ))}
-                      <Button
-                        type="button"
-                        onClick={submitScores}
-                        disabled={Object.keys(scores).length === 0}
-                        className="w-full"
-                      >
-                        Submit Scores
-                      </Button>
-                    </form>
-                  </div>
+                  
 
                   {/* Existing Scores Display */}
                   {fetchedScores.length > 0 && (
                     <>
-                      <div className="bg-gray-50 rounded-lg p-4 mb-4">
-                        <h3 className="text-md font-semibold text-gray-700 mb-2">
+                      <div className="bg-muted rounded-lg p-4 mb-4">
+                        <h3 className="text-md font-semibold text-muted-foreground mb-2">
                           Overall Weighted Average Score
                         </h3>
                         <p className="text-2xl font-bold text-primary">
@@ -632,14 +596,14 @@ export default function ApplicationDialog({
                         {fetchedScores.map((submission, index) => (
                           <div
                             key={submission.submission_id}
-                            className="border rounded-lg p-4"
+                            className="border rounded-lg p-4 border-border"
                           >
                             <div className="flex justify-between items-center mb-2">
-                              <h4 className="font-medium">
+                              <h4 className="font-medium text-card-foreground">
                                 Submission {index + 1}
                               </h4>
                               <div className="flex items-center gap-2">
-                                <div className="text-sm text-gray-500">
+                                <div className="text-sm text-muted-foreground">
                                   {new Date(
                                     submission.created_at
                                   ).toLocaleString()}
@@ -673,11 +637,11 @@ export default function ApplicationDialog({
                               {submission.scores?.map((score: Score) => (
                                 <div
                                   key={score.metric_id}
-                                  className="border-b py-2"
+                                  className="border-b py-2 border-border"
                                 >
                                   <div className="flex justify-between items-start">
                                     <div>
-                                      <p className="font-medium">
+                                      <p className="font-medium text-card-foreground">
                                         {score.metric_name}
                                       </p>
                                       {editingScore?.score_id ===
@@ -721,7 +685,9 @@ export default function ApplicationDialog({
                                           </Button>
                                         </div>
                                       ) : (
-                                        <p>Score: {score.score_value}</p>
+                                        <p className="text-foreground">
+                                          Score: {score.score_value}
+                                        </p>
                                       )}
                                     </div>
                                     {submission.user_id === userId &&
@@ -740,14 +706,16 @@ export default function ApplicationDialog({
                                         </Button>
                                       )}
                                   </div>
-                                  <p>Weight: {score.metric_weight}</p>
+                                  <p className="text-muted-foreground">
+                                    Weight: {score.metric_weight}
+                                  </p>
                                 </div>
                               ))}
                             </div>
-                            <div className="mt-2 pt-2 border-t">
-                              <p className="text-sm text-gray-600">
+                            <div className="mt-2 pt-2 border-t border-border">
+                              <p className="text-sm text-muted-foreground">
                                 Submission Weighted Average:{" "}
-                                <span className="font-semibold">
+                                <span className="font-semibold text-card-foreground">
                                   {submission.weighted_average?.toFixed(2) ??
                                     "N/A"}
                                 </span>
@@ -760,15 +728,59 @@ export default function ApplicationDialog({
                   )}
                 </div>
 
+                {/* Score Submission Form - Always visible */}
+                <div className="bg-muted rounded-lg p-4 mb-6">
+                    <h3 className="text-md font-semibold text-muted-foreground mb-4">
+                      Submit New Scores
+                    </h3>
+                    <form className="space-y-4">
+                      {scoringMetrics.map((metric) => (
+                        <div key={metric.id} className="flex flex-col">
+                          <label className="text-sm font-medium text-card-foreground mb-2">
+                            {metric.name} (Weight: {metric.weight})
+                          </label>
+                          <Input
+                            type="number"
+                            value={scores[metric.id]?.score_value || ""}
+                            onChange={(e) =>
+                              setScores((prev) => ({
+                                ...prev,
+                                [metric.id]: {
+                                  score_value: Number(
+                                    parseFloat(e.target.value) || 0
+                                  ),
+                                  weight: metric.weight,
+                                },
+                              }))
+                            }
+                            min={0}
+                            max={100}
+                            className="w-full"
+                          />
+                        </div>
+                      ))}
+                      <Button
+                        type="button"
+                        onClick={submitScores}
+                        disabled={Object.keys(scores).length === 0}
+                        className="w-full"
+                      >
+                        Submit Scores
+                      </Button>
+                    </form>
+                  </div>
+
                 {/* Comments Section */}
-                <div className="bg-white shadow-md rounded-lg p-4 mt-4">
-                  <h2 className="text-lg font-semibold mb-4">Comments</h2>
+                <div className="bg-card shadow-md rounded-lg p-4 mt-4">
+                  <h2 className="text-lg font-semibold mb-4 text-card-foreground">
+                    Comments
+                  </h2>
                   <div className="space-y-4 mb-6">
                     {comments.length > 0 ? (
                       comments.map((comment, index) => (
                         <div
                           key={index}
-                          className="p-4 bg-gray-50 rounded-lg relative group"
+                          className="p-4 bg-muted rounded-lg relative group"
                         >
                           {editingCommentId === comment.id ? (
                             <div className="space-y-2">
@@ -802,7 +814,7 @@ export default function ApplicationDialog({
                           ) : (
                             <>
                               <div className="pr-8">
-                                <p className="text-sm">
+                                <p className="text-sm text-card-foreground">
                                   <span className="font-medium">
                                     {comment.user_name || "Anonymous"}:
                                   </span>{" "}
@@ -812,7 +824,7 @@ export default function ApplicationDialog({
                                     }}
                                   />
                                 </p>
-                                <p className="text-xs text-gray-500 mt-1">
+                                <p className="text-xs text-muted-foreground mt-1">
                                   {comment.round_name && (
                                     <span className="font-semibold">
                                       Round: {comment.round_name}
@@ -830,7 +842,7 @@ export default function ApplicationDialog({
                                     {comment.updated_at &&
                                       new Date(comment.updated_at) >
                                         new Date(comment.created_at) && (
-                                        <span className="ml-1 text-gray-400">
+                                        <span className="ml-1 text-muted-foreground">
                                           (edited)
                                         </span>
                                       )}
@@ -848,7 +860,7 @@ export default function ApplicationDialog({
                                             comment.comment_text
                                           );
                                         }}
-                                        className="text-blue-500 hover:text-blue-700"
+                                        className="text-primary hover:text-primary/80"
                                         title="Edit comment"
                                       >
                                         <Edit2 className="h-4 w-4" />
@@ -857,7 +869,7 @@ export default function ApplicationDialog({
                                         onClick={() =>
                                           setCommentToDelete(comment.id)
                                         }
-                                        className="text-red-500 hover:text-red-700"
+                                        className="text-destructive hover:text-destructive-foreground"
                                         title="Delete comment"
                                       >
                                         <Trash2 className="h-4 w-4" />
@@ -869,7 +881,7 @@ export default function ApplicationDialog({
                                       onClick={() =>
                                         setCommentToDelete(comment.id)
                                       }
-                                      className="text-red-500 hover:text-red-700"
+                                      className="text-destructive hover:text-destructive-foreground"
                                       title="Delete comment"
                                     >
                                       <Trash2 className="h-4 w-4" />
@@ -882,8 +894,8 @@ export default function ApplicationDialog({
                         </div>
                       ))
                     ) : (
-                      <div className="p-4 bg-gray-50 rounded-lg">
-                        <p className="text-sm text-gray-500">
+                      <div className="p-4 bg-muted rounded-lg">
+                        <p className="text-sm text-muted-foreground">
                           No comments yet.
                         </p>
                       </div>
@@ -927,7 +939,7 @@ export default function ApplicationDialog({
                       <AlertDialogAction
                         onClick={handleDeleteComment}
                         disabled={isDeletingComment}
-                        className="bg-red-500 hover:bg-red-600"
+                        className="bg-destructive hover:bg-destructive-foreground"
                       >
                         {isDeletingComment ? (
                           <Loader2 className="h-4 w-4 animate-spin mr-2" />

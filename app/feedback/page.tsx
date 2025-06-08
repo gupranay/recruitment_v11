@@ -15,6 +15,7 @@ import Image from "next/image";
 import useUser from "../hook/useUser";
 import { useSearchParams } from "next/navigation";
 import RichTextEditor from "@/components/RichTextEditor";
+import LoadingModal from "@/components/LoadingModal2";
 
 interface Applicant {
   id: string;
@@ -43,6 +44,10 @@ function FeedbackContent() {
   const [comments, setComments] = useState<Comment[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isApplicantLoading, setIsApplicantLoading] = useState(false);
+  const [cycleName, setCycleName] = useState<string>("");
+  const [roundName, setRoundName] = useState<string>("");
+  const [search, setSearch] = useState("");
 
   // Fetch all applicants in the round
   useEffect(() => {
@@ -63,6 +68,18 @@ function FeedbackContent() {
 
         const data: Applicant[] = await response.json();
         setApplicants(data);
+
+        // Fetch round and cycle names using the new API
+        const infoRes = await fetch("/api/input/get-round-and-cycle-info", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ recruitment_round_id: recruitmentRoundId }),
+        });
+        if (infoRes.ok) {
+          const { round_name, cycle_name } = await infoRes.json();
+          setRoundName(round_name || "");
+          setCycleName(cycle_name || "");
+        }
       } catch (error) {
         console.error("Error fetching applicants:", error);
       } finally {
@@ -99,8 +116,10 @@ function FeedbackContent() {
   };
 
   const handleCardClick = async (applicant: Applicant) => {
+    setIsApplicantLoading(true);
     setSelectedApplicant(applicant);
     await fetchComments(applicant.id);
+    setIsApplicantLoading(false);
     setIsDialogOpen(true);
   };
 
@@ -156,8 +175,17 @@ function FeedbackContent() {
     setIsDialogOpen(false);
   };
 
+  // Filtered applicants based on search
+  const filteredApplicants = applicants.filter((applicant) =>
+    applicant.name.toLowerCase().includes(search.toLowerCase())
+  );
+
   if (isLoading) {
-    return <p className="text-center text-muted-foreground">Loading...</p>;
+    return (
+      <>
+        <LoadingModal isOpen={true} message="Loading Feedback form" />
+      </>
+    );
   }
 
   if (!recruitmentRoundId) {
@@ -171,12 +199,43 @@ function FeedbackContent() {
   return (
     <div className="p-6 space-y-6">
       <Toaster position="top-right" />
-      <h1 className="text-2xl font-bold text-center">Feedback Form</h1>
+      <LoadingModal
+        isOpen={isApplicantLoading}
+        message="Loading applicant details"
+      />
+      <h1 className="text-2xl font-bold text-center">
+        Feedback form{cycleName || roundName ? " for " : ""}
+        {cycleName ? `${cycleName}` : ""}
+        {cycleName && roundName ? ": " : ""}
+        {roundName ? `${roundName}` : ""}
+      </h1>
       <Separator className="my-4" />
 
-      {applicants.length > 0 ? (
+      {/* Search Bar */}
+      <div className="flex justify-center mb-6">
+        <div className="relative w-full max-w-md">
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search applicants by name..."
+            className="w-full border border-gray-300 rounded-lg px-4 py-2 pr-10 focus:outline-none focus:ring-2 focus:ring-primary"
+          />
+          {search && (
+            <button
+              onClick={() => setSearch("")}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
+              aria-label="Clear search"
+            >
+              &#10005;
+            </button>
+          )}
+        </div>
+      </div>
+
+      {filteredApplicants.length > 0 ? (
         <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {applicants.map((applicant) => (
+          {filteredApplicants.map((applicant) => (
             <button
               key={applicant.id}
               onClick={() => handleCardClick(applicant)}
@@ -215,9 +274,11 @@ function FeedbackContent() {
               <>
                 {selectedApplicant.headshot_url && (
                   <div className="mx-auto mb-4 rounded-lg overflow-hidden w-64">
-                    <img
+                    <Image
                       src={selectedApplicant.headshot_url}
                       alt={`${selectedApplicant.name}'s headshot`}
+                      width={256}
+                      height={256}
                       className="object-cover w-full h-full"
                     />
                   </div>
@@ -236,8 +297,18 @@ function FeedbackContent() {
                             __html: comment.comment_text,
                           }}
                         />
-                        <p className="text-xs text-gray-500 mt-1">
-                          {comment.round_name && (
+                        <span className="text-xs text-gray-500 block mt-1">
+                          {new Date(comment.created_at).toLocaleString()}
+                          {comment.updated_at &&
+                            new Date(comment.updated_at) >
+                              new Date(comment.created_at) && (
+                              <span className="ml-1 text-gray-400">
+                                (edited)
+                              </span>
+                            )}
+                        </span>
+                        {comment.round_name && (
+                          <p className="text-xs text-gray-500 mt-1">
                             <span className="font-semibold">
                               Round: {comment.round_name}
                               {comment.source === "F"
@@ -246,18 +317,8 @@ function FeedbackContent() {
                                 ? " (Anonymous)"
                                 : ""}
                             </span>
-                          )}
-                          <span className="ml-2">
-                            {new Date(comment.created_at).toLocaleString()}
-                            {comment.updated_at &&
-                              new Date(comment.updated_at) >
-                                new Date(comment.created_at) && (
-                                <span className="ml-1 text-gray-400">
-                                  (edited)
-                                </span>
-                              )}
-                          </span>
-                        </p>
+                          </p>
+                        )}
                       </div>
                     ))}
                   </div>

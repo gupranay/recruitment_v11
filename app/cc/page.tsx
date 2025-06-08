@@ -34,7 +34,7 @@ export default function ApplicantsGridPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  const recruitmentRoundId = "b9b82265-7685-4e1e-815b-cc7c6cd8d0e4"; 
+  const recruitmentRoundId = "b9b82265-7685-4e1e-815b-cc7c6cd8d0e4";
 
   // Fetch all applicants in the round
   useEffect(() => {
@@ -182,14 +182,16 @@ export default function ApplicantsGridPage() {
             {selectedApplicant && (
               <>
                 {selectedApplicant.headshot_url && (
-            <div className="mx-auto mb-4 rounded-lg overflow-hidden w-64">
-              <img
-                src={selectedApplicant.headshot_url}
-                alt={`${selectedApplicant.name}'s headshot`}
-                className="object-cover w-full h-full"
-              />
-            </div>
-          )}
+                  <div className="mx-auto mb-4 rounded-lg overflow-hidden w-64">
+                    <Image
+                      src={selectedApplicant.headshot_url}
+                      alt={`${selectedApplicant.name}'s headshot`}
+                      width={256}
+                      height={256}
+                      className="object-cover w-full h-full"
+                    />
+                  </div>
+                )}
                 <p className="text-sm">
                   <strong>Name:</strong> {selectedApplicant.name}
                 </p>
@@ -204,7 +206,11 @@ export default function ApplicantsGridPage() {
                     {selectedApplicant.headshot_url}
                   </a>
                 </p>
-                <p> Please write Strong Yes, Weak Yes, Weak No, or Strong No and an explanation for why</p>
+                <p>
+                  {" "}
+                  Please write Strong Yes, Weak Yes, Weak No, or Strong No and
+                  an explanation for why
+                </p>
                 <Separator className="my-4" />
                 <h3 className="text-lg font-semibold">Comments</h3>
                 <div className="space-y-2">

@@ -181,7 +181,10 @@ export default function ApplicantCard({
             </Badge>
           )}
           {applicant.status === "maybe" && (
-            <Badge variant="outline" className="text-xs bg-yellow-100">
+            <Badge
+              variant="outline"
+              className="text-xs bg-yellow-100 dark:bg-yellow-900"
+            >
               Maybe
             </Badge>
           )}

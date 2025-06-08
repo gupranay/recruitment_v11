@@ -1,7 +1,11 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { supabaseBrowser } from "@/lib/supabase/browser";
+import { randomUUID } from "crypto";
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse
+) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
@@ -10,13 +14,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     applicant_id,
     recruitment_round_id,
     user_id,
-    scores // array of { metric_id, score_value, weight }
+    scores, // array of { metric_id, score_value, weight }
   } = req.body;
 
   // Basic validation
-  if (!applicant_id || !recruitment_round_id || !Array.isArray(scores) || scores.length === 0) {
+  if (
+    !applicant_id ||
+    !recruitment_round_id ||
+    !Array.isArray(scores) ||
+    scores.length === 0
+  ) {
     return res.status(400).json({
-      error: "Missing or invalid fields: applicant_id, recruitment_round_id, and a non-empty scores array",
+      error:
+        "Missing or invalid fields: applicant_id, recruitment_round_id, and a non-empty scores array",
     });
   }
 
@@ -37,7 +47,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
     if (!applicantRound) {
       return res.status(404).json({
-        error: "No matching applicant_round found for the given applicant + round",
+        error:
+          "No matching applicant_round found for the given applicant + round",
       });
     }
 
@@ -46,11 +57,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // 2) Build the insert data for scores
     //    e.g. { applicant_round_id, metric_id, score_value, user_id }
     //    ignoring weight on the DB side (unless you store it in 'scores' or 'metrics' as well).
+    const submission_id = randomUUID(); // Generate a new submission_id
     const insertData = scores.map((item) => ({
       applicant_round_id: applicantRoundId,
       metric_id: item.metric_id,
       score_value: item.score_value,
       user_id: user_id || null, // if you track the user
+      submission_id, // assign the same submission_id to all
     }));
 
     // 3) Insert (or upsert) into 'scores'
@@ -76,7 +89,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // if you trust all metrics add up to 1, denominator can remain 1
       // but we'll do a real sum if needed
       numerator += (item.score_value ?? 0) * (item.weight ?? 0);
-      denominator += (item.weight ?? 0);
+      denominator += item.weight ?? 0;
     });
 
     let weightedAverage = null;
@@ -99,9 +112,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(200).json({
       message: "Scores created and weighted average updated successfully",
       scores: insertedScores,
-      weighted_score: weightedAverage
+      weighted_score: weightedAverage,
     });
-
   } catch (err) {
     console.error("Unexpected error in creating scores:", err);
     return res.status(500).json({ error: "Internal server error" });

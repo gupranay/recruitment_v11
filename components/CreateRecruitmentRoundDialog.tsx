@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Plus, X } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import toast from "react-hot-toast";
 import { RecruitmentRound } from "@/lib/types/RecruitmentRound";
 import { RecruitmentCycle } from "@/lib/types/RecruitmentCycle";
@@ -41,9 +41,20 @@ export default function CreateRecruitmentRoundDialog({
   const [metrics, setMetrics] = useState<Metric[]>([{ name: "", weight: 0 }]);
   const [error, setError] = useState<string | null>(null);
 
+  const validateWeights = useCallback(() => {
+    const totalWeight = metrics.reduce((sum, metric) => sum + metric.weight, 0);
+    if (Math.abs(totalWeight - 1) > 0.001) {
+      setError(
+        `Total weight must be 1. Current total: ${totalWeight.toFixed(3)}`
+      );
+    } else {
+      setError(null);
+    }
+  }, [metrics]);
+
   useEffect(() => {
     validateWeights();
-  }, [metrics]);
+  }, [metrics, validateWeights]);
 
   // Add new metric
   const addMetric = () => {
@@ -56,18 +67,16 @@ export default function CreateRecruitmentRoundDialog({
   };
 
   // Update metric value
-  const updateMetric = (index: number, field: keyof Metric, value: string | number) => {
-    setMetrics(metrics.map((metric, i) => (i === index ? { ...metric, [field]: value } : metric)));
-  };
-
-  // Validate total weights = 1
-  const validateWeights = () => {
-    const totalWeight = metrics.reduce((sum, metric) => sum + metric.weight, 0);
-    if (Math.abs(totalWeight - 1) > 0.001) {
-      setError(`Total weight must be 1. Current total: ${totalWeight.toFixed(3)}`);
-    } else {
-      setError(null);
-    }
+  const updateMetric = (
+    index: number,
+    field: keyof Metric,
+    value: string | number
+  ) => {
+    setMetrics(
+      metrics.map((metric, i) =>
+        i === index ? { ...metric, [field]: value } : metric
+      )
+    );
   };
 
   // Adjust weights to sum 1
@@ -78,7 +87,12 @@ export default function CreateRecruitmentRoundDialog({
       setMetrics(metrics.map((metric) => ({ ...metric, weight: evenWeight })));
     } else {
       const factor = 1 / totalWeight;
-      setMetrics(metrics.map((metric) => ({ ...metric, weight: Number((metric.weight * factor).toFixed(4)) })));
+      setMetrics(
+        metrics.map((metric) => ({
+          ...metric,
+          weight: Number((metric.weight * factor).toFixed(4)),
+        }))
+      );
     }
   };
 
@@ -132,10 +146,11 @@ export default function CreateRecruitmentRoundDialog({
         <DialogHeader>
           <DialogTitle>Create New Round</DialogTitle>
           <DialogDescription>
-            Add a new round to the recruitment process and define evaluation metrics.
+            Add a new round to the recruitment process and define evaluation
+            metrics.
           </DialogDescription>
         </DialogHeader>
-        
+
         <div className="flex-1 overflow-hidden">
           {/* Scrollable Content */}
           <ScrollArea className="h-[45vh] px-4">
@@ -158,7 +173,12 @@ export default function CreateRecruitmentRoundDialog({
                 <div key={index} className="p-2 border rounded">
                   <div className="flex items-center justify-between">
                     <Label>Metric {index + 1}</Label>
-                    <Button type="button" variant="ghost" size="icon" onClick={() => removeMetric(index)}>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => removeMetric(index)}
+                    >
                       <X className="h-4 w-4" />
                     </Button>
                   </div>
@@ -168,7 +188,9 @@ export default function CreateRecruitmentRoundDialog({
                       <Input
                         id={`name-${index}`}
                         value={metric.name}
-                        onChange={(e) => updateMetric(index, "name", e.target.value)}
+                        onChange={(e) =>
+                          updateMetric(index, "name", e.target.value)
+                        }
                         placeholder="Enter metric name"
                       />
                     </div>
@@ -181,16 +203,28 @@ export default function CreateRecruitmentRoundDialog({
                         min="0"
                         max="1"
                         value={metric.weight}
-                        onChange={(e) => updateMetric(index, "weight", Number(e.target.value))}
+                        onChange={(e) =>
+                          updateMetric(index, "weight", Number(e.target.value))
+                        }
                       />
                     </div>
                   </div>
                 </div>
               ))}
-              <Button type="button" variant="outline" onClick={addMetric} className="w-full">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={addMetric}
+                className="w-full"
+              >
                 <Plus className="mr-2 h-4 w-4" /> Add Metric
               </Button>
-              <Button type="button" variant="secondary" onClick={adjustWeights} className="w-full">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={adjustWeights}
+                className="w-full"
+              >
                 Adjust Weights to Sum 1
               </Button>
               {error && <p className="text-red-500 text-sm">{error}</p>}
@@ -199,7 +233,12 @@ export default function CreateRecruitmentRoundDialog({
         </div>
 
         <DialogFooter>
-          <Button type="submit" onClick={handleCreate} disabled={loading || !!error} className="w-full">
+          <Button
+            type="submit"
+            onClick={handleCreate}
+            disabled={loading || !!error}
+            className="w-full"
+          >
             {loading ? "Creating..." : "Create Round"}
           </Button>
         </DialogFooter>

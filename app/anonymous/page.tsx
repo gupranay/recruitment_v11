@@ -16,6 +16,9 @@ import { Input } from "@/components/ui/input";
 import toast, { Toaster } from "react-hot-toast";
 import useUser from "../hook/useUser";
 import { create } from "domain";
+import { Pencil, Trash2 } from "lucide-react";
+import RichTextEditor from "@/components/RichTextEditor";
+import LoadingModal from "@/components/LoadingModal2";
 
 interface AnonApplicant {
   id: string; // The actual UUID of the applicant
@@ -28,16 +31,22 @@ const ReadingPageContent = () => {
   const slug = searchParams?.get("id");
 
   const [applicants, setApplicants] = useState<
-    { id: string; created_at: string; number: number }[]
+    {
+      id: string;
+      created_at: string;
+      number: number;
+      applicant_round_id: string;
+    }[]
   >([]);
   const [readingDetails, setReadingDetails] = useState<any>(null);
   const [selectedApplicant, setSelectedApplicant] = useState<{
     id: string;
     number: number;
+    applicant_round_id: string;
     [key: string]: any;
   } | null>(null);
   const [comments, setComments] = useState<
-    { comment_text: string; created_at: string }[]
+    { comment_text: string; created_at: string; user_name?: string }[]
   >([]);
   const [newComment, setNewComment] = useState<string>("");
   const [scores, setScores] = useState<{
@@ -46,9 +55,15 @@ const ReadingPageContent = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [scoringMetrics, setScoringMetrics] = useState<any[]>([]);
-  const [scoreSubmitted, setScoreSubmitted] = useState<boolean>(false);
-  const [scoreMessage, setScoreMessage] = useState<string>("");
   const [fetchedScores, setFetchedScores] = useState<any[]>([]);
+  const [editingScore, setEditingScore] = useState<{
+    score_id: string;
+    score_value: number;
+  } | null>(null);
+  const [isDeletingSubmission, setIsDeletingSubmission] = useState(false);
+  const [organizationName, setOrganizationName] = useState<string>("");
+  const [cycleName, setCycleName] = useState<string>("");
+  const [roundName, setRoundName] = useState<string>("");
 
   useEffect(() => {
     const fetchData = async () => {
@@ -68,22 +83,36 @@ const ReadingPageContent = () => {
           throw new Error("Failed to fetch data");
         }
 
-        const { reading, applicants: fetchedApplicants } =
-          await response.json();
+        const apiResponse = await response.json();
+        const {
+          reading,
+          applicants: fetchedApplicants,
+          organization_name,
+          recruitment_cycle_name,
+          recruitment_round_name,
+        } = apiResponse;
 
         setReadingDetails(reading);
         setApplicants(
           fetchedApplicants.map(
             (
-              applicant: { applicant_id: string; created_at: string },
+              applicant: {
+                applicant_id: string;
+                created_at: string;
+                applicant_round_id: string;
+              },
               index: number
             ) => ({
               id: applicant.applicant_id,
               created_at: applicant.created_at,
               number: index + 1,
+              applicant_round_id: applicant.applicant_round_id,
             })
           )
         );
+        setOrganizationName(organization_name || "");
+        setCycleName(recruitment_cycle_name || "");
+        setRoundName(recruitment_round_name || "");
       } catch (error) {
         console.error("Error fetching data:", error);
       } finally {
@@ -129,40 +158,40 @@ const ReadingPageContent = () => {
   }, [slug, readingDetails]);
 
   useEffect(() => {
-    const checkScore = async () => {
-      if (!selectedApplicant || !readingDetails) return;
-
+    const fetchUserScores = async () => {
+      if (!selectedApplicant || !readingDetails || !user?.id) return;
+      if (!selectedApplicant.applicant_round_id) return;
       try {
-        const response = await fetch("/api/scores/check", {
+        const response = await fetch("/api/scores/get", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            "x-user-id": user.id,
+          },
           body: JSON.stringify({
-            applicant_id: selectedApplicant.id,
-            recruitment_round_id: readingDetails.recruitment_round_id,
+            applicant_round_id: selectedApplicant.applicant_round_id,
+            user_id: user.id,
           }),
         });
-
         if (response.ok) {
-          const data = await response.json();
-          setScoreSubmitted(data.hasScore); // Check if a score exists
-          setScoreMessage(data.message); // Set the message from the response
-        } else {
-          console.error("Failed to check score status");
+          const scoresData = await response.json();
+          setFetchedScores(scoresData);
         }
       } catch (error) {
-        console.error("Error checking score status:", error);
+        console.error("Error fetching user scores:", error);
       }
     };
-
-    checkScore();
-  }, [selectedApplicant, readingDetails]);
+    fetchUserScores();
+  }, [selectedApplicant, readingDetails, user]);
 
   const fetchApplicantData = async (applicant: {
     id: string;
     created_at: string;
     number: number;
+    applicant_round_id: string;
   }) => {
     try {
+      setFetchedScores([]); // Always clear scores when opening a new dialog
       const response = await fetch(`/api/applicant/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -185,6 +214,7 @@ const ReadingPageContent = () => {
       setSelectedApplicant({
         id: applicant.id,
         number: applicant.number,
+        applicant_round_id: applicant.applicant_round_id,
         ...filteredData,
       });
 
@@ -221,7 +251,7 @@ const ReadingPageContent = () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           applicant_id: selectedApplicant.id,
-          comment_text: newComment,
+          comment_text: newComment, // HTML
           user_id: user?.id,
           recruitment_round_id: readingDetails.recruitment_round_id,
         }),
@@ -231,10 +261,13 @@ const ReadingPageContent = () => {
         throw new Error("Failed to post comment");
       }
 
-      const { comment_text, created_at } = await response.json();
+      const { comment } = await response.json();
       setComments((prevComments) => [
         ...prevComments,
-        { comment_text, created_at },
+        {
+          ...comment,
+          user_name: user?.full_name || user?.email || "You",
+        },
       ]);
       setNewComment("");
     } catch (error) {
@@ -250,11 +283,40 @@ const ReadingPageContent = () => {
 
   const submitScores = async () => {
     if (!selectedApplicant) return;
+    if (!selectedApplicant.applicant_round_id) return;
 
     if (!validateScores()) {
       toast.error("All scores must not be empty.");
       return;
     }
+
+    // Build the optimistic (pending) submission
+    const optimisticSubmission = {
+      submission_id: `pending-${Date.now()}`,
+      created_at: new Date().toISOString(),
+      user_name: "You",
+      user_id: user?.id,
+      scores: Object.entries(scores).map(
+        ([metricId, { score_value, weight }]) => ({
+          score_id: `pending-${metricId}`,
+          score_value,
+          metric_id: metricId,
+          metric_name: scoringMetrics.find((m) => m.id === metricId)?.name,
+          metric_weight: weight,
+        })
+      ),
+      weighted_average:
+        Object.entries(scores).reduce(
+          (acc, [_, { score_value, weight }]) => acc + score_value * weight,
+          0
+        ) /
+        Object.entries(scores).reduce(
+          (acc, [_, { weight }]) => acc + weight,
+          0
+        ),
+      pending: true,
+    };
+    setFetchedScores((prev) => [optimisticSubmission, ...prev]);
 
     try {
       const response = await fetch(`/api/scores/create`, {
@@ -278,10 +340,36 @@ const ReadingPageContent = () => {
         throw new Error("Failed to submit scores");
       }
 
-      setScoreSubmitted(true);
-      setScoreMessage("Scores submitted successfully!");
       setScores({});
+      toast.success("Scores submitted successfully!");
+      // Refresh scores after submission and remove the pending card
+      if (selectedApplicant.applicant_round_id && user?.id) {
+        try {
+          const scoresResponse = await fetch("/api/scores/get", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "x-user-id": user.id,
+            },
+            body: JSON.stringify({
+              applicant_round_id: selectedApplicant.applicant_round_id,
+              user_id: user.id,
+            }),
+          });
+          if (scoresResponse.ok) {
+            const scoresData = await scoresResponse.json();
+            setFetchedScores(scoresData);
+          }
+        } catch (error) {
+          console.error("Error fetching user scores after submit:", error);
+        }
+      } else {
+        // Remove the pending card if we can't refresh
+        setFetchedScores((prev) => prev.filter((s) => !s.pending));
+      }
     } catch (error) {
+      // Remove the pending card on error
+      setFetchedScores((prev) => prev.filter((s) => !s.pending));
       console.error("Error submitting scores:", error);
       toast.error("Failed to submit scores.");
     }
@@ -291,7 +379,10 @@ const ReadingPageContent = () => {
     id: string;
     created_at: string;
     number: number;
+    applicant_round_id: string;
   }) => {
+    setIsDialogOpen(true);
+    setSelectedApplicant(null);
     fetchApplicantData(applicant);
   };
 
@@ -299,6 +390,71 @@ const ReadingPageContent = () => {
     setSelectedApplicant(null);
     setComments([]);
     setIsDialogOpen(false);
+  };
+
+  const handleDeleteSubmission = async (submissionId: string) => {
+    if (!user?.id) return;
+    setIsDeletingSubmission(true);
+    try {
+      const response = await fetch("/api/scores/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          submission_id: submissionId,
+          user_id: user.id,
+        }),
+      });
+      if (!response.ok) throw new Error("Failed to delete submission");
+      setFetchedScores((prevScores) =>
+        prevScores.filter((score) => score.submission_id !== submissionId)
+      );
+      toast.success("Submission deleted successfully!");
+    } catch (error) {
+      console.error("Error deleting submission:", error);
+      toast.error("Failed to delete submission");
+    } finally {
+      setIsDeletingSubmission(false);
+    }
+  };
+
+  const handleUpdateScore = async (scoreId: string, newValue: number) => {
+    if (!user?.id) return;
+    try {
+      const response = await fetch("/api/scores/update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          score_id: scoreId,
+          score_value: newValue,
+          user_id: user.id,
+        }),
+      });
+      if (!response.ok) throw new Error("Failed to update score");
+      const { weighted_average } = await response.json();
+      setFetchedScores((prevScores) =>
+        prevScores.map((submission) => {
+          if (
+            submission.scores.some((score: any) => score.score_id === scoreId)
+          ) {
+            return {
+              ...submission,
+              scores: submission.scores.map((score: any) =>
+                score.score_id === scoreId
+                  ? { ...score, score_value: newValue }
+                  : score
+              ),
+              weighted_average,
+            };
+          }
+          return submission;
+        })
+      );
+      setEditingScore(null);
+      toast.success("Score updated successfully!");
+    } catch (error) {
+      console.error("Error updating score:", error);
+      toast.error("Failed to update score");
+    }
   };
 
   if (!slug) {
@@ -310,30 +466,40 @@ const ReadingPageContent = () => {
   }
 
   if (isLoading) {
-    return <p className="text-center text-muted-foreground">Loading...</p>;
+    return (
+      <LoadingModal
+        isOpen={true}
+        message="Loading anonymous feedback form..."
+      />
+    );
   }
 
   return (
     <div className="p-6 space-y-6">
       <Toaster position="top-right" reverseOrder={false} />
       <h1 className="text-2xl font-bold text-center">
-        Anonymous Applications for {slug}
+        Anonymous Applications for {organizationName}
+        {cycleName ? `: ${cycleName}` : ""}
+        {roundName ? `, ${roundName}` : ""}
       </h1>
       <Separator className="my-4" />
 
       {applicants.length > 0 ? (
         <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-          {applicants.map((applicant) => (
-            <button
-              key={applicant.id}
-              onClick={() => openDialog(applicant)}
-              className="rounded-lg border border-muted bg-card shadow-sm p-4 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-ring transition"
-            >
-              <p className="text-lg font-semibold text-center">
-                Applicant #{applicant.number}
-              </p>
-            </button>
-          ))}
+          {applicants
+            .slice()
+            .sort((a, b) => a.id.localeCompare(b.id))
+            .map((applicant) => (
+              <button
+                key={applicant.id}
+                onClick={() => openDialog(applicant)}
+                className="rounded-lg border border-muted bg-card shadow-sm p-4 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-ring transition"
+              >
+                <p className="text-lg font-semibold text-center">
+                  Applicant #{applicant.number}
+                </p>
+              </button>
+            ))}
         </div>
       ) : (
         <p className="text-center text-muted-foreground">
@@ -342,60 +508,216 @@ const ReadingPageContent = () => {
       )}
 
       <Dialog open={isDialogOpen} onOpenChange={closeDialog}>
-        <DialogContent className="max-w-3xl">
-          <DialogHeader>
-            <DialogTitle>
-              Applicant #{selectedApplicant?.number || "N/A"}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="py-4 space-y-4 max-h-[70vh] overflow-auto">
-            {selectedApplicant && (
-              <>
-                {Object.entries(selectedApplicant).map(([key, value]) => (
-                  <div
-                    key={key}
-                    className="flex flex-col bg-muted/10 p-3 rounded-lg"
-                  >
-                    <p className="font-medium text-sm text-muted-foreground uppercase tracking-wide">
-                      {key}
-                    </p>
-                    <p className="text-sm text-gray-800 break-words">
-                      {typeof value === "object"
-                        ? JSON.stringify(value, null, 2)
-                        : value || "N/A"}
-                    </p>
-                  </div>
-                ))}
-                <Separator className="my-4" />
-                <h3 className="text-lg font-semibold">Comments</h3>
-                <div className="space-y-2">
-                  {comments.map(({ comment_text, created_at }, index) => (
-                    <div key={index} className="p-2 bg-muted/10 rounded-lg">
-                      <p className="text-sm">{comment_text}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {new Date(created_at).toLocaleString()}
+        {/* Application loading modal */}
+        <LoadingModal
+          isOpen={isDialogOpen && !selectedApplicant}
+          message="Loading applicant details..."
+        />
+        {selectedApplicant ? (
+          <DialogContent className="max-w-3xl">
+            <DialogHeader>
+              <DialogTitle>
+                Applicant #{selectedApplicant.number || "N/A"}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="py-4 space-y-4 max-h-[70vh] overflow-auto">
+              {/* Applicant details, comments, and scores sections go here (unchanged) */}
+              {Object.entries(selectedApplicant).map(([key, value]) => (
+                <div
+                  key={key}
+                  className="flex flex-col bg-muted/10 p-3 rounded-lg"
+                >
+                  <p className="font-medium text-sm text-muted-foreground uppercase tracking-wide">
+                    {key}
+                  </p>
+                  <p className="text-sm text-foreground break-words">
+                    {typeof value === "object"
+                      ? JSON.stringify(value, null, 2)
+                      : value || "N/A"}
+                  </p>
+                </div>
+              ))}
+              <Separator className="my-4" />
+              {/* Comments Section - refactored to match ApplicationDialog */}
+              <div className="bg-card shadow-md rounded-lg p-4 mt-4">
+                <h2 className="text-lg font-semibold mb-4 text-card-foreground">
+                  Comments
+                </h2>
+                <div className="space-y-4 mb-6">
+                  {comments.length > 0 ? (
+                    comments.map((comment, index) => (
+                      <div
+                        key={index}
+                        className="p-4 bg-muted rounded-lg relative group"
+                      >
+                        <div>
+                          <div className="text-sm text-card-foreground">
+                            <span
+                              dangerouslySetInnerHTML={{
+                                __html: comment.comment_text,
+                              }}
+                            />
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-2">
+                            {new Date(comment.created_at).toLocaleString()}
+                          </p>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="p-4 bg-muted rounded-lg">
+                      <p className="text-sm text-muted-foreground">
+                        No comments yet.
                       </p>
                     </div>
-                  ))}
+                  )}
                 </div>
-                <Textarea
-                  value={newComment}
-                  onChange={(e) => setNewComment(e.target.value)}
-                  placeholder="Add a comment"
-                  className="mt-4"
-                />
-                <Button onClick={postComment} className="mt-2">
-                  Post Comment
-                </Button>
-                <Separator className="my-4" />
-                <h3 className="text-lg font-semibold">Submit Scores</h3>
-                {scoreSubmitted ? (
-                  <p className="text-center text-green-500">{scoreMessage}</p>
-                ) : (
+                <div className="space-y-4">
+                  <RichTextEditor
+                    content={newComment}
+                    onChange={setNewComment}
+                    placeholder="Add a new comment..."
+                  />
+                  <Button
+                    onClick={postComment}
+                    className="w-full flex items-center justify-center"
+                  >
+                    Post Comment
+                  </Button>
+                </div>
+              </div>
+              <Separator className="my-4" />
+              {/* Scores Section - refactored to match ApplicationDialog */}
+              <div className="bg-card shadow-md rounded-lg p-4 mt-4 mb-8">
+                <h2 className="text-lg font-semibold mb-2 text-card-foreground">
+                  Scores
+                </h2>
+                {/* Existing Scores Display - now above the submission form */}
+                {fetchedScores.length > 0 && (
+                  <div className="space-y-6 mb-8">
+                    {fetchedScores.map((submission, index) => (
+                      <div
+                        key={submission.submission_id}
+                        className={`border rounded-lg p-4 border-border ${
+                          submission.pending
+                            ? "border-yellow-400 bg-yellow-100/10"
+                            : ""
+                        }`}
+                      >
+                        <div className="flex justify-between items-center mb-2">
+                          <h4 className="font-medium text-card-foreground">
+                            Submission {index + 1}
+                          </h4>
+                          <div className="flex items-center gap-2">
+                            <div className="text-sm text-muted-foreground">
+                              {new Date(submission.created_at).toLocaleString()}
+                              <span className="ml-2">by You</span>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() =>
+                                handleDeleteSubmission(submission.submission_id)
+                              }
+                              disabled={isDeletingSubmission}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          {submission.scores?.map((score: any) => (
+                            <div
+                              key={score.metric_id}
+                              className="border-b py-2 border-border"
+                            >
+                              <div className="flex justify-between items-start">
+                                <div>
+                                  <p className="font-medium text-card-foreground">
+                                    {score.metric_name}
+                                  </p>
+                                  {editingScore &&
+                                  editingScore.score_id === score.score_id ? (
+                                    <div className="flex items-center gap-2 mt-1">
+                                      <Input
+                                        type="number"
+                                        value={editingScore.score_value}
+                                        onChange={(e) =>
+                                          setEditingScore({
+                                            score_id: editingScore.score_id,
+                                            score_value: Number(
+                                              parseFloat(e.target.value) || 0
+                                            ),
+                                          })
+                                        }
+                                        min={1}
+                                        max={parseInt(
+                                          score.metric_name.match(
+                                            /1-(\\d+)/
+                                          )?.[1] || "100",
+                                          10
+                                        )}
+                                        className="w-20"
+                                      />
+                                      <Button
+                                        size="sm"
+                                        onClick={() =>
+                                          handleUpdateScore(
+                                            score.score_id,
+                                            editingScore.score_value
+                                          )
+                                        }
+                                      >
+                                        Save
+                                      </Button>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => setEditingScore(null)}
+                                      >
+                                        Cancel
+                                      </Button>
+                                    </div>
+                                  ) : (
+                                    <p className="text-foreground">
+                                      Score: {score.score_value}
+                                    </p>
+                                  )}
+                                </div>
+                                {!editingScore && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() =>
+                                      setEditingScore({
+                                        score_id: score.score_id,
+                                        score_value: score.score_value,
+                                      })
+                                    }
+                                  >
+                                    <Pencil className="h-4 w-4" />
+                                  </Button>
+                                )}
+                              </div>
+                              <p className="text-muted-foreground">
+                                Weight: {score.metric_weight}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {/* Score Submission Form - now below the scores list */}
+                <div className="bg-muted rounded-lg p-4">
+                  <h3 className="text-md font-semibold text-muted-foreground mb-4">
+                    Submit New Scores
+                  </h3>
                   <form className="space-y-4">
                     {scoringMetrics.map((metric) => (
                       <div key={metric.id} className="flex flex-col">
-                        <label className="text-sm font-medium">
+                        <label className="text-sm font-medium text-card-foreground mb-2">
                           {metric.name} (Weight: {metric.weight})
                         </label>
                         <Input
@@ -405,33 +727,41 @@ const ReadingPageContent = () => {
                             setScores((prev) => ({
                               ...prev,
                               [metric.id]: {
-                                score_value: Number(e.target.value),
+                                score_value: Number(
+                                  parseFloat(e.target.value) || 0
+                                ),
                                 weight: metric.weight,
                               },
                             }))
                           }
+                          min={1}
+                          max={parseInt(
+                            metric.name.match(/1-(\\d+)/)?.[1] || "100",
+                            10
+                          )}
+                          className="w-full"
                         />
                       </div>
                     ))}
                     <Button
                       type="button"
                       onClick={submitScores}
-                      disabled={!validateScores()}
+                      disabled={Object.keys(scores).length === 0}
                       className="w-full"
                     >
                       Submit Scores
                     </Button>
                   </form>
-                )}
-              </>
-            )}
-          </div>
-          <DialogFooter>
-            <Button onClick={closeDialog} variant="outline">
-              Close
-            </Button>
-          </DialogFooter>
-        </DialogContent>
+                </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button onClick={closeDialog} variant="outline">
+                Close
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        ) : null}
       </Dialog>
     </div>
   );

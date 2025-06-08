@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
@@ -95,16 +95,16 @@ export default function Component() {
     setIsLoading(false);
   };
 
-  const saveCurrentRoundToLocalStorage = () => {
+  const saveCurrentRoundToLocalStorage = useCallback(() => {
     if (currentOrg && currentCycle) {
       localStorage.setItem(
         `lastUsedRound_${user?.id}_${currentOrg.id}_${currentCycle.id}`,
         JSON.stringify(currentRound)
       );
     }
-  };
+  }, [currentOrg, currentCycle, currentRound, user]);
 
-  const loadCurrentRoundFromLocalStorage = () => {
+  const loadCurrentRoundFromLocalStorage = useCallback(() => {
     if (currentOrg && currentCycle) {
       const lastUsedRound = localStorage.getItem(
         `lastUsedRound_${user?.id}_${currentOrg.id}_${currentCycle.id}`
@@ -115,7 +115,7 @@ export default function Component() {
         setCurrentRound(0);
       }
     }
-  };
+  }, [currentOrg, currentCycle, user]);
 
   // Fetch Organizations
   useEffect(() => {
@@ -230,7 +230,11 @@ export default function Component() {
   // Save current round whenever it changes
   useEffect(() => {
     saveCurrentRoundToLocalStorage();
-  }, [currentRound]);
+  }, [currentRound, saveCurrentRoundToLocalStorage]);
+
+  useEffect(() => {
+    loadCurrentRoundFromLocalStorage();
+  }, [currentCycle, loadCurrentRoundFromLocalStorage]);
 
   if (isLoading) {
     return <LoadingModal isOpen={isLoading} message={loadingMessage} />;

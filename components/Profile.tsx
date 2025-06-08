@@ -32,7 +32,12 @@ export default function Profile() {
     <div className="flex items-center gap-4">
       {!data?.id ? (
         <Link href="/auth" className="animate-fade">
-          <Button variant="outline">Sign In</Button>
+          <Button
+            variant="outline"
+            className="rounded-xl bg-gradient-to-r from-green-400 to-blue-500 text-lg font-semibold text-[#030303] shadow-lg transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-400 border-0"
+          >
+            Sign In
+          </Button>
         </Link>
       ) : (
         <>
@@ -58,10 +63,17 @@ export default function Profile() {
               {data?.full_name ? data?.full_name[0] : ""}
             </AvatarFallback>
           </Avatar> */}
-          <Button asChild>
+          <Button
+            asChild
+            className="rounded-xl bg-gradient-to-r from-green-400 to-blue-500 text-lg font-semibold text-[#030303] shadow-lg transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-400 border-0"
+          >
             <Link href={"/dash"}> Go to Dashboard</Link>
           </Button>
-          <Button onClick={handleLogout} variant="outline">
+          <Button
+            onClick={handleLogout}
+            variant="outline"
+            className="rounded-xl border border-black dark:border-white/30 bg-white/10 text-lg font-semibold text-black dark:text-white shadow transition-colors hover:bg-white/20 hover:text-black dark:hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-400"
+          >
             Logout
           </Button>
         </>

@@ -143,7 +143,7 @@ function DemographicsContent() {
               <CardContent>
                 <table className="w-full border-collapse border border-gray-300">
                   <thead>
-                    <tr className="bg-gray-100">
+                    <tr className="bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100">
                       <th className="border p-2">Status</th>
                       <th className="border p-2">Field Value</th>
                       <th className="border p-2">Count</th>
