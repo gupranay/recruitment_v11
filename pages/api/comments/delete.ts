@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from "next";
-import { supabaseBrowser } from "@/lib/supabase/browser";
+import { supabaseApi } from "@/lib/supabase/api";
 
 export default async function handler(
   req: NextApiRequest,
@@ -9,17 +9,26 @@ export default async function handler(
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const { comment_id, user_id, organization_id } = req.body;
+  const { comment_id, organization_id } = req.body;
 
-  if (!comment_id || !user_id || !organization_id) {
+  if (!comment_id || !organization_id) {
     return res
       .status(400)
       .json({
-        error: "Missing required fields: comment_id, user_id, organization_id",
+        error: "Missing required fields: comment_id, organization_id",
       });
   }
 
-  const supabase = supabaseBrowser();
+  const supabase = supabaseApi(req, res);
+
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
 
   try {
     // First check if the comment exists and get its details
@@ -46,14 +55,14 @@ export default async function handler(
 
     // Check if the user has permission to delete the comment
     // Either they are the comment owner or they are an organization owner
-    const isCommentOwner = comment.user_id === user_id;
+    const isCommentOwner = comment.user_id === user.id;
 
     // Check if user is an organization owner
     const { data: userRole, error: roleError } = await supabase
       .from("organization_users")
       .select("role")
       .eq("organization_id", organization_id)
-      .eq("user_id", user_id)
+      .eq("user_id", user.id)
       .single();
 
     if (roleError) {
