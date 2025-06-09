@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from "next";
-import { supabaseBrowser } from "@/lib/supabase/browser";
+import { supabaseApi } from "@/lib/supabase/api";
 
 export default async function handler(
   req: NextApiRequest,
@@ -9,15 +9,24 @@ export default async function handler(
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const { comment_id, user_id, comment_text } = req.body;
+  const { comment_id, comment_text } = req.body;
 
-  if (!comment_id || !user_id || !comment_text) {
+  if (!comment_id || !comment_text) {
     return res.status(400).json({
-      error: "Missing required fields: comment_id, user_id, comment_text",
+      error: "Missing required fields: comment_id, comment_text",
     });
   }
 
-  const supabase = supabaseBrowser();
+  const supabase = supabaseApi(req, res);
+
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
 
   try {
     // First check if the comment exists and if the user has permission to edit it
@@ -32,7 +41,7 @@ export default async function handler(
     }
 
     // Check if the user has permission to edit the comment
-    if (comment.user_id !== user_id) {
+    if (comment.user_id !== user.id) {
       return res
         .status(403)
         .json({ error: "Not authorized to edit this comment" });

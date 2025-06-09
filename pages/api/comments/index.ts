@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from "next";
-import { supabaseBrowser } from "@/lib/supabase/browser";
+import { supabaseApi } from "@/lib/supabase/api";
 
 export default async function handler(
   req: NextApiRequest,
@@ -14,7 +14,16 @@ export default async function handler(
     return res.status(400).json({ error: "Missing applicant_id" });
   }
 
-  const supabase = supabaseBrowser();
+  const supabase = supabaseApi(req, res);
+
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
 
   const { data, error } = await supabase
     .from("applicant_rounds")
