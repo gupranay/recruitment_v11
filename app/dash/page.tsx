@@ -225,16 +225,12 @@ export default function Component() {
     };
 
     fetchRecruitmentRounds();
-  }, [currentCycle]);
+  }, [currentCycle, loadCurrentRoundFromLocalStorage]);
 
   // Save current round whenever it changes
   useEffect(() => {
     saveCurrentRoundToLocalStorage();
   }, [currentRound, saveCurrentRoundToLocalStorage]);
-
-  useEffect(() => {
-    loadCurrentRoundFromLocalStorage();
-  }, [currentCycle, loadCurrentRoundFromLocalStorage]);
 
   if (isLoading) {
     return <LoadingModal isOpen={isLoading} message={loadingMessage} />;

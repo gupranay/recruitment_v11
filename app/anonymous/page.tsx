@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/input";
 import toast, { Toaster } from "react-hot-toast";
 import useUser from "../hook/useUser";
 import { create } from "domain";
-import { Pencil, Trash2 } from "lucide-react";
+import { Loader2, Pencil, Trash2 } from "lucide-react";
 import RichTextEditor from "@/components/RichTextEditor";
 import LoadingModal from "@/components/LoadingModal2";
 
@@ -46,7 +46,14 @@ const ReadingPageContent = () => {
     [key: string]: any;
   } | null>(null);
   const [comments, setComments] = useState<
-    { comment_text: string; created_at: string; user_name?: string }[]
+    {
+      id: string;
+      user_id: string;
+      comment_text: string;
+      created_at: string;
+      user_name?: string;
+      updated_at?: string;
+    }[]
   >([]);
   const [newComment, setNewComment] = useState<string>("");
   const [scores, setScores] = useState<{
@@ -64,6 +71,10 @@ const ReadingPageContent = () => {
   const [organizationName, setOrganizationName] = useState<string>("");
   const [cycleName, setCycleName] = useState<string>("");
   const [roundName, setRoundName] = useState<string>("");
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+  const [editingCommentText, setEditingCommentText] = useState<string>("");
+  const [isEditingComment, setIsEditingComment] = useState(false);
+  const [isUpdatingComment, setIsUpdatingComment] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -258,7 +269,7 @@ const ReadingPageContent = () => {
       });
 
       if (!response.ok) {
-        throw new Error("Failed to post comment");
+        throw new Error("Failed to add comment");
       }
 
       const { comment } = await response.json();
@@ -270,8 +281,10 @@ const ReadingPageContent = () => {
         },
       ]);
       setNewComment("");
+      toast.success("Comment added successfully!");
     } catch (error) {
-      console.error("Error posting comment:", error);
+      console.error("Error adding comment:", error);
+      toast.error("Failed to add comment");
     }
   };
 
@@ -457,6 +470,73 @@ const ReadingPageContent = () => {
     }
   };
 
+  // Add delete comment handler for anonymous comments
+  const handleDeleteComment = async (comment: {
+    id: string;
+    user_id: string;
+  }) => {
+    if (!selectedApplicant || !user?.id) return;
+    try {
+      const response = await fetch("/api/anonymous/delete-comment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          comment_id: comment.id,
+          user_id: user.id,
+        }),
+      });
+      if (!response.ok) throw new Error("Failed to delete comment");
+      setComments((prev) => prev.filter((c) => c.id !== comment.id));
+      toast.success("Comment deleted successfully!");
+    } catch (error) {
+      console.error("Error deleting comment:", error);
+      toast.error("Failed to delete comment");
+    }
+  };
+
+  // Add update comment handler for anonymous comments
+  const handleEditComment = async () => {
+    if (!editingCommentId || !editingCommentText.trim() || !user?.id) return;
+
+    setIsEditingComment(true);
+    try {
+      const response = await fetch("/api/comments/update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          comment_id: editingCommentId,
+          user_id: user?.id,
+          comment_text: editingCommentText.trim(),
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update comment");
+      }
+
+      const { comment } = await response.json();
+      setComments((prev) =>
+        prev.map((c) =>
+          c.id === editingCommentId
+            ? {
+                ...c,
+                comment_text: comment.comment_text,
+                updated_at: comment.updated_at,
+              }
+            : c
+        )
+      );
+      toast.success("Comment updated successfully!");
+      setEditingCommentId(null);
+      setEditingCommentText("");
+    } catch (error) {
+      console.error("Error updating comment:", error);
+      toast.error("Failed to update comment");
+    } finally {
+      setIsEditingComment(false);
+    }
+  };
+
   if (!slug) {
     return (
       <div className="p-6 text-center">
@@ -476,7 +556,7 @@ const ReadingPageContent = () => {
 
   return (
     <div className="p-6 space-y-6">
-      <Toaster position="top-right" reverseOrder={false} />
+      <Toaster />
       <h1 className="text-2xl font-bold text-center">
         Anonymous Applications for {organizationName}
         {cycleName ? `: ${cycleName}` : ""}
@@ -550,18 +630,85 @@ const ReadingPageContent = () => {
                         key={index}
                         className="p-4 bg-muted rounded-lg relative group"
                       >
-                        <div>
-                          <div className="text-sm text-card-foreground">
-                            <span
-                              dangerouslySetInnerHTML={{
-                                __html: comment.comment_text,
-                              }}
+                        {editingCommentId === comment.id ? (
+                          <div className="space-y-2 border border-border rounded-lg p-2 bg-card">
+                            <RichTextEditor
+                              content={editingCommentText}
+                              onChange={setEditingCommentText}
                             />
+                            <div className="flex justify-end space-x-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  setEditingCommentId(null);
+                                  setEditingCommentText("");
+                                }}
+                              >
+                                Cancel
+                              </Button>
+                              <Button
+                                size="sm"
+                                onClick={handleEditComment}
+                                disabled={isEditingComment}
+                              >
+                                {isEditingComment ? (
+                                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                ) : null}
+                                Save
+                              </Button>
+                            </div>
                           </div>
-                          <p className="text-xs text-muted-foreground mt-2">
-                            {new Date(comment.created_at).toLocaleString()}
-                          </p>
-                        </div>
+                        ) : (
+                          <>
+                            <div className="pr-8">
+                              <p className="text-sm text-card-foreground">
+                                <span className="font-medium">
+                                  {comment.user_name || "Anonymous"}:
+                                </span>{" "}
+                                <span
+                                  dangerouslySetInnerHTML={{
+                                    __html: comment.comment_text,
+                                  }}
+                                />
+                              </p>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                <span className="ml-2">
+                                  {new Date(
+                                    comment.created_at
+                                  ).toLocaleString()}
+                                  {comment.updated_at &&
+                                    new Date(comment.updated_at) >
+                                      new Date(comment.created_at) && (
+                                      <span className="ml-1 text-muted-foreground">
+                                        (edited)
+                                      </span>
+                                    )}
+                                </span>
+                              </p>
+                            </div>
+                            {/* Edit and Delete buttons, top right, visible on hover */}
+                            <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
+                              <button
+                                onClick={() => {
+                                  setEditingCommentId(comment.id);
+                                  setEditingCommentText(comment.comment_text);
+                                }}
+                                className="text-primary hover:text-primary/80"
+                                title="Edit comment"
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteComment(comment)}
+                                className="text-destructive hover:text-destructive-foreground"
+                                title="Delete comment"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </div>
+                          </>
+                        )}
                       </div>
                     ))
                   ) : (

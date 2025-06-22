@@ -32,7 +32,7 @@ export default async function handler(
     // First check if the comment exists and if the user has permission to edit it
     const { data: comment, error: fetchError } = await supabase
       .from("comments")
-      .select("user_id")
+      .select("user_id, applicant_round_id")
       .eq("id", comment_id)
       .single();
 
@@ -41,7 +41,38 @@ export default async function handler(
     }
 
     // Check if the user has permission to edit the comment
+    // Fetch the organization_id for the comment
+    let isOrgOwnerOrAdmin = false;
     if (comment.user_id !== user.id) {
+      // Need to check if user is admin/owner for the org
+      if (comment.applicant_round_id) {
+        const { data: roundData, error: roundError } = await supabase
+          .from("applicant_rounds")
+          .select("recruitment_rounds(recruitment_cycles(organization_id))")
+          .eq("id", comment.applicant_round_id)
+          .single();
+        if (!roundError && roundData) {
+          const organization_id =
+            roundData.recruitment_rounds?.recruitment_cycles?.organization_id;
+          if (organization_id) {
+            const { data: userRole, error: roleError } = await supabase
+              .from("organization_users")
+              .select("role")
+              .eq("organization_id", organization_id)
+              .eq("user_id", user.id)
+              .single();
+            if (
+              !roleError &&
+              userRole &&
+              (userRole.role === "Owner" || userRole.role === "Admin")
+            ) {
+              isOrgOwnerOrAdmin = true;
+            }
+          }
+        }
+      }
+    }
+    if (comment.user_id !== user.id && !isOrgOwnerOrAdmin) {
       return res
         .status(403)
         .json({ error: "Not authorized to edit this comment" });

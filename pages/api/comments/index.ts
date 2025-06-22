@@ -9,9 +9,11 @@ export default async function handler(
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const { applicant_id } = req.body;
-  if (!applicant_id) {
-    return res.status(400).json({ error: "Missing applicant_id" });
+  const { applicant_id, organization_id } = req.body;
+  if (!applicant_id || !organization_id) {
+    return res
+      .status(400)
+      .json({ error: "Missing applicant_id or organization_id" });
   }
 
   const supabase = supabaseApi(req, res);
@@ -23,6 +25,20 @@ export default async function handler(
 
   if (authError || !user) {
     return res.status(401).json({ error: "Unauthorized" });
+  }
+
+  // Check if user is a member of the organization
+  const { data: orgUser, error: orgUserError } = await supabase
+    .from("organization_users")
+    .select("id")
+    .eq("organization_id", organization_id)
+    .eq("user_id", user.id)
+    .single();
+
+  if (orgUserError || !orgUser) {
+    return res
+      .status(403)
+      .json({ error: "Not authorized for this organization" });
   }
 
   const { data, error } = await supabase

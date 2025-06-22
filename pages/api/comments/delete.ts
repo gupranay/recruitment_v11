@@ -12,11 +12,9 @@ export default async function handler(
   const { comment_id, organization_id } = req.body;
 
   if (!comment_id || !organization_id) {
-    return res
-      .status(400)
-      .json({
-        error: "Missing required fields: comment_id, organization_id",
-      });
+    return res.status(400).json({
+      error: "Missing required fields: comment_id, organization_id",
+    });
   }
 
   const supabase = supabaseApi(req, res);
@@ -69,9 +67,10 @@ export default async function handler(
       return res.status(500).json({ error: "Error checking user role" });
     }
 
-    const isOrgOwner = userRole?.role === "Owner";
+    const isOrgOwnerOrAdmin =
+      userRole?.role === "Owner" || userRole?.role === "Admin";
 
-    if (!isCommentOwner && !isOrgOwner) {
+    if (!isCommentOwner && !isOrgOwnerOrAdmin) {
       return res
         .status(403)
         .json({ error: "Not authorized to delete this comment" });

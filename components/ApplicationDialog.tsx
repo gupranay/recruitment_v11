@@ -57,7 +57,8 @@ export default function ApplicationDialog({
   isOpen,
   onClose,
 }: ApplicationDialogProps) {
-  const { selectedOrganization } = useOrganization();
+  const { selectedOrganization, organizations, loading, error } =
+    useOrganization();
   const [applicantData, setApplicantData] = useState<{
     name: string;
     headshot_url: string;
@@ -118,22 +119,6 @@ export default function ApplicationDialog({
       }
     };
 
-    const fetchComments = async () => {
-      try {
-        const response = await fetch("/api/comments/", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ applicant_id: applicantId }),
-        });
-        const data = await response.json();
-        setComments(data || []);
-      } catch (error) {
-        console.error("Error fetching comments:", error);
-      }
-    };
-
     const checkOrgOwner = async () => {
       if (!userId || !selectedOrganization?.id) return;
 
@@ -161,6 +146,25 @@ export default function ApplicationDialog({
       }
     };
 
+    const fetchComments = async () => {
+      try {
+        const response = await fetch("/api/comments/", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            applicant_id: applicantId,
+            organization_id: selectedOrganization?.id,
+          }),
+        });
+        const data = await response.json();
+        setComments(data || []);
+      } catch (error) {
+        console.error("Error fetching comments:", error);
+      }
+    };
+
     const fetchScores = async () => {
       if (!applicantId || !applicantRoundId) return;
 
@@ -181,7 +185,6 @@ export default function ApplicationDialog({
         }
 
         const data = await response.json();
-        console.log("Fetched scores in ApplicationDialog:", data);
         setFetchedScores(data);
       } catch (error) {
         console.error("Error fetching scores:", error);
@@ -494,8 +497,6 @@ export default function ApplicationDialog({
     }
   };
 
-  // Add debug logging for scores rendering
-  console.log("Current fetchedScores state:", fetchedScores);
 
   return (
     <Dialog open={isOpen} onOpenChange={closeDialog}>
@@ -572,8 +573,6 @@ export default function ApplicationDialog({
                   <h2 className="text-lg font-semibold mb-2 text-card-foreground">
                     Scores
                   </h2>
-
-                  
 
                   {/* Existing Scores Display */}
                   {fetchedScores.length > 0 && (
@@ -730,45 +729,45 @@ export default function ApplicationDialog({
 
                 {/* Score Submission Form - Always visible */}
                 <div className="bg-muted rounded-lg p-4 mb-6">
-                    <h3 className="text-md font-semibold text-muted-foreground mb-4">
-                      Submit New Scores
-                    </h3>
-                    <form className="space-y-4">
-                      {scoringMetrics.map((metric) => (
-                        <div key={metric.id} className="flex flex-col">
-                          <label className="text-sm font-medium text-card-foreground mb-2">
-                            {metric.name} (Weight: {metric.weight})
-                          </label>
-                          <Input
-                            type="number"
-                            value={scores[metric.id]?.score_value || ""}
-                            onChange={(e) =>
-                              setScores((prev) => ({
-                                ...prev,
-                                [metric.id]: {
-                                  score_value: Number(
-                                    parseFloat(e.target.value) || 0
-                                  ),
-                                  weight: metric.weight,
-                                },
-                              }))
-                            }
-                            min={0}
-                            max={100}
-                            className="w-full"
-                          />
-                        </div>
-                      ))}
-                      <Button
-                        type="button"
-                        onClick={submitScores}
-                        disabled={Object.keys(scores).length === 0}
-                        className="w-full"
-                      >
-                        Submit Scores
-                      </Button>
-                    </form>
-                  </div>
+                  <h3 className="text-md font-semibold text-muted-foreground mb-4">
+                    Submit New Scores
+                  </h3>
+                  <form className="space-y-4">
+                    {scoringMetrics.map((metric) => (
+                      <div key={metric.id} className="flex flex-col">
+                        <label className="text-sm font-medium text-card-foreground mb-2">
+                          {metric.name} (Weight: {metric.weight})
+                        </label>
+                        <Input
+                          type="number"
+                          value={scores[metric.id]?.score_value || ""}
+                          onChange={(e) =>
+                            setScores((prev) => ({
+                              ...prev,
+                              [metric.id]: {
+                                score_value: Number(
+                                  parseFloat(e.target.value) || 0
+                                ),
+                                weight: metric.weight,
+                              },
+                            }))
+                          }
+                          min={0}
+                          max={100}
+                          className="w-full"
+                        />
+                      </div>
+                    ))}
+                    <Button
+                      type="button"
+                      onClick={submitScores}
+                      disabled={Object.keys(scores).length === 0}
+                      className="w-full"
+                    >
+                      Submit Scores
+                    </Button>
+                  </form>
+                </div>
 
                 {/* Comments Section */}
                 <div className="bg-card shadow-md rounded-lg p-4 mt-4">
@@ -783,7 +782,7 @@ export default function ApplicationDialog({
                           className="p-4 bg-muted rounded-lg relative group"
                         >
                           {editingCommentId === comment.id ? (
-                            <div className="space-y-2">
+                            <div className="space-y-2 border border-border rounded-lg p-2 bg-card">
                               <RichTextEditor
                                 content={editingCommentText}
                                 onChange={setEditingCommentText}
@@ -835,14 +834,14 @@ export default function ApplicationDialog({
                                         : ""}
                                     </span>
                                   )}
-                                  <span className="ml-2">
+                                  <span className="mt-4">
                                     {new Date(
                                       comment.created_at
                                     ).toLocaleString()}
                                     {comment.updated_at &&
                                       new Date(comment.updated_at) >
                                         new Date(comment.created_at) && (
-                                        <span className="ml-1 text-muted-foreground">
+                                        <span className="ml-1 mt-2 text-muted-foreground">
                                           (edited)
                                         </span>
                                       )}

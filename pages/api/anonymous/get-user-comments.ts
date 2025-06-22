@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from "next";
-import { supabaseBrowser } from "@/lib/supabase/browser";
+import { supabaseApi } from "@/lib/supabase/api";
 
 export default async function handler(
   req: NextApiRequest,
@@ -19,7 +19,7 @@ export default async function handler(
     });
   }
 
-  const supabase = supabaseBrowser();
+  const supabase = supabaseApi(req, res);
 
   try {
     // 1) Look up the bridging row in `applicant_rounds`
@@ -44,7 +44,7 @@ export default async function handler(
     const applicantRoundId = bridgingRow.id;
     const { data: comments, error: commentsErr } = await supabase
       .from("comments")
-      .select("comment_text, created_at") // Specify only the fields you want
+      .select("id, comment_text, created_at, updated_at") // Specify only the fields you want
       .eq("applicant_round_id", applicantRoundId)
       .eq("user_id", user_id);
 
@@ -52,7 +52,6 @@ export default async function handler(
       console.error("Error fetching comments:", commentsErr);
       return res.status(500).json({ error: commentsErr.message });
     }
-
     // 3) Return those comments
     return res.status(200).json({
       comments,

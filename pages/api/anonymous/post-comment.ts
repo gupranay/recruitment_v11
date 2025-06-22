@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { supabaseBrowser } from "@/lib/supabase/browser";
+import { supabaseApi } from "@/lib/supabase/api";
 
 export default async function handler(
   req: NextApiRequest,
@@ -24,7 +25,7 @@ export default async function handler(
     });
   }
 
-  const supabase = supabaseBrowser();
+  const supabase = supabaseApi(req, res);
 
   try {
     // First get the applicant_round_id
@@ -38,6 +39,7 @@ export default async function handler(
     if (applicantRoundError) {
       return res.status(404).json({ error: "Applicant round not found" });
     }
+    console.log("user_id", user_id);
 
     // Insert the comment
     const { data, error } = await supabase
@@ -54,6 +56,7 @@ export default async function handler(
       .single();
 
     if (error) {
+      console.error("Error creating comment:", error);
       return res.status(500).json({ error: error.message });
     }
 

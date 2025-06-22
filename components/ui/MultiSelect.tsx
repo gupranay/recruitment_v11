@@ -14,10 +14,6 @@ export function MultiSelect({
 }) {
   const [isOpen, setIsOpen] = useState(false);
 
-  useEffect(() => {
-    console.log("options:", options);
-  }, [options]);
-
   const toggleOption = (option: string) => {
     if (selectedOptions.includes(option)) {
       onChange(selectedOptions.filter((o) => o !== option));

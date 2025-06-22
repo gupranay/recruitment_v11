@@ -146,12 +146,10 @@ export default function ApplicantGrid({
   }, [applicants, sortOption]);
 
   const handleOpenDialog = (applicant: ApplicantCardType) => {
-    console.log("handleOpenDialog called with applicant:", applicant);
     setSelectedApplicant(applicant);
   };
 
   const handleCloseDialog = () => {
-    console.log("handleCloseDialog called");
     setSelectedApplicant(null);
   };
 
