@@ -6,6 +6,7 @@ import { ApplicantCardType } from "@/lib/types/ApplicantCardType";
 import { Button } from "./ui/button";
 import { Separator } from "./ui/separator";
 import { Switch } from "./ui/switch";
+import { MultiSelect } from "./ui/MultiSelect";
 import UploadApplicantsDialog3 from "./UploadApplicantsDialog3";
 import CreateAnonymizedAppDialog from "./CreateAnonymizedAppDialog";
 import ApplicationDialog from "./ApplicationDialog";
@@ -54,6 +55,7 @@ export default function ApplicantGrid({
     useState<ApplicantCardType | null>(null);
   const [sortOption, setSortOption] = useState<SortOption>("status");
   const [selectedRoundId, setSelectedRoundId] = useState<string | null>(null);
+  const [selectedDecisions, setSelectedDecisions] = useState<string[]>([]);
 
   const fetchApplicants = useCallback(async () => {
     if (!rounds[currentRound]?.id) {
@@ -109,9 +111,18 @@ export default function ApplicantGrid({
     setSelectedRoundId(roundId); // Set the selected round ID
   };
 
-  // Sorting logic
+  // Filtering and sorting logic
   const sortedApplicants = useMemo(() => {
-    return [...applicants].sort((a, b) => {
+    // First filter by decision status if any are selected
+    let filteredApplicants = applicants;
+    if (selectedDecisions.length > 0) {
+      filteredApplicants = applicants.filter((applicant) =>
+        selectedDecisions.includes(applicant.status)
+      );
+    }
+
+    // Then sort the filtered results
+    return [...filteredApplicants].sort((a, b) => {
       if (sortOption === "status") {
         // Default sorting: Accepted first, then Maybe, then Pending, then Rejected
         if (a.status === "accepted" && b.status !== "accepted") return -1;
@@ -143,7 +154,7 @@ export default function ApplicantGrid({
         ? (a[key] ?? -Infinity) - (b[key] ?? -Infinity)
         : (b[key] ?? -Infinity) - (a[key] ?? -Infinity);
     });
-  }, [applicants, sortOption]);
+  }, [applicants, sortOption, selectedDecisions]);
 
   const handleOpenDialog = (applicant: ApplicantCardType) => {
     setSelectedApplicant(applicant);
@@ -224,6 +235,29 @@ export default function ApplicantGrid({
 
           {/* View Controls Group */}
           <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-muted-foreground">
+                Filter by Decision:
+              </span>
+              <div className="w-52">
+                <MultiSelect
+                  options={["accepted", "in_progress", "maybe", "rejected"]}
+                  selectedOptions={selectedDecisions}
+                  onChange={setSelectedDecisions}
+                  placeholder="All decisions"
+                />
+              </div>
+              {selectedDecisions.length > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSelectedDecisions([])}
+                  className="text-xs text-muted-foreground hover:text-foreground"
+                >
+                  Clear
+                </Button>
+              )}
+            </div>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline">Sort Applicants</Button>

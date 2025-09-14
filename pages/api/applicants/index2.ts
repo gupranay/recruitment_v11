@@ -1,7 +1,10 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { supabaseBrowser } from "@/lib/supabase/browser";
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse
+) {
   // Only accept POST
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
@@ -10,7 +13,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const { recruitment_round_id, last_round_id } = req.body;
 
   if (!recruitment_round_id) {
-    return res.status(400).json({ error: "Missing required field: recruitment_round_id" });
+    return res
+      .status(400)
+      .json({ error: "Missing required field: recruitment_round_id" });
   }
 
   const supabase = supabaseBrowser();
@@ -21,7 +26,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // -----------------------------
     const { data: currentRoundData, error: currentRoundError } = await supabase
       .from("applicant_rounds")
-      .select(`
+      .select(
+        `
         id,
         applicant_id,
         status,
@@ -32,11 +38,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           headshot_url,
           email
         )
-      `)
+      `
+      )
       .eq("recruitment_round_id", recruitment_round_id);
 
     if (currentRoundError) {
-      console.error("Error fetching applicants for current round:", currentRoundError.message);
+      console.error(
+        "Error fetching applicants for current round:",
+        currentRoundError.message
+      );
       return res.status(400).json({ error: currentRoundError.message });
     }
 
@@ -45,16 +55,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // Create a map: applicant_id -> bridging row info
-    const resultsMap: Record<string, {
-      applicant_round_id: string;
-      applicant_id: string;
-      name: string | null;
-      headshot_url: string | null;
-      email: string | null;
-      status: string | null;
-      current_round_weighted: number | null;
-      last_round_weighted: number | null;
-    }> = {};
+    const resultsMap: Record<
+      string,
+      {
+        applicant_round_id: string;
+        applicant_id: string;
+        name: string | null;
+        headshot_url: string | null;
+        email: string | null;
+        status: string | null;
+        current_round_weighted: number | null;
+        last_round_weighted: number | null;
+      }
+    > = {};
 
     for (const item of currentRoundData) {
       const aId = item.applicant_id;
@@ -66,7 +79,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         email: item.applicants?.email ?? null,
         status: item.status ?? null,
         current_round_weighted: item.weighted_score ?? null,
-        last_round_weighted: null
+        last_round_weighted: null,
       };
     }
 
@@ -74,19 +87,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Step B: If last_round_id is provided, fetch bridging rows for that round
     // -----------------------------
     if (last_round_id) {
-      const applicantIds = Object.keys(resultsMap); 
+      const applicantIds = Object.keys(resultsMap);
       if (applicantIds.length > 0) {
         const { data: lastRoundData, error: lastRoundError } = await supabase
           .from("applicant_rounds")
-          .select(`
+          .select(
+            `
             applicant_id,
             weighted_score
-          `)
+          `
+          )
           .eq("recruitment_round_id", last_round_id)
           .in("applicant_id", applicantIds);
 
         if (lastRoundError) {
-          console.error("Error fetching last round bridging rows:", lastRoundError.message);
+          console.error(
+            "Error fetching last round bridging rows:",
+            lastRoundError.message
+          );
           return res.status(400).json({ error: lastRoundError.message });
         }
 
@@ -105,9 +123,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Convert resultsMap to an array
     // -----------------------------
     const finalResult = Object.values(resultsMap);
+    console.log("finalResult", finalResult);
 
     return res.status(200).json(finalResult);
-
   } catch (err) {
     console.error("Unexpected error in index2 applicants:", err);
     return res.status(500).json({ error: "Internal server error" });
