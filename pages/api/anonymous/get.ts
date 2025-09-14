@@ -41,11 +41,12 @@ export default async function handler(
       return res.status(404).json({ error: "Reading not found" });
     }
 
-    // 2) Fetch applicant_ids and created_at for that round
+    // 2) Fetch applicant_ids and created_at for that round, ordered by created_at to ensure consistent numbering
     const { data: bridgingRows, error: bridgingErr } = await supabase
       .from("applicant_rounds")
       .select("id, applicant_id, created_at")
-      .eq("recruitment_round_id", reading.recruitment_round_id);
+      .eq("recruitment_round_id", reading.recruitment_round_id)
+      .order("created_at", { ascending: true });
 
     if (bridgingErr) {
       return res.status(500).json({ error: bridgingErr.message });
