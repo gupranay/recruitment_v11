@@ -64,7 +64,10 @@ export default async function handler(
         ),
         user_id,
         created_at,
-        submission_id
+        submission_id,
+        users!scores_user_id_fkey (
+          full_name
+        )
       `
       )
       .eq("applicant_round_id", applicant_round_id)
@@ -101,7 +104,10 @@ export default async function handler(
             submission_id: submissionId,
             created_at: score.created_at,
             user_id: score.user_id,
-            user_name: score.user_id === userId ? "You" : null,
+            user_name:
+              score.user_id === userId
+                ? "You"
+                : score.users?.full_name || "Unknown User",
             scores: [],
             weighted_average: 0,
           };

@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from "next";
-import { supabaseBrowser } from "@/lib/supabase/browser";
+import { supabaseApi } from "@/lib/supabase/api";
 
 export default async function handler(
   req: NextApiRequest,
@@ -17,7 +17,7 @@ export default async function handler(
       .json({ error: "Missing required fields: comment_id, user_id" });
   }
 
-  const supabase = supabaseBrowser();
+  const supabase = supabaseApi(req, res);
 
   try {
     // Fetch the comment to check ownership

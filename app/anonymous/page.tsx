@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/input";
 import toast, { Toaster } from "react-hot-toast";
 import useUser from "../hook/useUser";
 import { create } from "domain";
-import { Loader2, Pencil, Trash2 } from "lucide-react";
+import { Loader2, Pencil, Trash2, ExternalLink } from "lucide-react";
 import RichTextEditor from "@/components/RichTextEditor";
 import LoadingModal from "@/components/LoadingModal2";
 
@@ -24,6 +24,50 @@ interface AnonApplicant {
   id: string; // The actual UUID of the applicant
   number: number; // Sequential number for display
 }
+
+// Utility function to detect URLs and format them as hyperlinks
+const isUrl = (string: string): boolean => {
+  try {
+    new URL(string);
+    return true;
+  } catch (_) {
+    return false;
+  }
+};
+
+// Utility function to format field values with hyperlinks
+const formatFieldValue = (key: string, value: any): React.ReactNode => {
+  if (typeof value === "object") {
+    return (
+      <pre className="whitespace-pre-wrap">
+        {JSON.stringify(value, null, 2)}
+      </pre>
+    );
+  }
+
+  if (!value || value === "N/A") {
+    return "N/A";
+  }
+
+  const stringValue = String(value);
+
+  // Check if the value is a URL
+  if (isUrl(stringValue)) {
+    return (
+      <a
+        href={stringValue}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex items-center gap-1 text-primary hover:text-primary/80 underline transition-colors"
+      >
+        View {key}
+        <ExternalLink className="h-3 w-3" />
+      </a>
+    );
+  }
+
+  return <span className="break-words">{stringValue}</span>;
+};
 
 const ReadingPageContent = () => {
   const { data: user } = useUser();
@@ -558,7 +602,7 @@ const ReadingPageContent = () => {
     <div className="p-6 space-y-6">
       <Toaster />
       <h1 className="text-2xl font-bold text-center">
-        Anonymous Applications for {organizationName}
+        Applications for {organizationName}
         {cycleName ? `: ${cycleName}` : ""}
         {roundName ? `, ${roundName}` : ""}
       </h1>
@@ -568,7 +612,7 @@ const ReadingPageContent = () => {
         <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
           {applicants
             .slice()
-            .sort((a, b) => a.id.localeCompare(b.id))
+            .sort((a, b) => a.number - b.number)
             .map((applicant) => (
               <button
                 key={applicant.id}
@@ -610,11 +654,9 @@ const ReadingPageContent = () => {
                   <p className="font-medium text-sm text-muted-foreground uppercase tracking-wide">
                     {key}
                   </p>
-                  <p className="text-sm text-foreground break-words">
-                    {typeof value === "object"
-                      ? JSON.stringify(value, null, 2)
-                      : value || "N/A"}
-                  </p>
+                  <div className="text-sm text-foreground">
+                    {formatFieldValue(key, value)}
+                  </div>
                 </div>
               ))}
               <Separator className="my-4" />
@@ -662,30 +704,27 @@ const ReadingPageContent = () => {
                         ) : (
                           <>
                             <div className="pr-8">
-                              <p className="text-sm text-card-foreground">
-                                <span className="font-medium">
-                                  {comment.user_name || "Anonymous"}:
-                                </span>{" "}
-                                <span
-                                  dangerouslySetInnerHTML={{
-                                    __html: comment.comment_text,
-                                  }}
-                                />
-                              </p>
-                              <p className="text-xs text-muted-foreground mt-1">
-                                <span className="ml-2">
+                              <div className="flex items-start gap-2 mb-2">
+                                <span className="font-semibold text-primary text-sm">
+                                  You
+                                </span>
+                                <span className="text-xs text-muted-foreground">
                                   {new Date(
                                     comment.created_at
                                   ).toLocaleString()}
                                   {comment.updated_at &&
                                     new Date(comment.updated_at) >
                                       new Date(comment.created_at) && (
-                                      <span className="ml-1 text-muted-foreground">
-                                        (edited)
-                                      </span>
+                                      <span className="ml-1">(edited)</span>
                                     )}
                                 </span>
-                              </p>
+                              </div>
+                              <div
+                                className="text-sm text-card-foreground leading-relaxed"
+                                dangerouslySetInnerHTML={{
+                                  __html: comment.comment_text,
+                                }}
+                              />
                             </div>
                             {/* Edit and Delete buttons, top right, visible on hover */}
                             <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
