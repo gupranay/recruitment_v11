@@ -48,7 +48,10 @@ export default function ApplicantCard({
   const [isAccepting, setIsAccepting] = useState(false);
   const [isRejecting, setIsRejecting] = useState(false);
   const [isSettingMaybe, setIsSettingMaybe] = useState(false);
+  const [isChangingDecision, setIsChangingDecision] = useState(false);
   const [showRejectConfirm, setShowRejectConfirm] = useState(false);
+  const [showChangeDecisionDialog, setShowChangeDecisionDialog] =
+    useState(false);
   const { data: user } = useUser();
 
   const handleSetMaybe = async () => {
@@ -152,6 +155,50 @@ export default function ApplicantCard({
       setIsAlertDialogOpen(false);
       toast.success("Applicant rejected successfully");
       fetchApplicants();
+    }
+  };
+
+  const handleChangeDecision = async (newStatus: string) => {
+    setIsChangingDecision(true);
+    try {
+      const response = await fetch("/api/applicant/change-decision", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          applicant_id: applicant.applicant_id,
+          applicant_round_id: applicant.applicant_round_id,
+          new_status: newStatus,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to change decision.");
+      }
+
+      const result = await response.json();
+
+      // Update the UI based on the new status
+      if (newStatus === "accepted") {
+        onMoveToNextRound(applicant.applicant_id);
+      } else if (newStatus === "rejected") {
+        onReject(applicant.applicant_id);
+      }
+
+      toast.success(result.message);
+      fetchApplicants();
+    } catch (error) {
+      console.error(error);
+      alert(
+        error instanceof Error
+          ? error.message
+          : "An error occurred while changing the decision."
+      );
+    } finally {
+      setIsChangingDecision(false);
+      setShowChangeDecisionDialog(false);
     }
   };
 
@@ -284,14 +331,19 @@ export default function ApplicantCard({
             </AlertDialog>
           )}
         </div>
-        {applicant.status === "accepted" && (
+        {(applicant.status === "accepted" ||
+          applicant.status === "rejected") && (
           <Button
             size="sm"
             variant="outline"
-            className="p-1 text-xs opacity-50 cursor-not-allowed"
-            disabled
+            className="p-1 text-xs"
+            onClick={() => setShowChangeDecisionDialog(true)}
+            disabled={isChangingDecision}
           >
-            Accepted
+            {isChangingDecision ? (
+              <Loader2 className="h-3 w-3 animate-spin mr-1" />
+            ) : null}
+            Change Decision
           </Button>
         )}
       </CardFooter>
@@ -326,6 +378,79 @@ export default function ApplicantCard({
               ) : null}
               Yes, Reject Applicant
             </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <AlertDialog
+        open={showChangeDecisionDialog}
+        onOpenChange={setShowChangeDecisionDialog}
+      >
+        <AlertDialogContent className="max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Change Decision</AlertDialogTitle>
+            <AlertDialogDescription>
+              What would you like to change {applicant.name || "this applicant"}
+              's status to?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col space-y-2">
+            <div className="flex flex-col space-y-2 w-full">
+              {applicant.status === "rejected" && (
+                <Button
+                  variant="outline"
+                  onClick={() => handleChangeDecision("accepted")}
+                  disabled={isChangingDecision}
+                  className="w-full bg-green-500 text-white hover:bg-green-600"
+                >
+                  {isChangingDecision ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : null}
+                  {isLastRound
+                    ? "Accept (Final)"
+                    : "Accept & Move to Next Round"}
+                </Button>
+              )}
+              {applicant.status === "accepted" && (
+                <Button
+                  variant="destructive"
+                  onClick={() => handleChangeDecision("rejected")}
+                  disabled={isChangingDecision}
+                  className="w-full"
+                >
+                  {isChangingDecision ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : null}
+                  Reject
+                </Button>
+              )}
+              <Button
+                variant="outline"
+                onClick={() => handleChangeDecision("maybe")}
+                disabled={isChangingDecision}
+                className="w-full bg-yellow-500 text-white hover:bg-yellow-600"
+              >
+                {isChangingDecision ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : null}
+                Mark as Maybe
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => handleChangeDecision("in_progress")}
+                disabled={isChangingDecision}
+                className="w-full"
+              >
+                {isChangingDecision ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : null}
+                Reset to In Progress
+              </Button>
+            </div>
+            <AlertDialogCancel
+              onClick={() => setShowChangeDecisionDialog(false)}
+            >
+              Cancel
+            </AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
