@@ -345,7 +345,7 @@ export default function ApplicantListItem({
             <AlertDialogTitle>Change Decision</AlertDialogTitle>
             <AlertDialogDescription>
               What would you like to change {applicant.name || "this applicant"}
-              's status to?
+              &apos;s status to?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-col space-y-2">
