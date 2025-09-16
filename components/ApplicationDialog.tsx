@@ -1,5 +1,12 @@
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { Loader2, Send, Trash2, Edit2, Pencil } from "lucide-react";
+import {
+  Loader2,
+  Send,
+  Trash2,
+  Edit2,
+  Pencil,
+  MoreVertical,
+} from "lucide-react";
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import { Textarea } from "@/components/ui/textarea";
@@ -19,6 +26,12 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useOrganization } from "@/contexts/OrganizationContext";
 import RichTextEditor from "./RichTextEditor";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface ApplicationDialogProps {
   applicantId: string;
@@ -26,6 +39,7 @@ interface ApplicationDialogProps {
   userId: string | undefined;
   isOpen: boolean;
   onClose: () => void;
+  fetchApplicants?: () => Promise<void>;
 }
 
 interface Score {
@@ -56,6 +70,7 @@ export default function ApplicationDialog({
   userId,
   isOpen,
   onClose,
+  fetchApplicants,
 }: ApplicationDialogProps) {
   const { selectedOrganization, organizations, loading, error } =
     useOrganization();
@@ -94,6 +109,9 @@ export default function ApplicationDialog({
   const [isOrgOwner, setIsOrgOwner] = useState(false);
   const [editingScore, setEditingScore] = useState<EditingScore | null>(null);
   const [isDeletingSubmission, setIsDeletingSubmission] = useState(false);
+  const [showDeleteApplicantDialog, setShowDeleteApplicantDialog] =
+    useState(false);
+  const [isDeletingApplicant, setIsDeletingApplicant] = useState(false);
 
   useEffect(() => {
     const fetchApplicantDetails = async () => {
@@ -497,6 +515,40 @@ export default function ApplicationDialog({
     }
   };
 
+  const handleDeleteApplicant = async () => {
+    if (!applicantId) return;
+
+    setIsDeletingApplicant(true);
+    try {
+      const response = await fetch("/api/applicant/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          applicant_id: applicantId,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to delete applicant");
+      }
+
+      toast.success("Applicant deleted successfully");
+      onClose(); // Close the dialog after successful deletion
+      // Refresh the applicants list if callback is provided
+      if (fetchApplicants) {
+        await fetchApplicants();
+      }
+    } catch (error) {
+      console.error("Error deleting applicant:", error);
+      toast.error(
+        error instanceof Error ? error.message : "Failed to delete applicant"
+      );
+    } finally {
+      setIsDeletingApplicant(false);
+      setShowDeleteApplicantDialog(false);
+    }
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={closeDialog}>
@@ -513,13 +565,38 @@ export default function ApplicationDialog({
                 <h2 className="text-2xl font-bold text-card-foreground truncate">
                   {applicantData.name}
                 </h2>
-                <button
-                  onClick={closeDialog}
-                  className="text-muted-foreground hover:text-foreground transition"
-                  aria-label="Close dialog"
-                >
-                  ✕
-                </button>
+                <div className="flex items-center gap-2">
+                  {isOrgOwner && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0"
+                        >
+                          <MoreVertical className="h-4 w-4" />
+                          <span className="sr-only">Open menu</span>
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          onClick={() => setShowDeleteApplicantDialog(true)}
+                          className="text-destructive focus:text-destructive"
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Delete Applicant
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
+                  <button
+                    onClick={closeDialog}
+                    className="text-muted-foreground hover:text-foreground transition"
+                    aria-label="Close dialog"
+                  >
+                    ✕
+                  </button>
+                </div>
               </div>
 
               {/* Scrollable Content */}
@@ -946,6 +1023,50 @@ export default function ApplicationDialog({
                           <Trash2 className="h-4 w-4 mr-2" />
                         )}
                         Delete
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+
+                {/* Delete Applicant Confirmation Dialog */}
+                <AlertDialog
+                  open={showDeleteApplicantDialog}
+                  onOpenChange={setShowDeleteApplicantDialog}
+                >
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete Applicant</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Are you sure you want to delete{" "}
+                        {applicantData?.name || "this applicant"}? This action
+                        will permanently delete the applicant and all associated
+                        data including:
+                        <br />
+                        • All application data
+                        <br />
+                        • All scores and submissions
+                        <br />
+                        • All comments
+                        <br />
+                        • All round assignments
+                        <br />
+                        <br />
+                        <strong>This action cannot be undone.</strong>
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={handleDeleteApplicant}
+                        disabled={isDeletingApplicant}
+                        className="bg-destructive hover:bg-destructive-foreground"
+                      >
+                        {isDeletingApplicant ? (
+                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        ) : (
+                          <Trash2 className="h-4 w-4 mr-2" />
+                        )}
+                        Delete Applicant
                       </AlertDialogAction>
                     </AlertDialogFooter>
                   </AlertDialogContent>

@@ -346,6 +346,7 @@ export default function ApplicantGrid({
               userId={user.id}
               isOpen={!!selectedApplicant}
               onClose={handleCloseDialog}
+              fetchApplicants={fetchApplicants}
             />
           )}
         </>

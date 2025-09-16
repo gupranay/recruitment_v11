@@ -116,7 +116,7 @@ function AddMemberForm({ onClose }: { onClose: () => void }) {
             <SelectItem value="Member">Member</SelectItem>
           </SelectContent>
         </Select>
-        <p className="text-sm text-gray-500">
+        <p className="text-sm text-muted-foreground">
           {selectedOrganization?.role !== "Owner"
             ? "Only owners can add admins"
             : "Admins can manage members and view all data"}
@@ -417,19 +417,19 @@ export function ManageOrganizationDialog() {
                   {sortedMembers.map((member) => (
                     <div
                       key={member.id}
-                      className="flex items-center justify-between p-3 border rounded-lg bg-white"
+                      className="flex items-center justify-between p-3 border rounded-lg bg-card"
                     >
                       <div>
                         <p className="font-medium">
                           {member.name || member.email}
                         </p>
                         {member.name && (
-                          <p className="text-sm text-gray-500">
+                          <p className="text-sm text-muted-foreground">
                             {member.email}
                           </p>
                         )}
                         {member.status === "pending" && (
-                          <p className="text-sm text-orange-600">
+                          <p className="text-sm text-orange-400">
                             Invited{" "}
                             {new Date(member.invited_at!).toLocaleDateString()}{" "}
                             by {member.invited_by}
@@ -441,8 +441,8 @@ export function ManageOrganizationDialog() {
                           className={cn(
                             "text-sm px-2 py-1 rounded",
                             member.status === "pending"
-                              ? "bg-orange-100 text-orange-800"
-                              : "bg-blue-100 text-blue-800"
+                              ? "bg-orange-500/10 text-orange-400"
+                              : "bg-blue-500/10 text-blue-400"
                           )}
                         >
                           {member.status === "pending"
@@ -519,8 +519,8 @@ export function ManageOrganizationDialog() {
                   </Button>
 
                   {showDeleteConfirm ? (
-                    <div className="space-y-4 p-4 border border-red-200 rounded-lg bg-red-50">
-                      <p className="text-sm text-red-800 font-medium">
+                    <div className="space-y-4 p-4 border border-red-500/30 rounded-lg bg-red-500/10">
+                      <p className="text-sm text-red-400 font-medium">
                         Are you sure you want to delete this organization? This
                         action cannot be undone.
                       </p>

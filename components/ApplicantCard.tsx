@@ -353,6 +353,7 @@ export default function ApplicantCard({
         userId={user?.id}
         isOpen={isApplicationDialogOpen}
         onClose={() => setIsApplicationDialogOpen(false)}
+        fetchApplicants={fetchApplicants}
       />
       <AlertDialog open={showRejectConfirm} onOpenChange={setShowRejectConfirm}>
         <AlertDialogContent>
