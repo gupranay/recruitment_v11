@@ -124,12 +124,21 @@ function FeedbackContent() {
   };
 
   const postComment = async () => {
+    console.log("postComment called", {
+      selectedApplicant: !!selectedApplicant,
+      newComment: newComment.trim(),
+      userId: !!user?.id,
+      recruitmentRoundId: !!recruitmentRoundId,
+    });
+
     if (
       !selectedApplicant ||
       !newComment.trim() ||
       !user?.id ||
       !recruitmentRoundId
     ) {
+      console.log("Missing required data for comment");
+      toast.error("Please fill in all required fields.");
       return;
     }
 
@@ -147,7 +156,8 @@ function FeedbackContent() {
       });
 
       if (!response.ok) {
-        throw new Error("Failed to post comment");
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to post comment");
       }
 
       const { comment } = await response.json();
@@ -165,7 +175,11 @@ function FeedbackContent() {
       toast.success("Comment posted successfully!");
     } catch (error) {
       console.error("Error posting comment:", error);
-      toast.error("Failed to post comment.");
+      toast.error(
+        `Failed to post comment: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
     }
   };
 
@@ -263,13 +277,13 @@ function FeedbackContent() {
       )}
 
       <Dialog open={isDialogOpen} onOpenChange={closeDialog}>
-        <DialogContent className="max-w-3xl">
+        <DialogContent className="max-w-3xl max-h-[90vh] sm:max-h-[80vh]">
           <DialogHeader>
             <DialogTitle>
               {selectedApplicant?.name || "Applicant Details"}
             </DialogTitle>
           </DialogHeader>
-          <div className="py-4 space-y-4 max-h-[70vh] overflow-auto">
+          <div className="py-4 space-y-4 max-h-[70vh] overflow-y-auto overscroll-contain">
             {selectedApplicant && (
               <>
                 {selectedApplicant.headshot_url && (
@@ -328,7 +342,15 @@ function FeedbackContent() {
                   onChange={setNewComment}
                   placeholder="Add a comment..."
                 />
-                <Button onClick={postComment} className="mt-2">
+                <Button
+                  onClick={postComment}
+                  onTouchEnd={(e) => {
+                    e.preventDefault();
+                    postComment();
+                  }}
+                  className="mt-2 w-full sm:w-auto"
+                  type="button"
+                >
                   Post Comment
                 </Button>
               </>

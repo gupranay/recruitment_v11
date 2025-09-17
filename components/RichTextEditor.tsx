@@ -70,7 +70,12 @@ export default function RichTextEditor({
           variant="ghost"
           size="sm"
           onClick={() => editor.chain().focus().toggleBold().run()}
+          onTouchEnd={(e) => {
+            e.preventDefault();
+            editor.chain().focus().toggleBold().run();
+          }}
           className={editor.isActive("bold") ? "bg-muted" : ""}
+          type="button"
         >
           <Bold className="h-4 w-4" />
         </Button>
@@ -78,7 +83,12 @@ export default function RichTextEditor({
           variant="ghost"
           size="sm"
           onClick={() => editor.chain().focus().toggleItalic().run()}
+          onTouchEnd={(e) => {
+            e.preventDefault();
+            editor.chain().focus().toggleItalic().run();
+          }}
           className={editor.isActive("italic") ? "bg-muted" : ""}
+          type="button"
         >
           <Italic className="h-4 w-4" />
         </Button>
@@ -86,7 +96,12 @@ export default function RichTextEditor({
           variant="ghost"
           size="sm"
           onClick={() => editor.chain().focus().toggleBulletList().run()}
+          onTouchEnd={(e) => {
+            e.preventDefault();
+            editor.chain().focus().toggleBulletList().run();
+          }}
           className={editor.isActive("bulletList") ? "bg-muted" : ""}
+          type="button"
         >
           <List className="h-4 w-4" />
         </Button>
@@ -94,7 +109,12 @@ export default function RichTextEditor({
           variant="ghost"
           size="sm"
           onClick={() => editor.chain().focus().toggleOrderedList().run()}
+          onTouchEnd={(e) => {
+            e.preventDefault();
+            editor.chain().focus().toggleOrderedList().run();
+          }}
           className={editor.isActive("orderedList") ? "bg-muted" : ""}
+          type="button"
         >
           <ListOrdered className="h-4 w-4" />
         </Button>
@@ -104,7 +124,12 @@ export default function RichTextEditor({
           onClick={() =>
             editor.chain().focus().toggleHeading({ level: 1 }).run()
           }
+          onTouchEnd={(e) => {
+            e.preventDefault();
+            editor.chain().focus().toggleHeading({ level: 1 }).run();
+          }}
           className={editor.isActive("heading", { level: 1 }) ? "bg-muted" : ""}
+          type="button"
         >
           <Heading1 className="h-4 w-4" />
         </Button>
@@ -114,7 +139,12 @@ export default function RichTextEditor({
           onClick={() =>
             editor.chain().focus().toggleHeading({ level: 2 }).run()
           }
+          onTouchEnd={(e) => {
+            e.preventDefault();
+            editor.chain().focus().toggleHeading({ level: 2 }).run();
+          }}
           className={editor.isActive("heading", { level: 2 }) ? "bg-muted" : ""}
+          type="button"
         >
           <Heading2 className="h-4 w-4" />
         </Button>
@@ -122,7 +152,12 @@ export default function RichTextEditor({
           variant="ghost"
           size="sm"
           onClick={() => editor.chain().focus().toggleBlockquote().run()}
+          onTouchEnd={(e) => {
+            e.preventDefault();
+            editor.chain().focus().toggleBlockquote().run();
+          }}
           className={editor.isActive("blockquote") ? "bg-muted" : ""}
+          type="button"
         >
           <Quote className="h-4 w-4" />
         </Button>
@@ -130,7 +165,12 @@ export default function RichTextEditor({
           variant="ghost"
           size="sm"
           onClick={() => editor.chain().focus().undo().run()}
+          onTouchEnd={(e) => {
+            e.preventDefault();
+            editor.chain().focus().undo().run();
+          }}
           disabled={!editor.can().undo()}
+          type="button"
         >
           <Undo className="h-4 w-4" />
         </Button>
@@ -138,7 +178,12 @@ export default function RichTextEditor({
           variant="ghost"
           size="sm"
           onClick={() => editor.chain().focus().redo().run()}
+          onTouchEnd={(e) => {
+            e.preventDefault();
+            editor.chain().focus().redo().run();
+          }}
           disabled={!editor.can().redo()}
+          type="button"
         >
           <Redo className="h-4 w-4" />
         </Button>
