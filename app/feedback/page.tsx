@@ -123,22 +123,45 @@ function FeedbackContent() {
     setIsDialogOpen(true);
   };
 
+  // Helper function to check if comment has actual content (not just empty HTML)
+  const hasValidComment = (comment: string) => {
+    if (!comment) return false;
+    // Remove HTML tags and check if there's actual text content
+    const textContent = comment.replace(/<[^>]*>/g, "").trim();
+    return textContent.length > 0;
+  };
+
   const postComment = async () => {
     console.log("postComment called", {
       selectedApplicant: !!selectedApplicant,
-      newComment: newComment.trim(),
+      newComment: newComment,
+      newCommentTrimmed: newComment.trim(),
+      hasValidComment: hasValidComment(newComment),
       userId: !!user?.id,
       recruitmentRoundId: !!recruitmentRoundId,
     });
 
-    if (
-      !selectedApplicant ||
-      !newComment.trim() ||
-      !user?.id ||
-      !recruitmentRoundId
-    ) {
-      console.log("Missing required data for comment");
-      toast.error("Please fill in all required fields.");
+    if (!selectedApplicant) {
+      console.log("No applicant selected");
+      toast.error("Please select an applicant.");
+      return;
+    }
+
+    if (!hasValidComment(newComment)) {
+      console.log("No valid comment content");
+      toast.error("Please enter a comment.");
+      return;
+    }
+
+    if (!user?.id) {
+      console.log("No user ID");
+      toast.error("Please log in to post comments.");
+      return;
+    }
+
+    if (!recruitmentRoundId) {
+      console.log("No recruitment round ID");
+      toast.error("No recruitment round selected.");
       return;
     }
 
@@ -350,6 +373,7 @@ function FeedbackContent() {
                   }}
                   className="mt-2 w-full sm:w-auto"
                   type="button"
+                  disabled={!hasValidComment(newComment)}
                 >
                   Post Comment
                 </Button>
