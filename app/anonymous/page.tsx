@@ -720,7 +720,7 @@ const ReadingPageContent = () => {
                                 </span>
                               </div>
                               <div
-                                className="text-sm text-card-foreground leading-relaxed"
+                                className="text-sm text-card-foreground leading-relaxed rich-text-content"
                                 dangerouslySetInnerHTML={{
                                   __html: comment.comment_text,
                                 }}

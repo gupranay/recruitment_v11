@@ -71,3 +71,56 @@
       @apply bg-background text-foreground;
     }
   }
+
+  /* Rich text content styling for comments */
+  .rich-text-content {
+    line-height: 1.6;
+  }
+  
+  .rich-text-content p {
+    margin: 0.5em 0;
+  }
+  
+  .rich-text-content ul {
+    padding: 0 1em;
+    list-style-type: disc;
+    margin: 0.5em 0;
+  }
+  
+  .rich-text-content ol {
+    padding: 0 1em;
+    list-style-type: decimal;
+    margin: 0.5em 0;
+  }
+  
+  .rich-text-content li {
+    margin: 0.25em 0;
+  }
+  
+  .rich-text-content h1 {
+    font-size: 1.5em;
+    font-weight: bold;
+    margin: 1em 0 0.5em;
+  }
+  
+  .rich-text-content h2 {
+    font-size: 1.25em;
+    font-weight: bold;
+    margin: 1em 0 0.5em;
+  }
+  
+  .rich-text-content blockquote {
+    border-left: 3px solid hsl(var(--muted-foreground));
+    margin: 1em 0;
+    padding-left: 1em;
+    color: hsl(var(--muted-foreground));
+    font-style: italic;
+  }
+  
+  .rich-text-content strong {
+    font-weight: bold;
+  }
+  
+  .rich-text-content em {
+    font-style: italic;
+  }

@@ -329,7 +329,7 @@ function FeedbackContent() {
                     {comments.map((comment, index) => (
                       <div key={index} className="p-2 bg-muted/10 rounded-lg">
                         <div
-                          className="text-sm"
+                          className="text-sm rich-text-content"
                           dangerouslySetInnerHTML={{
                             __html: comment.comment_text,
                           }}

@@ -9,7 +9,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
+import RichTextEditor from "@/components/RichTextEditor";
 import { Separator } from "@/components/ui/separator";
 import toast, { Toaster } from "react-hot-toast";
 import Image from "next/image";
@@ -94,8 +94,16 @@ export default function ApplicantsGridPage() {
     setIsDialogOpen(true);
   };
 
+  // Helper function to check if comment has actual content (not just empty HTML)
+  const hasValidComment = (comment: string) => {
+    if (!comment) return false;
+    // Remove HTML tags and check if there's actual text content
+    const textContent = comment.replace(/<[^>]*>/g, "").trim();
+    return textContent.length > 0;
+  };
+
   const postComment = async () => {
-    if (!selectedApplicant || !newComment.trim() || !user?.id) return;
+    if (!selectedApplicant || !hasValidComment(newComment) || !user?.id) return;
 
     try {
       const response = await fetch("/api/anonymous/post-comment", {
@@ -211,18 +219,22 @@ export default function ApplicantsGridPage() {
                 <div className="space-y-2">
                   {comments.map(({ comment_text, created_at }, index) => (
                     <div key={index} className="p-2 bg-muted/10 rounded-lg">
-                      <p className="text-sm">{comment_text}</p>
+                      <div
+                        className="text-sm rich-text-content"
+                        dangerouslySetInnerHTML={{
+                          __html: comment_text,
+                        }}
+                      />
                       <p className="text-xs text-muted-foreground">
                         {new Date(created_at).toLocaleString()}
                       </p>
                     </div>
                   ))}
                 </div>
-                <Textarea
-                  value={newComment}
-                  onChange={(e) => setNewComment(e.target.value)}
-                  placeholder="Add a comment"
-                  className="mt-4"
+                <RichTextEditor
+                  content={newComment}
+                  onChange={setNewComment}
+                  placeholder="Add a comment..."
                 />
                 <Button onClick={postComment} className="mt-2">
                   Post Comment

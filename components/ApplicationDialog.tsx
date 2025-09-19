@@ -895,6 +895,7 @@ export default function ApplicationDialog({
                                     {comment.user_name || "Anonymous"}:
                                   </span>{" "}
                                   <span
+                                    className="rich-text-content"
                                     dangerouslySetInnerHTML={{
                                       __html: comment.comment_text,
                                     }}

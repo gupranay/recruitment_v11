@@ -123,7 +123,6 @@ export default async function handler(
     // Convert resultsMap to an array
     // -----------------------------
     const finalResult = Object.values(resultsMap);
-    console.log("finalResult", finalResult);
 
     return res.status(200).json(finalResult);
   } catch (err) {
