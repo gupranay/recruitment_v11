@@ -1,7 +1,7 @@
 import { supabaseServer } from "@/lib/supabase/server";
 
 // inside handler
-const supabase = supabaseServer();
+const supabase = await supabaseServer();
 
 const {
   data: { user },

@@ -15,18 +15,32 @@ export default async function handler(
 
   if (req.method === "PUT") {
     try {
-      // Check if the user making the request has Owner role
-      const { data: membership, error: membershipError } = await supabase
-        .from("organization_users")
-        .select("role")
-        .eq("organization_id", organizationId.toString())
-        .eq("user_id", user_id)
+      // First check if user is the organization owner
+      const { data: organization, error: orgError } = await supabase
+        .from("organizations")
+        .select("owner_id")
+        .eq("id", organizationId.toString())
         .single();
 
-      if (membershipError || !membership || membership.role !== "Owner") {
-        return res
-          .status(403)
-          .json({ error: "Only owners can update organization details" });
+      if (orgError) {
+        return res.status(500).json({ error: "Error checking organization ownership" });
+      }
+
+      // Check if user is the actual owner
+      if (organization?.owner_id !== user_id) {
+        // If not the owner, check their role in organization_users
+        const { data: membership, error: membershipError } = await supabase
+          .from("organization_users")
+          .select("role")
+          .eq("organization_id", organizationId.toString())
+          .eq("user_id", user_id)
+          .single();
+
+        if (membershipError || !membership || membership.role !== "Owner") {
+          return res
+            .status(403)
+            .json({ error: "Only owners can update organization details" });
+        }
       }
 
       // Update the organization
@@ -47,18 +61,32 @@ export default async function handler(
 
   if (req.method === "DELETE") {
     try {
-      // Check if user is the owner
-      const { data: membership, error: membershipError } = await supabase
-        .from("organization_users")
-        .select("role")
-        .eq("organization_id", organizationId.toString())
-        .eq("user_id", user_id)
+      // First check if user is the organization owner
+      const { data: organization, error: orgError } = await supabase
+        .from("organizations")
+        .select("owner_id")
+        .eq("id", organizationId.toString())
         .single();
 
-      if (membershipError || !membership || membership.role !== "Owner") {
-        return res
-          .status(403)
-          .json({ error: "Only owners can delete organizations" });
+      if (orgError) {
+        return res.status(500).json({ error: "Error checking organization ownership" });
+      }
+
+      // Check if user is the actual owner
+      if (organization?.owner_id !== user_id) {
+        // If not the owner, check their role in organization_users
+        const { data: membership, error: membershipError } = await supabase
+          .from("organization_users")
+          .select("role")
+          .eq("organization_id", organizationId.toString())
+          .eq("user_id", user_id)
+          .single();
+
+        if (membershipError || !membership || membership.role !== "Owner") {
+          return res
+            .status(403)
+            .json({ error: "Only owners can delete organizations" });
+        }
       }
 
       // Delete the organization (cascade will handle related records)

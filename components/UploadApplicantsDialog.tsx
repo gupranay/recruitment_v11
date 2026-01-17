@@ -126,7 +126,7 @@ export default function UploadApplicantsDialog() {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger>
+      <DialogTrigger asChild>
         <Button>Upload Applicants</Button>
       </DialogTrigger>
       <DialogContent>

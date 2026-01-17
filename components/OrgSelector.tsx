@@ -14,8 +14,12 @@ import {
 import { useOrganization } from "@/contexts/OrganizationContext";
 import { RecruitmentCycle } from "@/lib/types/RecruitmentCycle";
 import { Skeleton } from "@/components/ui/skeleton";
+import useUser from "@/app/hook/useUser";
+import { cn } from "@/lib/utils";
 
-export function OrgSelector({ user }: { user: any }) {
+export function OrgSelector({ user: userProp }: { user: any }) {
+  const { data: user } = useUser();
+  const actualUser = userProp || user;
   const {
     selectedOrganization,
     setSelectedOrganization,
@@ -28,14 +32,17 @@ export function OrgSelector({ user }: { user: any }) {
   >([]);
 
   React.useEffect(() => {
-    if (selectedOrganization) {
+    if (selectedOrganization && actualUser?.id) {
       const fetchRecruitmentCycles = async () => {
         const response = await fetch("/api/recruitment_cycles", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ organization_id: selectedOrganization.id }),
+          body: JSON.stringify({ 
+            organization_id: selectedOrganization.id,
+            user_id: actualUser.id 
+          }),
         });
 
         if (response.ok) {
@@ -46,7 +53,7 @@ export function OrgSelector({ user }: { user: any }) {
 
       fetchRecruitmentCycles();
     }
-  }, [selectedOrganization]);
+  }, [selectedOrganization, actualUser?.id]);
 
   if (loading) {
     return <div style={{ width: "100%", height: "100%" }}></div>;
@@ -72,7 +79,12 @@ export function OrgSelector({ user }: { user: any }) {
       defaultValue={selectedOrganization?.id}
       value={selectedOrganization?.id}
     >
-      <SelectTrigger className="w-[200px]">
+      <SelectTrigger 
+        className={cn(
+          "w-[200px]",
+          selectedOrganization && "bg-primary text-primary-foreground border-primary"
+        )}
+      >
         <SelectValue>
           {selectedOrganization?.name || "Select organization..."}
         </SelectValue>

@@ -3,7 +3,7 @@ import NavBar from "@/components/NavBar";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { Button } from "@/components/ui/button";
 import { supabaseBrowser } from "@/lib/supabase/browser";
-import { HOSTNAME } from "@/pages/api/_app";
+import { HOSTNAME } from "@/lib/constant/inedx";
 import { KeyRound } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import React, { useState, useEffect, Suspense } from "react";

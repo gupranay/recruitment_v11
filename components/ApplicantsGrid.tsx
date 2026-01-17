@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { RecruitmentCycle } from "@/lib/types/RecruitmentCycle";
 import useUser from "@/app/hook/useUser";
+import { Organization } from "@/contexts/OrganizationContext";
 
 type SortOption =
   | "current_weighted_asc"
@@ -36,6 +37,7 @@ type ApplicantGridProps = {
   onReject: (applicantId: string) => Promise<void>;
   isLastRound: boolean;
   currentCycle: RecruitmentCycle | null;
+  currentOrg: Organization | null;
 };
 
 export default function ApplicantGrid({
@@ -45,8 +47,16 @@ export default function ApplicantGrid({
   onReject,
   isLastRound,
   currentCycle,
+  currentOrg,
 }: ApplicantGridProps) {
   const { data: user } = useUser();
+  
+  // Check if user is Owner or Admin (not Member)
+  const isOwnerOrAdmin = currentOrg && user ? (
+    currentOrg.owner_id === user.id ||
+    currentOrg.role === "Owner" ||
+    currentOrg.role === "Admin"
+  ) : undefined;
   const [applicants, setApplicants] = useState<ApplicantCardType[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState("Loading applicants...");
@@ -182,56 +192,60 @@ export default function ApplicantGrid({
       <div className="flex items-center justify-between mb-4">
         <div className="font-medium text-lg">Applicant Overview</div>
         <div className="flex flex-wrap items-center gap-2 ml-auto">
-          {/* Primary Actions Group */}
-          <div className="flex flex-wrap items-center gap-2">
-            <Button
-              onClick={() => handleRoundChange(rounds[currentRound].id)}
-              className="bg-blue-500 text-white"
-            >
-              View Demographics
-            </Button>
-            <Button
-              onClick={() => {
-                const encodedRoundId = encodeURIComponent(
-                  rounds[currentRound].id
-                );
-                window.open(`/feedback/?id=${encodedRoundId}`, "_blank");
-              }}
-              className="bg-orange-500 text-white"
-            >
-              Launch Feedback Form
-            </Button>
-          </div>
+          {/* Primary Actions Group - Only for Owner/Admin */}
+          {isOwnerOrAdmin && (
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                onClick={() => handleRoundChange(rounds[currentRound].id)}
+                className="bg-blue-500 text-white"
+              >
+                View Demographics
+              </Button>
+              <Button
+                onClick={() => {
+                  const encodedRoundId = encodeURIComponent(
+                    rounds[currentRound].id
+                  );
+                  window.open(`/feedback/?id=${encodedRoundId}`, "_blank");
+                }}
+                className="bg-orange-500 text-white"
+              >
+                Launch Feedback Form
+              </Button>
+            </div>
+          )}
 
-          {/* Secondary Actions Group */}
-          <div className="flex flex-wrap items-center gap-2">
-            <Button
-              onClick={() => {
-                exportToCSV(
-                  applicants.map(({ name, email, status }) => ({
-                    name: name || "N/A",
-                    email: email || "N/A",
-                    status: status || "N/A",
-                  })),
-                  rounds[currentRound].name || "applicants"
-                );
-              }}
-              variant="outline"
-            >
-              Export Decisions
-            </Button>
-            <CreateAnonymizedAppDialog
-              recruitment_round_id={rounds[currentRound].id || ""}
-              recruitment_round_name={
-                rounds[currentRound].name || "Unknown Round"
-              }
-              applicant_id={applicants[0]?.applicant_id || ""}
-            />
-            <UploadApplicantsDialog3
-              recruitment_round_id={rounds[currentRound].id}
-              fetchApplicants={fetchApplicants}
-            />
-          </div>
+          {/* Secondary Actions Group - Only for Owner/Admin */}
+          {isOwnerOrAdmin && (
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                onClick={() => {
+                  exportToCSV(
+                    applicants.map(({ name, email, status }) => ({
+                      name: name || "N/A",
+                      email: email || "N/A",
+                      status: status || "N/A",
+                    })),
+                    rounds[currentRound].name || "applicants"
+                  );
+                }}
+                variant="outline"
+              >
+                Export Decisions
+              </Button>
+              <CreateAnonymizedAppDialog
+                recruitment_round_id={rounds[currentRound].id || ""}
+                recruitment_round_name={
+                  rounds[currentRound].name || "Unknown Round"
+                }
+                applicant_id={applicants[0]?.applicant_id || ""}
+              />
+              <UploadApplicantsDialog3
+                recruitment_round_id={rounds[currentRound].id}
+                fetchApplicants={fetchApplicants}
+              />
+            </div>
+          )}
 
           {/* View Controls Group */}
           <div className="flex flex-wrap items-center gap-2">
@@ -319,6 +333,7 @@ export default function ApplicantGrid({
                   onReject={onReject}
                   isLastRound={isLastRound}
                   fetchApplicants={fetchApplicants}
+                  isOwnerOrAdmin={isOwnerOrAdmin}
                 />
               ))}
             </div>
@@ -333,6 +348,7 @@ export default function ApplicantGrid({
                   fetchApplicants={fetchApplicants}
                   isLastRound={isLastRound}
                   onClick={() => handleOpenDialog(applicant)}
+                  isOwnerOrAdmin={isOwnerOrAdmin}
                 />
               ))}
             </div>

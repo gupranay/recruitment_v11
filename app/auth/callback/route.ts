@@ -2,7 +2,7 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { type CookieOptions, createServerClient } from "@supabase/ssr";
-import { HOSTNAME } from "@/pages/api/_app";
+import { HOSTNAME } from "@/lib/constant/inedx";
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
@@ -11,7 +11,7 @@ export async function GET(request: Request) {
   const next = searchParams.get("next") ?? "/";
 
   if (code) {
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,

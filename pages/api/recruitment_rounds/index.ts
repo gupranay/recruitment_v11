@@ -18,7 +18,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const { data, error } = await supabase
     .from("recruitment_rounds")
     .select("*")
-    .eq("recruitment_cycle_id", recruitment_cycle_id);
+    .eq("recruitment_cycle_id", recruitment_cycle_id)
+    .order("sort_order", { ascending: true, nullsFirst: false });
 
   // console.log(data);
     if (error) {

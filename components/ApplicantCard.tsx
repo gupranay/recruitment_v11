@@ -34,6 +34,7 @@ interface ApplicantCardProps {
   fetchApplicants: () => Promise<void>;
   isLastRound: boolean;
   onClick?: () => void;
+  isOwnerOrAdmin?: boolean;
 }
 
 export default function ApplicantCard({
@@ -42,6 +43,7 @@ export default function ApplicantCard({
   onReject,
   fetchApplicants,
   isLastRound,
+  isOwnerOrAdmin = true,
 }: ApplicantCardProps) {
   const [isAlertDialogOpen, setIsAlertDialogOpen] = useState(false);
   const [isApplicationDialogOpen, setIsApplicationDialogOpen] = useState(false);
@@ -260,7 +262,7 @@ export default function ApplicantCard({
             <Expand className="h-3 w-3" />
             <span className="sr-only">Expand application</span>
           </Button>
-          {(applicant.status === "in_progress" ||
+          {isOwnerOrAdmin && (applicant.status === "in_progress" ||
             applicant.status === "maybe") && (
             <AlertDialog
               open={isAlertDialogOpen}
@@ -331,7 +333,7 @@ export default function ApplicantCard({
             </AlertDialog>
           )}
         </div>
-        {(applicant.status === "accepted" ||
+        {isOwnerOrAdmin && (applicant.status === "accepted" ||
           applicant.status === "rejected") && (
           <Button
             size="sm"

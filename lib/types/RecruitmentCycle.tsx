@@ -3,5 +3,6 @@ export type RecruitmentCycle = {
   name: string;
   created_at: string;
   organization_id: string;
+  archived?: boolean;
 };
 

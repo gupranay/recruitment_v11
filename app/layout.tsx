@@ -32,7 +32,10 @@ export default function RootLayout({
           content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
         />
       </head>
-      <body className="min-h-screen m-0 p-0 overflow-x-hidden">
+      {/* suppressHydrationWarning is needed for browser extensions (e.g., Grammarly) 
+          that inject attributes into the body element. This is the recommended React solution
+          for external DOM modifications that we cannot control. */}
+      <body className="min-h-screen m-0 p-0 overflow-x-hidden" suppressHydrationWarning>
         <QueryProvider>
           <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
             <OrganizationProvider>

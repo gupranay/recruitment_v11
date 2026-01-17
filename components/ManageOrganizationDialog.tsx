@@ -26,6 +26,16 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 type Member = {
   id: string;
@@ -150,6 +160,13 @@ export function ManageOrganizationDialog() {
   const [removingInviteId, setRemovingInviteId] = useState<string | null>(null);
   const [deletingOrg, setDeletingOrg] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [updatingRoleId, setUpdatingRoleId] = useState<string | null>(null);
+  const [showOwnerConfirm, setShowOwnerConfirm] = useState(false);
+  const [pendingRoleChange, setPendingRoleChange] = useState<{
+    memberId: string;
+    newRole: string;
+    memberName: string;
+  } | null>(null);
 
   const fetchMembers = useCallback(async () => {
     if (!selectedOrganization) return;
@@ -306,6 +323,69 @@ export function ManageOrganizationDialog() {
     }
   };
 
+  const updateMemberRole = async (memberId: string, newRole: string) => {
+    if (!selectedOrganization || !user) return;
+
+    try {
+      setUpdatingRoleId(memberId);
+      const response = await fetch(
+        `/api/organizations/${selectedOrganization.id}/update-role`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            user_id: user.id,
+            target_user_id: memberId,
+            new_role: newRole,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to update role");
+      }
+
+      toast.success("Role updated successfully");
+      setShowOwnerConfirm(false);
+      setPendingRoleChange(null);
+      
+      // Refresh members list
+      await fetchMembers();
+      
+      // If role changed to Owner, refresh the page to update organization context
+      if (newRole === "Owner") {
+        window.location.reload();
+      }
+    } catch (error: any) {
+      toast.error(error.message || "Failed to update role");
+    } finally {
+      setUpdatingRoleId(null);
+    }
+  };
+
+  const handleRoleChange = (memberId: string, memberName: string, newRole: string) => {
+    if (newRole === "Owner") {
+      // Show confirmation dialog for Owner role
+      setPendingRoleChange({ memberId, newRole, memberName });
+      setShowOwnerConfirm(true);
+    } else {
+      // Directly update for non-Owner roles
+      updateMemberRole(memberId, newRole);
+    }
+  };
+
+  const confirmOwnerChange = () => {
+    if (pendingRoleChange) {
+      updateMemberRole(
+        pendingRoleChange.memberId,
+        pendingRoleChange.newRole
+      );
+    }
+  };
+
   // Sort members with owner first, then by role and name
   const sortedMembers = [...members].sort((a, b) => {
     if (a.role === "Owner" && b.role !== "Owner") return -1;
@@ -436,35 +516,65 @@ export function ManageOrganizationDialog() {
                           </p>
                         )}
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span
-                          className={cn(
-                            "text-sm px-2 py-1 rounded",
-                            member.status === "pending"
-                              ? "bg-orange-500/10 text-orange-400"
-                              : "bg-blue-500/10 text-blue-400"
-                          )}
-                        >
-                          {member.status === "pending"
-                            ? `Pending ${member.role}`
-                            : member.role}
-                        </span>
+                      <div className="flex items-center gap-3">
                         {member.status === "pending" ? (
-                          (selectedOrganization?.role === "Owner" ||
-                            selectedOrganization?.role === "Admin") && (
-                            <Button
-                              variant="destructive"
-                              size="sm"
-                              onClick={() => deleteInvite(member.id)}
-                              disabled={removingInviteId === member.id}
+                          <>
+                            <span
+                              className={cn(
+                                "text-sm px-2 py-1 rounded",
+                                "bg-orange-500/10 text-orange-400"
+                              )}
                             >
-                              {removingInviteId === member.id
-                                ? "Deleting..."
-                                : "Delete Invite"}
-                            </Button>
-                          )
+                              Pending {member.role}
+                            </span>
+                            {(selectedOrganization?.role === "Owner" ||
+                              selectedOrganization?.role === "Admin") && (
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => deleteInvite(member.id)}
+                                disabled={removingInviteId === member.id}
+                              >
+                                {removingInviteId === member.id
+                                  ? "Deleting..."
+                                  : "Delete Invite"}
+                              </Button>
+                            )}
+                          </>
                         ) : (
                           <>
+                            {selectedOrganization?.role === "Owner" &&
+                            member.id !== user?.id ? (
+                              <Select
+                                value={member.role}
+                                onValueChange={(newRole) =>
+                                  handleRoleChange(
+                                    member.id,
+                                    member.name || member.email,
+                                    newRole
+                                  )
+                                }
+                                disabled={updatingRoleId === member.id}
+                              >
+                                <SelectTrigger className="w-[140px]">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="Member">Member</SelectItem>
+                                  <SelectItem value="Admin">Admin</SelectItem>
+                                  <SelectItem value="Owner">Owner</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            ) : (
+                              <span
+                                className={cn(
+                                  "text-sm px-2 py-1 rounded",
+                                  "bg-blue-500/10 text-blue-400"
+                                )}
+                              >
+                                {member.role}
+                              </span>
+                            )}
                             {selectedOrganization?.role === "Owner" &&
                               member.id !== user?.id &&
                               member.role !== "Owner" && (
@@ -558,6 +668,38 @@ export function ManageOrganizationDialog() {
           </TabsContent>
         </Tabs>
       </DialogContent>
+
+      <AlertDialog open={showOwnerConfirm} onOpenChange={setShowOwnerConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Transfer Organization Ownership</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to make{" "}
+              <strong>{pendingRoleChange?.memberName}</strong> the owner of this
+              organization? This action cannot be undone. You will become an Admin
+              after the transfer.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              onClick={() => {
+                setShowOwnerConfirm(false);
+                setPendingRoleChange(null);
+              }}
+              disabled={!!updatingRoleId}
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmOwnerChange}
+              disabled={!!updatingRoleId}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {updatingRoleId ? "Transferring..." : "Transfer Ownership"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }

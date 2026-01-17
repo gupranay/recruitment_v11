@@ -23,6 +23,7 @@ interface ApplicantListItemProps {
   onReject: (id: string) => Promise<void>;
   isLastRound: boolean;
   fetchApplicants: () => Promise<void>;
+  isOwnerOrAdmin?: boolean;
 }
 
 export default function ApplicantListItem({
@@ -32,6 +33,7 @@ export default function ApplicantListItem({
   onReject,
   isLastRound,
   fetchApplicants,
+  isOwnerOrAdmin = true,
 }: ApplicantListItemProps) {
   const [isAccepting, setIsAccepting] = useState(false); // Loading state for accepting
   const [isRejecting, setIsRejecting] = useState(false); // Loading state for rejecting
@@ -221,7 +223,7 @@ export default function ApplicantListItem({
           <ChevronRight className="h-4 w-4" />
           <span className="ml-2">View</span>
         </Button>
-        {(applicant.status === "in_progress" ||
+        {isOwnerOrAdmin && (applicant.status === "in_progress" ||
           applicant.status === "maybe") && (
           <>
             <AlertDialog
@@ -317,7 +319,7 @@ export default function ApplicantListItem({
             </AlertDialog>
           </>
         )}
-        {(applicant.status === "accepted" ||
+        {isOwnerOrAdmin && (applicant.status === "accepted" ||
           applicant.status === "rejected") && (
           <Button
             size="sm"
