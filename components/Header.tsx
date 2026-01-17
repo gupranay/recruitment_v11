@@ -17,7 +17,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-import { ChevronDown, Settings, Archive, ArchiveRestore, Check } from "lucide-react";
+import { ChevronDown, Settings, Archive, ArchiveRestore, Check, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -73,6 +73,10 @@ export default function Header({
     cycle: RecruitmentCycle | null;
     archive: boolean;
   }>({ cycle: null, archive: false });
+  const [confirmDelete, setConfirmDelete] = useState<RecruitmentCycle | null>(null);
+  const [deleteConfirmationText, setDeleteConfirmationText] = useState("");
+  const [isDeleting, setIsDeleting] = useState<string | null>(null);
+  const [isOwner, setIsOwner] = useState(false);
 
   // Check if user is Owner or Admin
   const isOwnerOrAdmin = currentOrg && (
@@ -80,6 +84,41 @@ export default function Header({
     currentOrg.role === "Owner" || 
     currentOrg.role === "Admin"
   );
+
+  // Check if user is Owner using API (more reliable)
+  useEffect(() => {
+    const checkOwner = async () => {
+      if (!currentOrg || !user?.id) {
+        setIsOwner(false);
+        return;
+      }
+
+      try {
+        const response = await fetch("/api/organizations/check-owner", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            user_id: user.id,
+            organization_id: currentOrg.id,
+          }),
+        });
+
+        if (response.ok) {
+          const { isOwner: ownerStatus } = await response.json();
+          setIsOwner(ownerStatus);
+        } else {
+          setIsOwner(false);
+        }
+      } catch (error) {
+        console.error("Error checking owner status:", error);
+        setIsOwner(false);
+      }
+    };
+
+    checkOwner();
+  }, [currentOrg, user?.id]);
 
   // Separate cycles into active and archived
   const activeCycles = recruitmentCycles.filter(cycle => !cycle.archived);
@@ -129,7 +168,11 @@ export default function Header({
       );
       setRecruitmentCycles(updatedCycles);
 
-      // If archiving the current cycle, don't change selection
+      // If archiving the current cycle, set it to the updated archived cycle
+      // This ensures the page remains functional and the archived cycle is selected
+      if (archive && currentCycle?.id === cycle.id) {
+        setCurrentCycle(updatedCycle);
+      }
       // If unarchiving, user can manually select it
       
       toast.success(archive ? "Cycle archived successfully" : "Cycle unarchived successfully");
@@ -138,6 +181,65 @@ export default function Header({
       toast.error(error.message || "Failed to update cycle");
     } finally {
       setIsArchiving(null);
+    }
+  };
+
+  const handleDeleteClick = (cycle: RecruitmentCycle) => {
+    setConfirmDelete(cycle);
+    setDeleteConfirmationText("");
+  };
+
+  const handleDeleteConfirm = async () => {
+    const cycle = confirmDelete;
+    if (!cycle || !currentOrg || !user) return;
+
+    // Double confirmation: require typing the cycle name
+    if (deleteConfirmationText !== cycle.name) {
+      toast.error("Please type the cycle name exactly to confirm deletion");
+      return;
+    }
+
+    setIsDeleting(cycle.id);
+    
+    try {
+      const response = await fetch("/api/recruitment_cycles/delete", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          cycle_id: cycle.id,
+          user_id: user.id,
+          organization_id: currentOrg.id,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to delete cycle");
+      }
+
+      // Remove the cycle from the list
+      const updatedCycles = recruitmentCycles.filter(c => c.id !== cycle.id);
+      setRecruitmentCycles(updatedCycles);
+
+      // If the deleted cycle was the current cycle, set to null or first available
+      if (currentCycle?.id === cycle.id) {
+        if (updatedCycles.length > 0) {
+          setCurrentCycle(updatedCycles[0]);
+        } else {
+          setCurrentCycle(null);
+        }
+      }
+
+      setConfirmDelete(null);
+      setDeleteConfirmationText("");
+      toast.success("Cycle deleted successfully");
+    } catch (error: any) {
+      console.error("Error deleting cycle:", error);
+      toast.error(error.message || "Failed to delete cycle");
+    } finally {
+      setIsDeleting(null);
     }
   };
 
@@ -281,17 +383,32 @@ export default function Header({
                       <Check className="absolute left-2 h-4 w-4" />
                     )}
                     <span>{cycle.name}</span>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleArchiveClick(cycle, false);
-                      }}
-                      disabled={isArchiving === cycle.id}
-                      className="ml-2 opacity-0 group-hover:opacity-70 transition-all duration-200 hover:opacity-100 hover:scale-110 hover:text-foreground active:scale-95"
-                      title="Unarchive cycle"
-                    >
-                      <ArchiveRestore className="h-3.5 w-3.5 transition-transform duration-200" />
-                    </button>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleArchiveClick(cycle, false);
+                        }}
+                        disabled={isArchiving === cycle.id}
+                        className="opacity-0 group-hover:opacity-70 transition-all duration-200 hover:opacity-100 hover:scale-110 hover:text-foreground active:scale-95"
+                        title="Unarchive cycle"
+                      >
+                        <ArchiveRestore className="h-3.5 w-3.5 transition-transform duration-200" />
+                      </button>
+                      {isOwner && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteClick(cycle);
+                          }}
+                          disabled={isDeleting === cycle.id}
+                          className="opacity-60 group-hover:opacity-100 transition-all duration-200 hover:scale-110 hover:text-destructive active:scale-95"
+                          title="Delete cycle"
+                        >
+                          <Trash2 className="h-3.5 w-3.5 transition-transform duration-200" />
+                        </button>
+                      )}
+                    </div>
                   </DropdownMenuItem>
                 ))}
               </>
@@ -388,6 +505,50 @@ export default function Header({
               ) : (
                 "Unarchive"
               )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog
+        open={confirmDelete !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setConfirmDelete(null);
+            setDeleteConfirmationText("");
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Recruitment Cycle?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete <strong>{confirmDelete?.name}</strong>?
+              <br />
+              <br />
+              This action cannot be undone. The cycle and all its data will be permanently deleted.
+              <br />
+              <br />
+              <strong>Type the cycle name to confirm:</strong>
+              <Input
+                type="text"
+                value={deleteConfirmationText}
+                onChange={(e) => setDeleteConfirmationText(e.target.value)}
+                placeholder={confirmDelete?.name}
+                className="mt-2"
+                autoFocus
+              />
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              disabled={isDeleting === confirmDelete?.id || deleteConfirmationText !== confirmDelete?.name}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              {isDeleting === confirmDelete?.id ? "Deleting..." : "Delete"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

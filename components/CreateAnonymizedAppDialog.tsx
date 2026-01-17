@@ -71,6 +71,12 @@ export default function CreateAnonymizedAppDialog({
           body: JSON.stringify({ recruitment_round_id }),
         });
 
+        // 404 is expected when no anonymous app reading exists yet
+        if (response.status === 404) {
+          setSlug(null);
+          return;
+        }
+
         if (!response.ok) {
           throw new Error("Failed to fetch slug");
         }

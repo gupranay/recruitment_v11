@@ -44,7 +44,7 @@
     "csv-parse": "^5.5.6",
     "csv-parser": "^3.0.0",
     "csvtojson": "^2.0.10",
-    "fast-csv": "^5.0.1",
+    "fast-csv": "^5.0.5",
     "file-saver": "^2.0.5",
     "formidable": "^3.5.1",
     "framer-motion": "^12.10.5",
@@ -76,5 +76,10 @@
     "supabase": "^2.1.1",
     "tailwindcss": "^3.4.1",
     "typescript": "^5"
+  },
+  "overrides": {
+    "@fast-csv/format": {
+      "lodash.isequal": "npm:lodash@^4.17.21"
+    }
   }
 }

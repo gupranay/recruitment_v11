@@ -1,6 +1,24 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { supabaseBrowser } from "@/lib/supabase/browser";
 
+type ApplicantRoundWithApplicant = {
+  id: string;
+  applicant_id: string;
+  status: string;
+  weighted_score: number | null;
+  applicants: {
+    id: string;
+    name: string;
+    headshot_url: string | null;
+    email: string | null;
+  } | null;
+};
+
+type ApplicantRoundBasic = {
+  applicant_id: string;
+  weighted_score: number | null;
+};
+
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
@@ -40,7 +58,10 @@ export default async function handler(
         )
       `
       )
-      .eq("recruitment_round_id", recruitment_round_id);
+      .eq("recruitment_round_id", recruitment_round_id) as {
+      data: ApplicantRoundWithApplicant[] | null;
+      error: any;
+    };
 
     if (currentRoundError) {
       console.error(
@@ -98,7 +119,10 @@ export default async function handler(
           `
           )
           .eq("recruitment_round_id", last_round_id)
-          .in("applicant_id", applicantIds);
+          .in("applicant_id", applicantIds) as {
+          data: ApplicantRoundBasic[] | null;
+          error: any;
+        };
 
         if (lastRoundError) {
           console.error(
