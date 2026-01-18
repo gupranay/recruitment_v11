@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { supabaseApi } from "@/lib/supabase/api";
+import { Database } from "@/lib/types/supabase";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   // Only allow POST
@@ -40,7 +41,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     you may need to specify the constraint name (e.g. users!comments_user_id_fkey).
   */
 
-  const { data, error } = await supabase
+  type CommentWithRelations = {
+    comment_text: string;
+    created_at: string;
+    user: { full_name: string | null } | null;
+    applicant_rounds: {
+      applicant_id: string;
+      recruitment_rounds: { name: string } | null;
+    } | null;
+  };
+  
+  const result = await supabase
     .from("comments")
     .select(`
       comment_text,
@@ -59,10 +70,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     `)
     // Filter to only comments for the given applicant_id
     .eq("applicant_rounds.applicant_id", applicant_id);
+  
+  const { data, error } = result as {
+    data: CommentWithRelations[] | null;
+    error: any;
+  };
 
-  if (error) {
-    console.error("Error fetching comments:", error.message);
-    return res.status(500).json({ error: error.message });
+  if (error || !data) {
+    console.error("Error fetching comments:", error?.message || "No data");
+    return res.status(500).json({ error: error?.message || "Failed to fetch comments" });
   }
 
   // Transform data into a simpler format

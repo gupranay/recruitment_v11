@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { supabaseBrowser } from "@/lib/supabase/browser";
+import { Database } from "@/lib/types/supabase";
 
 export default async function handler(
   req: NextApiRequest,
@@ -18,7 +19,27 @@ export default async function handler(
 
   try {
     // 1) Fetch the reading for the given slug
-    const { data: reading, error: readingError } = await supabase
+    type ReadingWithRelations = {
+      id: string;
+      recruitment_round_id: string;
+      omitted_fields: string[] | null;
+      recruitment_rounds: {
+        id: string;
+        name: string;
+        recruitment_cycle_id: string;
+        recruitment_cycles: {
+          id: string;
+          name: string;
+          organization_id: string;
+          organizations: {
+            id: string;
+            name: string;
+          };
+        };
+      };
+    };
+
+    const readingResult = await supabase
       .from("anonymous_readings")
       .select(
         `id, recruitment_round_id, omitted_fields,
@@ -33,6 +54,11 @@ export default async function handler(
       )
       .eq("slug", slug)
       .single();
+    
+    const { data: reading, error: readingError } = readingResult as {
+      data: ReadingWithRelations | null;
+      error: any;
+    };
 
     if (readingError) {
       return res.status(500).json({ error: readingError.message });
@@ -42,14 +68,26 @@ export default async function handler(
     }
 
     // 2) Fetch applicant_ids and created_at for that round, ordered by applicant_id to ensure consistent numbering
-    const { data: bridgingRows, error: bridgingErr } = await supabase
+    const bridgingResult = await supabase
       .from("applicant_rounds")
       .select("id, applicant_id, created_at")
       .eq("recruitment_round_id", reading.recruitment_round_id)
       .order("applicant_id", { ascending: true });
+    
+    const { data: bridgingRows, error: bridgingErr } = bridgingResult as {
+      data: Array<{
+        id: string;
+        applicant_id: string;
+        created_at: string;
+      }> | null;
+      error: any;
+    };
 
     if (bridgingErr) {
       return res.status(500).json({ error: bridgingErr.message });
+    }
+    if (!bridgingRows) {
+      return res.status(500).json({ error: "Failed to fetch bridging rows" });
     }
 
     // Extract the applicant_ids and created_at into an array of objects

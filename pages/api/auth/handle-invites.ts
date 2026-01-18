@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { supabaseBrowser } from "@/lib/supabase/browser";
+import { Database } from "@/lib/types/supabase";
 
 export default async function handler(
   req: NextApiRequest,
@@ -18,10 +19,15 @@ export default async function handler(
 
   try {
     // Get all pending invites for this email
-    const { data: invites, error: invitesError } = await supabase
+    const invitesResult = await supabase
       .from("organization_invites")
       .select("*")
       .eq("email", email);
+    
+    const { data: invites, error: invitesError } = invitesResult as {
+      data: Database["public"]["Tables"]["organization_invites"]["Row"][] | null;
+      error: any;
+    };
 
     if (invitesError) throw invitesError;
 
@@ -32,21 +38,24 @@ export default async function handler(
     // Process each invite
     for (const invite of invites) {
       // Add user to organization
-      const { error: memberError } = await supabase
-        .from("organization_users")
-        .insert({
-          organization_id: invite.organization_id,
-          user_id: userId,
-          role: invite.role,
-        });
+      const insertData: Database["public"]["Tables"]["organization_users"]["Insert"] = {
+        organization_id: invite.organization_id,
+        user_id: userId,
+        role: invite.role,
+      };
+      const memberResult = await (supabase
+        .from("organization_users") as any)
+        .insert(insertData as any);
+      const { error: memberError } = memberResult as { error: any };
 
       if (memberError) throw memberError;
 
       // Delete the processed invite
-      const { error: deleteError } = await supabase
-        .from("organization_invites")
+      const deleteQuery = (supabase
+        .from("organization_invites") as any)
         .delete()
         .eq("id", invite.id);
+      const { error: deleteError } = await deleteQuery as { error: any };
 
       if (deleteError) throw deleteError;
     }

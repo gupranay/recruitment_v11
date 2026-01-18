@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { supabaseBrowser } from "@/lib/supabase/browser";
+import { Database } from "@/lib/types/supabase";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const supabase = supabaseBrowser();
@@ -44,16 +45,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }));
 
   // --- Step 1: Insert Applicants ---
-  const { data: insertedApplicants, error: insertError } = await supabase
+  const insertResult = await (supabase
     .from("applicants")
-    .insert(applicants)
-    .select(); // .select() returns the newly inserted rows
+    .insert(applicants as any)
+    .select() as any); // .select() returns the newly inserted rows
+  
+  const { data: insertedApplicants, error: insertError } = insertResult as {
+    data: Database["public"]["Tables"]["applicants"]["Row"][] | null;
+    error: any;
+  };
 
   console.log(insertError);
 
-  if (insertError) {
-    console.error("Error inserting applicants:", insertError.message);
-    return res.status(500).json({ error: insertError.message });
+  if (insertError || !insertedApplicants) {
+    console.error("Error inserting applicants:", insertError?.message || "No data returned");
+    return res.status(500).json({ error: insertError?.message || "Failed to insert applicants" });
   }
 
   // --- Step 2: Insert into applicant_rounds ---
@@ -64,10 +70,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     status: "in_progress" 
   }));
 
-  const { data: bridgingRes, error: bridgingError } = await supabase
+  const bridgingInsertData: Database["public"]["Tables"]["applicant_rounds"]["Insert"][] = bridgingData.map(d => ({
+    applicant_id: d.applicant_id,
+    recruitment_round_id: d.recruitment_round_id,
+    status: d.status,
+  }));
+  
+  const bridgingResult = await (supabase
     .from("applicant_rounds")
-    .insert(bridgingData)
-    .select();
+    .insert(bridgingInsertData as any)
+    .select() as any);
+  
+  const { data: bridgingRes, error: bridgingError } = bridgingResult as {
+    data: Database["public"]["Tables"]["applicant_rounds"]["Row"][] | null;
+    error: any;
+  };
 
   if (bridgingError) {
     console.error("Error inserting applicant_rounds:", bridgingError.message);

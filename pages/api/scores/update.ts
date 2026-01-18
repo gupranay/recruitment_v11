@@ -31,7 +31,7 @@ export default async function handler(
 
   try {
     // First, get the score to check ownership and get the submission_id
-    const { data: score, error: fetchError } = await supabase
+    const scoreResult = await supabase
       .from("scores")
       .select(
         `
@@ -49,6 +49,18 @@ export default async function handler(
       .eq("id", score_id)
       .single();
 
+    const { data: score, error: fetchError } = scoreResult as {
+      data: {
+        id: string;
+        score_value: number | null;
+        user_id: string | null;
+        created_at: string;
+        metric_id: string;
+        metrics: { name: string; weight: number } | null;
+      } | null;
+      error: any;
+    };
+
     if (fetchError) {
       console.error("Error fetching score:", fetchError);
       return res.status(500).json({ error: "Failed to fetch score" });
@@ -65,10 +77,11 @@ export default async function handler(
     }
 
     // Update the score
-    const { error: updateError } = await supabase
-      .from("scores")
+    const updateResult = await (supabase
+      .from("scores") as any)
       .update({ score_value })
       .eq("id", score_id);
+    const { error: updateError } = updateResult as { error: any };
 
     if (updateError) {
       console.error("Error updating score:", updateError);
@@ -76,7 +89,7 @@ export default async function handler(
     }
 
     // Get all scores for this submission to calculate the new weighted average
-    const { data: submissionScores, error: scoresError } = await supabase
+    const submissionScoresResult = await supabase
       .from("scores")
       .select(
         `
@@ -90,6 +103,15 @@ export default async function handler(
       .eq("user_id", user_id)
       .eq("created_at", score.created_at);
 
+    const { data: submissionScores, error: scoresError } = submissionScoresResult as {
+      data: Array<{
+        score_value: number | null;
+        created_at: string;
+        metrics: { weight: number } | null;
+      }> | null;
+      error: any;
+    };
+
     if (scoresError) {
       console.error("Error fetching submission scores:", scoresError);
       return res
@@ -98,7 +120,7 @@ export default async function handler(
     }
 
     if (!submissionScores || submissionScores.length === 0) {
-      return res.status(200).json({ weighted_average: score_value });
+      return res.status(200).json({ weighted_average: score_value ?? 0 });
     }
 
     // Calculate new weighted average

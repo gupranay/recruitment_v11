@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { supabaseBrowser } from "@/lib/supabase/browser";
+import { Database } from "@/lib/types/supabase";
 
 export default async function handler(
   req: NextApiRequest,
@@ -20,11 +21,26 @@ export default async function handler(
 
   try {
     // Fetch the round and join the cycle
-    const { data: round, error: roundError } = await supabase
+    type RoundWithCycle = {
+      id: string;
+      name: string;
+      recruitment_cycle_id: string;
+      recruitment_cycles: {
+        id: string;
+        name: string;
+      } | null;
+    };
+    
+    const result = await supabase
       .from("recruitment_rounds")
       .select("id, name, recruitment_cycle_id, recruitment_cycles (id, name)")
       .eq("id", recruitment_round_id)
       .single();
+    
+    const { data: round, error: roundError } = result as {
+      data: RoundWithCycle | null;
+      error: any;
+    };
 
     if (roundError || !round) {
       return res

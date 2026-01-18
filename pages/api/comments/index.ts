@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { supabaseApi } from "@/lib/supabase/api";
+import { Database } from "@/lib/types/supabase";
 
 export default async function handler(
   req: NextApiRequest,
@@ -41,7 +42,24 @@ export default async function handler(
       .json({ error: "Not authorized for this organization" });
   }
 
-  const { data, error } = await supabase
+  type RoundWithComments = {
+    id: string;
+    recruitment_round_id: string;
+    status: string;
+    applicant_id: string;
+    comments: Array<{
+      id: string;
+      user_id: string;
+      comment_text: string;
+      created_at: string;
+      updated_at: string;
+      source: string | null;
+      user: { full_name: string | null } | null;
+    }> | null;
+    recruitment_rounds: { name: string } | null;
+  };
+  
+  const result = await supabase
     .from("applicant_rounds")
     .select(
       `
@@ -66,10 +84,15 @@ export default async function handler(
     `
     )
     .eq("applicant_id", applicant_id);
+  
+  const { data, error } = result as {
+    data: RoundWithComments[] | null;
+    error: any;
+  };
 
-  if (error) {
-    console.error("Error fetching applicant rounds and comments:", error);
-    return res.status(500).json({ error: error.message });
+  if (error || !data) {
+    console.error("Error fetching applicant rounds and comments:", error?.message || "No data");
+    return res.status(500).json({ error: error?.message || "Failed to fetch data" });
   }
 
   const allComments = [];

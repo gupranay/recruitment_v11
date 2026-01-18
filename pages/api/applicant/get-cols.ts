@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { supabaseBrowser } from "@/lib/supabase/browser";
+import { Database } from "@/lib/types/supabase";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   // Only allow POST
@@ -17,11 +18,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     // 1) Fetch the applicant row, selecting only the `data` column
-    const { data, error } = await supabase
+    const result = await supabase
       .from("applicants")
       .select("data")
       .eq("id", applicant_id)
       .single();
+    
+    const { data, error } = result as {
+      data: { data: Database["public"]["Tables"]["applicants"]["Row"]["data"] } | null;
+      error: any;
+    };
 
     if (error) {
       console.error("Error fetching applicant data:", error);

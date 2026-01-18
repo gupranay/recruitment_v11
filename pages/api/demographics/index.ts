@@ -18,10 +18,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   // 1) Call the RPC function get_demographics
   //    which we define in Postgres
-  const { data, error } = await supabase.rpc("get_demographics", {
+  const rpcCall = (supabase.rpc as any)("get_demographics", {
     field_name: field,
     round_id: recruitment_round_id
   });
+  
+  const result = await rpcCall;
+  const { data, error } = result as {
+    data: any;
+    error: any;
+  };
 
   if (error) {
     console.error("Error fetching demographics:", error.message);

@@ -21,19 +21,30 @@ export default async function handler(
 
   try {
     // First verify that the user owns this submission
-    const { data: submission, error: fetchError } = await supabase
+    const submissionResult = await supabase
       .from("scores")
       .select("user_id")
       .eq("submission_id", submission_id)
       .limit(1)
       .single();
+    
+    const { data: submission, error: fetchError } = submissionResult as {
+      data: { user_id: string | null } | null;
+      error: any;
+    };
 
     if (fetchError) {
       console.error("Error fetching submission:", fetchError.message);
       return res.status(500).json({ error: fetchError.message });
     }
 
-    if (!submission || submission.user_id !== user_id) {
+    if (!submission) {
+      return res
+        .status(404)
+        .json({ error: "Submission not found" });
+    }
+
+    if (submission.user_id !== user_id) {
       return res
         .status(403)
         .json({ error: "Not authorized to delete this submission" });

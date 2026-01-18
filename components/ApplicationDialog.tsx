@@ -1,4 +1,4 @@
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import {
   Loader2,
   Send,
@@ -553,6 +553,9 @@ export default function ApplicationDialog({
   return (
     <Dialog open={isOpen} onOpenChange={closeDialog}>
       <DialogContent className="mt-5 max-w-5xl mx-auto p-0">
+        <DialogTitle className="sr-only">
+          {applicantData ? `Application details for ${applicantData.name}` : "Application details"}
+        </DialogTitle>
         {isLoading ? (
           <div className="flex items-center justify-center h-full p-8">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />

@@ -61,7 +61,7 @@ export default function Header({
   organizations: Organization[];
   setOrganizations: (orgs: Organization[]) => void;
   currentCycle: RecruitmentCycle | null;
-  setCurrentCycle: (cycle: RecruitmentCycle) => void;
+  setCurrentCycle: (cycle: RecruitmentCycle | null) => void;
   recruitmentCycles: RecruitmentCycle[];
   setRecruitmentCycles: (cycles: RecruitmentCycle[]) => void;
   userId: string;

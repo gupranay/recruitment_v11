@@ -40,7 +40,7 @@ export default async function handler(
   if (req.method === "GET") {
     try {
       // Get all members of the organization with their user details
-      const { data: members, error: membersError } = await supabase
+      const membersResult = await supabase
         .from("organization_users")
         .select(
           `
@@ -55,11 +55,16 @@ export default async function handler(
         `
         )
         .eq("organization_id", organizationId);
+      
+      const { data: members, error: membersError } = membersResult as {
+        data: OrganizationUserWithDetails[] | null;
+        error: any;
+      };
 
       if (membersError) throw membersError;
 
       // Get all pending invites
-      const { data: invites, error: invitesError } = await supabase
+      const invitesResult = await supabase
         .from("organization_invites")
         .select(
           `
@@ -74,11 +79,16 @@ export default async function handler(
         `
         )
         .eq("organization_id", organizationId);
+      
+      const { data: invites, error: invitesError } = invitesResult as {
+        data: InviteWithDetails[] | null;
+        error: any;
+      };
 
       if (invitesError) throw invitesError;
 
       // Transform the data to match our Member type
-      const activeMembers = (members as OrganizationUserWithDetails[]).map(
+      const activeMembers = (members || []).map(
         (member) => ({
           id: member.users.id,
           email: member.users.email,
@@ -90,7 +100,7 @@ export default async function handler(
       );
 
       // Add pending invites to the members list
-      const pendingMembers = (invites as InviteWithDetails[]).map((invite) => ({
+      const pendingMembers = (invites || []).map((invite) => ({
         id: invite.id,
         email: invite.email,
         name: null,
@@ -112,12 +122,17 @@ export default async function handler(
 
     try {
       // First check if the user making the request has appropriate permissions
-      const { data: membership, error: membershipError } = await supabase
+      const membershipResult = await supabase
         .from("organization_users")
         .select("role")
         .eq("organization_id", organizationId)
         .eq("user_id", user_id)
         .single();
+      
+      const { data: membership, error: membershipError } = membershipResult as {
+        data: { role: string } | null;
+        error: any;
+      };
 
       if (membershipError || !membership) {
         return res.status(403).json({ error: "Unauthorized" });
@@ -135,12 +150,17 @@ export default async function handler(
       }
 
       // Check if there's already a pending invite
-      const { data: existingInvite, error: inviteError } = await supabase
+      const inviteResult = await supabase
         .from("organization_invites")
         .select("id")
         .eq("organization_id", organizationId)
         .eq("email", email)
         .single();
+      
+      const { data: existingInvite, error: inviteError } = inviteResult as {
+        data: { id: string } | null;
+        error: any;
+      };
 
       if (existingInvite) {
         return res
@@ -149,21 +169,31 @@ export default async function handler(
       }
 
       // Check if the user already exists
-      const { data: existingUser, error: userError } = await supabase
+      const userResult = await supabase
         .from("users")
         .select("id")
         .eq("email", email)
         .single();
+      
+      const { data: existingUser, error: userError } = userResult as {
+        data: { id: string } | null;
+        error: any;
+      };
 
       // If user exists, add them directly
       if (existingUser) {
         // Check if they're already a member
-        const { data: existingMember } = await supabase
+        const existingMemberResult = await supabase
           .from("organization_users")
           .select("id")
           .eq("organization_id", organizationId)
           .eq("user_id", existingUser.id)
           .single();
+        
+        const { data: existingMember } = existingMemberResult as {
+          data: { id: string } | null;
+          error: any;
+        };
 
         if (existingMember) {
           return res
@@ -172,13 +202,15 @@ export default async function handler(
         }
 
         // Add them as a member
-        const { error: addError } = await supabase
-          .from("organization_users")
-          .insert({
-            organization_id: organizationId,
-            user_id: existingUser.id,
-            role: role,
-          });
+        const insertData: Database["public"]["Tables"]["organization_users"]["Insert"] = {
+          organization_id: organizationId,
+          user_id: existingUser.id,
+          role: role,
+        };
+        const addQuery = (supabase
+          .from("organization_users") as any)
+          .insert(insertData as any);
+        const { error: addError } = await addQuery as { error: any };
 
         if (addError) throw addError;
 
@@ -189,14 +221,16 @@ export default async function handler(
       }
 
       // If user doesn't exist, create an invitation
-      const { error: createInviteError } = await supabase
-        .from("organization_invites")
-        .insert({
-          organization_id: organizationId,
-          email,
-          role,
-          invited_by: user_id,
-        });
+      const inviteInsertData: Database["public"]["Tables"]["organization_invites"]["Insert"] = {
+        organization_id: organizationId,
+        email,
+        role,
+        invited_by: user_id,
+      };
+      const createInviteQuery = (supabase
+        .from("organization_invites") as any)
+        .insert(inviteInsertData as any);
+      const { error: createInviteError } = await createInviteQuery as { error: any };
 
       if (createInviteError) throw createInviteError;
 
@@ -216,22 +250,28 @@ export default async function handler(
 
     try {
       // First check if the user making the request is an owner
-      const { data: membership, error: membershipError } = await supabase
+      const membershipResult2 = await supabase
         .from("organization_users")
         .select("role")
         .eq("organization_id", organizationId)
         .single();
+      
+      const { data: membership, error: membershipError } = membershipResult2 as {
+        data: { role: string } | null;
+        error: any;
+      };
 
       if (membershipError || !membership || membership.role !== "Owner") {
         return res.status(403).json({ error: "Unauthorized" });
       }
 
       // Remove the member
-      const { error } = await supabase
-        .from("organization_users")
+      const deleteQuery = (supabase
+        .from("organization_users") as any)
         .delete()
         .eq("organization_id", organizationId)
         .eq("user_id", userId);
+      const { error } = await deleteQuery as { error: any };
 
       if (error) throw error;
 

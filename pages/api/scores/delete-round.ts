@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { supabaseBrowser } from "@/lib/supabase/browser";
+import { Database } from "@/lib/types/supabase";
 
 export default async function handler(
   req: NextApiRequest,
@@ -21,11 +22,16 @@ export default async function handler(
 
   try {
     // Verify the round exists
-    const { data: roundData, error: roundError } = await supabase
+    const roundResult = await supabase
       .from("recruitment_rounds")
       .select("id")
       .eq("id", recruitment_round_id)
       .single();
+    
+    const { data: roundData, error: roundError } = roundResult as {
+      data: { id: string } | null;
+      error: any;
+    };
 
     if (roundError || !roundData) {
       return res.status(404).json({
@@ -34,11 +40,15 @@ export default async function handler(
     }
 
     // Get all applicant_rounds for this recruitment round
-    const { data: applicantRounds, error: applicantRoundsError } =
-      await supabase
-        .from("applicant_rounds")
-        .select("id")
-        .eq("recruitment_round_id", recruitment_round_id);
+    const applicantRoundsResult = await supabase
+      .from("applicant_rounds")
+      .select("id")
+      .eq("recruitment_round_id", recruitment_round_id);
+    
+    const { data: applicantRounds, error: applicantRoundsError } = applicantRoundsResult as {
+      data: Array<{ id: string }> | null;
+      error: any;
+    };
 
     if (applicantRoundsError) {
       console.error("Error fetching applicant_rounds:", applicantRoundsError);
@@ -53,10 +63,11 @@ export default async function handler(
     const applicantRoundIds = applicantRounds.map((ar) => ar.id);
 
     // Delete all scores for these applicant_rounds
-    const { error: deleteScoresError } = await supabase
-      .from("scores")
+    const deleteScoresQuery = (supabase
+      .from("scores") as any)
       .delete()
       .in("applicant_round_id", applicantRoundIds);
+    const { error: deleteScoresError } = await deleteScoresQuery as { error: any };
 
     if (deleteScoresError) {
       console.error("Error deleting scores:", deleteScoresError);
@@ -64,10 +75,14 @@ export default async function handler(
     }
 
     // Clear weighted_score in applicant_rounds table
-    const { error: clearWeightedScoreError } = await supabase
-      .from("applicant_rounds")
-      .update({ weighted_score: null })
+    const clearData: Database["public"]["Tables"]["applicant_rounds"]["Update"] = {
+      weighted_score: null,
+    };
+    const clearQuery = (supabase
+      .from("applicant_rounds") as any)
+      .update(clearData)
       .eq("recruitment_round_id", recruitment_round_id);
+    const { error: clearWeightedScoreError } = await clearQuery as { error: any };
 
     if (clearWeightedScoreError) {
       console.error(

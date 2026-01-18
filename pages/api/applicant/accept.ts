@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { supabaseBrowser } from "@/lib/supabase/browser";
+import { Database } from "@/lib/types/supabase";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") {
@@ -49,7 +50,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const { sort_order: currentSortOrder, recruitment_cycle_id } = recruitment_rounds;
 
   // 2) Find the *next* round in the SAME cycle with a higher sort_order
-  const { data: nextRound, error: nextRoundError } = await supabase
+  const nextRoundResult = await supabase
     .from("recruitment_rounds")
     .select("id, name, sort_order")
     .eq("recruitment_cycle_id", recruitment_cycle_id)
@@ -57,6 +58,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     .order("sort_order", { ascending: true })     // smallest bigger sort_order first
     .limit(1)
     .single();
+  
+  const { data: nextRound, error: nextRoundError } = nextRoundResult as {
+    data: { id: string; name: string; sort_order: number | null } | null;
+    error: any;
+  };
 
   if (nextRoundError) {
     return res.status(500).json({ error: nextRoundError.message });
@@ -71,27 +77,39 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   // 3) Update the OLD bridging record to mark it as "completed" or "passed"
-  const { error: updateOldRoundError } = await supabase
-    .from("applicant_rounds")
-    .update({ status: "accepted" }) // or "passed", etc.
+  const updateData: Database["public"]["Tables"]["applicant_rounds"]["Update"] = {
+    status: "accepted",
+  };
+  
+  const updateQuery = (supabase
+    .from("applicant_rounds") as any)
+    .update(updateData)
     .eq("id", bridgingId);
+  
+  const updateResult = await updateQuery;
+  const { error: updateOldRoundError } = updateResult as { error: any };
 
   if (updateOldRoundError) {
     return res.status(500).json({ error: updateOldRoundError.message });
   }
 
   // 4) Create a NEW bridging record for the applicant in the next round
-  const { data: newRoundData, error: newRoundError } = await supabase
+  const insertData: Database["public"]["Tables"]["applicant_rounds"]["Insert"] = {
+    applicant_id,
+    recruitment_round_id: nextRound.id,
+    status: "in_progress",
+  };
+  
+  const insertResult = await (supabase
     .from("applicant_rounds")
-    .insert([
-      {
-        applicant_id,
-        recruitment_round_id: nextRound.id,
-        status: "in_progress", // set initial status as you prefer
-      },
-    ])
+    .insert([insertData as any] as any)
     .select()
-    .single();
+    .single() as any);
+  
+  const { data: newRoundData, error: newRoundError } = insertResult as {
+    data: Database["public"]["Tables"]["applicant_rounds"]["Row"] | null;
+    error: any;
+  };
 
   if (newRoundError) {
     return res.status(500).json({ error: newRoundError.message });

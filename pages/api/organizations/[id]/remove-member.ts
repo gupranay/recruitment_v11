@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { supabaseBrowser } from "@/lib/supabase/browser";
+import { Database } from "@/lib/types/supabase";
 
 export default async function handler(
   req: NextApiRequest,
@@ -19,12 +20,17 @@ export default async function handler(
 
   try {
     // First check if the user making the request is an owner or admin
-    const { data: membership, error: membershipError } = await supabase
+    const membershipResult = await supabase
       .from("organization_users")
       .select("role")
       .eq("organization_id", organizationId.toString())
       .eq("user_id", user_id)
       .single();
+    
+    const { data: membership, error: membershipError } = membershipResult as {
+      data: { role: string } | null;
+      error: any;
+    };
 
     if (
       membershipError ||
@@ -37,12 +43,17 @@ export default async function handler(
     }
 
     // Check if the target user is not an owner or admin
-    const { data: targetMembership, error: targetError } = await supabase
+    const targetResult = await supabase
       .from("organization_users")
       .select("role")
       .eq("organization_id", organizationId.toString())
       .eq("user_id", deleteId)
       .single();
+    
+    const { data: targetMembership, error: targetError } = targetResult as {
+      data: { role: string } | null;
+      error: any;
+    };
 
     if (targetError || !targetMembership) {
       return res.status(404).json({ error: "Member not found" });
@@ -64,11 +75,12 @@ export default async function handler(
     }
 
     // Remove the member
-    const { error: deleteError } = await supabase
-      .from("organization_users")
+    const deleteQuery = (supabase
+      .from("organization_users") as any)
       .delete()
       .eq("organization_id", organizationId.toString())
       .eq("user_id", deleteId);
+    const { error: deleteError } = await deleteQuery as { error: any };
 
     if (deleteError) {
       throw deleteError;

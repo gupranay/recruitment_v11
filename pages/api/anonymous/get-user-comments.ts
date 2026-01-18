@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { supabaseApi } from "@/lib/supabase/api";
+import { Database } from "@/lib/types/supabase";
 
 export default async function handler(
   req: NextApiRequest,
@@ -23,12 +24,17 @@ export default async function handler(
 
   try {
     // 1) Look up the bridging row in `applicant_rounds`
-    const { data: bridgingRow, error: bridgingErr } = await supabase
+    const bridgingResult = await supabase
       .from("applicant_rounds")
       .select("id")
       .eq("applicant_id", applicant_id)
       .eq("recruitment_round_id", recruitment_round_id)
       .single();
+    
+    const { data: bridgingRow, error: bridgingErr } = bridgingResult as {
+      data: { id: string } | null;
+      error: any;
+    };
 
     if (bridgingErr) {
       console.error("Error fetching applicant_rounds:", bridgingErr);
@@ -42,11 +48,21 @@ export default async function handler(
 
     // 2) Fetch comments from that bridging row where user_id = the requesting user
     const applicantRoundId = bridgingRow.id;
-    const { data: comments, error: commentsErr } = await supabase
+    const commentsResult = await supabase
       .from("comments")
       .select("id, comment_text, created_at, updated_at") // Specify only the fields you want
       .eq("applicant_round_id", applicantRoundId)
       .eq("user_id", user_id);
+    
+    const { data: comments, error: commentsErr } = commentsResult as {
+      data: Array<{
+        id: string;
+        comment_text: string;
+        created_at: string;
+        updated_at: string;
+      }> | null;
+      error: any;
+    };
 
     if (commentsErr) {
       console.error("Error fetching comments:", commentsErr);

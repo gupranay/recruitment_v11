@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { supabaseBrowser } from "@/lib/supabase/browser";
+import { Database } from "@/lib/types/supabase";
 import { randomUUID } from "crypto";
 
 export default async function handler(
@@ -34,12 +35,17 @@ export default async function handler(
 
   try {
     // 1) Find or verify the applicant_rounds record
-    const { data: applicantRound, error: bridgingError } = await supabase
+    const applicantRoundResult = await supabase
       .from("applicant_rounds")
       .select("id")
       .eq("applicant_id", applicant_id)
       .eq("recruitment_round_id", recruitment_round_id)
       .single();
+    
+    const { data: applicantRound, error: bridgingError } = applicantRoundResult as {
+      data: { id: string } | null;
+      error: any;
+    };
 
     if (bridgingError) {
       console.error("Error fetching applicant_rounds row:", bridgingError);
@@ -70,14 +76,27 @@ export default async function handler(
     //    If you want to allow updates for existing rows, you can do onConflict:
     //      .upsert(insertData, { onConflict: "metric_id,applicant_round_id" })
     //    Otherwise, a plain insert might fail if there's a unique constraint for the same metric+round.
-    const { data: insertedScores, error: insertError } = await supabase
-      .from("scores")
-      .insert(insertData)
+    const scoresInsertData: Database["public"]["Tables"]["scores"]["Insert"][] = insertData.map(item => ({
+      applicant_round_id: item.applicant_round_id,
+      metric_id: item.metric_id,
+      score_value: item.score_value,
+      user_id: item.user_id,
+      submission_id: item.submission_id,
+    }));
+    
+    const scoresResult = await (supabase
+      .from("scores") as any)
+      .insert(scoresInsertData as any)
       .select();
+    
+    const { data: insertedScores, error: insertError } = scoresResult as {
+      data: Database["public"]["Tables"]["scores"]["Row"][] | null;
+      error: any;
+    };
 
-    if (insertError) {
-      console.error("Error inserting scores:", insertError);
-      return res.status(500).json({ error: insertError.message });
+    if (insertError || !insertedScores) {
+      console.error("Error inserting scores:", insertError?.message || "No data returned");
+      return res.status(500).json({ error: insertError?.message || "Failed to insert scores" });
     }
 
     // 4) Compute the new weighted average from request data
@@ -98,10 +117,14 @@ export default async function handler(
     }
 
     // 5) Update applicant_rounds.weighted_score
-    const { error: updateErr } = await supabase
-      .from("applicant_rounds")
-      .update({ weighted_score: weightedAverage ?? undefined })
+    const updateData: Database["public"]["Tables"]["applicant_rounds"]["Update"] = {
+      weighted_score: weightedAverage ?? null,
+    };
+    const updateQuery = (supabase
+      .from("applicant_rounds") as any)
+      .update(updateData)
       .eq("id", applicantRoundId);
+    const { error: updateErr } = await updateQuery as { error: any };
 
     if (updateErr) {
       console.error("Error updating weighted_score:", updateErr);

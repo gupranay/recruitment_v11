@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { supabaseApi } from "@/lib/supabase/api";
+import { Database } from "@/lib/types/supabase";
 
 export default async function handler(
   req: NextApiRequest,
@@ -30,7 +31,18 @@ export default async function handler(
 
   try {
     // First check if the comment exists and get its details
-    const { data: comment, error: fetchError } = await supabase
+    type CommentWithRelations = {
+      user_id: string;
+      applicant_rounds: {
+        recruitment_rounds: {
+          recruitment_cycles: {
+            organization_id: string;
+          };
+        };
+      };
+    };
+    
+    const commentResult = await supabase
       .from("comments")
       .select(
         `
@@ -46,8 +58,13 @@ export default async function handler(
       )
       .eq("id", comment_id)
       .single();
+    
+    const { data: comment, error: fetchError } = commentResult as {
+      data: CommentWithRelations | null;
+      error: any;
+    };
 
-    if (fetchError) {
+    if (fetchError || !comment) {
       return res.status(404).json({ error: "Comment not found" });
     }
 
@@ -56,12 +73,17 @@ export default async function handler(
     const isCommentOwner = comment.user_id === user.id;
 
     // Check if user is an organization owner
-    const { data: userRole, error: roleError } = await supabase
+    const userRoleResult = await supabase
       .from("organization_users")
       .select("role")
       .eq("organization_id", organization_id)
       .eq("user_id", user.id)
       .single();
+    
+    const { data: userRole, error: roleError } = userRoleResult as {
+      data: { role: string } | null;
+      error: any;
+    };
 
     if (roleError) {
       return res.status(500).json({ error: "Error checking user role" });
@@ -77,10 +99,11 @@ export default async function handler(
     }
 
     // Delete the comment
-    const { error: deleteError } = await supabase
-      .from("comments")
+    const deleteQuery = (supabase
+      .from("comments") as any)
       .delete()
       .eq("id", comment_id);
+    const { error: deleteError } = await deleteQuery as { error: any };
 
     if (deleteError) {
       return res.status(500).json({ error: deleteError.message });

@@ -2,6 +2,7 @@ import { supabaseBrowser } from "@/lib/supabase/browser";
 import { supabaseServer } from "@/lib/supabase/server";
 import { createClient } from "@supabase/supabase-js";
 import { NextApiRequest, NextApiResponse } from "next";
+import { Database } from "@/lib/types/supabase";
 
 export default async function handler(
   req: NextApiRequest,
@@ -21,11 +22,16 @@ export default async function handler(
 
   try {
     // First check if organization name already exists
-    const { data: existingOrg, error: checkError } = await supabase
+    const checkResult = await supabase
       .from("organizations")
       .select("id")
       .eq("name", name)
       .single();
+    
+    const { data: existingOrg, error: checkError } = checkResult as {
+      data: { id: string } | null;
+      error: any;
+    };
 
     if (existingOrg) {
       return res
@@ -39,30 +45,47 @@ export default async function handler(
     }
 
     // Create the organization
-    const { data: organization, error: orgError } = await supabase
-      .from("organizations")
-      .insert({ name, owner_id: user.id })
+    const insertData: Database["public"]["Tables"]["organizations"]["Insert"] = {
+      name,
+      owner_id: user.id,
+    };
+    const orgResult = await (supabase
+      .from("organizations") as any)
+      .insert(insertData as any)
       .select()
       .single();
+    
+    const { data: organization, error: orgError } = orgResult as {
+      data: Database["public"]["Tables"]["organizations"]["Row"] | null;
+      error: any;
+    };
 
-    if (orgError) {
-      throw orgError;
+    if (orgError || !organization) {
+      throw orgError || new Error("Failed to create organization");
     }
 
     // Create org_user entry for the owner
-    const { error: orgUserError } = await supabase
-      .from("organization_users")
-      .insert({
-        organization_id: organization.id,
-        user_id: user.id,
-        role: "Owner",
-      });
+    const orgUserInsertData: Database["public"]["Tables"]["organization_users"]["Insert"] = {
+      organization_id: organization.id,
+      user_id: user.id,
+      role: "Owner",
+    };
+    const orgUserResult = await (supabase
+      .from("organization_users") as any)
+      .insert(orgUserInsertData as any);
+    const { error: orgUserError } = orgUserResult as { error: any };
 
-    if (orgUserError) {
+    if (orgUserError || !organization) {
       // If org_user creation fails, delete the organization
-      await supabase.from("organizations").delete().eq("id", organization.id);
+      if (organization) {
+        const deleteQuery = (supabase
+          .from("organizations") as any)
+          .delete()
+          .eq("id", organization.id);
+        await deleteQuery;
+      }
 
-      throw orgUserError;
+      throw orgUserError || new Error("Failed to create organization");
     }
 
     res.status(201).json(organization);

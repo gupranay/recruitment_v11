@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { supabaseBrowser } from "@/lib/supabase/browser";
+import { Database } from "@/lib/types/supabase";
 
 export default async function handler(
   req: NextApiRequest,
@@ -21,11 +22,15 @@ export default async function handler(
 
   try {
     // Get all applicant_rounds for this recruitment round
-    const { data: applicantRounds, error: applicantRoundsError } =
-      await supabase
-        .from("applicant_rounds")
-        .select("id")
-        .eq("recruitment_round_id", recruitment_round_id);
+    const applicantRoundsResult = await supabase
+      .from("applicant_rounds")
+      .select("id")
+      .eq("recruitment_round_id", recruitment_round_id);
+    
+    const { data: applicantRounds, error: applicantRoundsError } = applicantRoundsResult as {
+      data: Array<{ id: string }> | null;
+      error: any;
+    };
 
     if (applicantRoundsError) {
       console.error("Error fetching applicant_rounds:", applicantRoundsError);
@@ -42,11 +47,16 @@ export default async function handler(
     const applicantRoundIds = applicantRounds.map((ar) => ar.id);
 
     // Check if any scores exist for these applicant_rounds
-    const { data: scores, error: scoresError } = await supabase
+    const scoresResult = await supabase
       .from("scores")
       .select("id")
       .in("applicant_round_id", applicantRoundIds)
       .limit(1);
+    
+    const { data: scores, error: scoresError } = scoresResult as {
+      data: Array<{ id: string }> | null;
+      error: any;
+    };
 
     if (scoresError) {
       console.error("Error checking scores:", scoresError);
@@ -58,10 +68,15 @@ export default async function handler(
     // If we have scores, get the full count
     let count = 0;
     if (hasScores) {
-      const { count: scoreCount, error: countError } = await supabase
+      const countResult = await supabase
         .from("scores")
         .select("*", { count: "exact", head: true })
         .in("applicant_round_id", applicantRoundIds);
+      
+      const { count: scoreCount, error: countError } = countResult as {
+        count: number | null;
+        error: any;
+      };
 
       if (!countError && scoreCount !== null) {
         count = scoreCount;

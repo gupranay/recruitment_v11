@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { supabaseApi } from "@/lib/supabase/api";
+import { Database } from "@/lib/types/supabase";
 
 export default async function handler(
   req: NextApiRequest,
@@ -30,13 +31,18 @@ export default async function handler(
 
   try {
     // First check if the comment exists and if the user has permission to edit it
-    const { data: comment, error: fetchError } = await supabase
+    const commentResult = await supabase
       .from("comments")
       .select("user_id, applicant_round_id")
       .eq("id", comment_id)
       .single();
+    
+    const { data: comment, error: fetchError } = commentResult as {
+      data: { user_id: string; applicant_round_id: string } | null;
+      error: any;
+    };
 
-    if (fetchError) {
+    if (fetchError || !comment) {
       return res.status(404).json({ error: "Comment not found" });
     }
 
@@ -46,21 +52,39 @@ export default async function handler(
     if (comment.user_id !== user.id) {
       // Need to check if user is admin/owner for the org
       if (comment.applicant_round_id) {
-        const { data: roundData, error: roundError } = await supabase
+        type RoundData = {
+          recruitment_rounds: {
+            recruitment_cycles: {
+              organization_id: string;
+            };
+          } | null;
+        };
+        
+        const roundResult = await supabase
           .from("applicant_rounds")
           .select("recruitment_rounds(recruitment_cycles(organization_id))")
           .eq("id", comment.applicant_round_id)
           .single();
+        
+        const { data: roundData, error: roundError } = roundResult as {
+          data: RoundData | null;
+          error: any;
+        };
         if (!roundError && roundData) {
           const organization_id =
             roundData.recruitment_rounds?.recruitment_cycles?.organization_id;
           if (organization_id) {
-            const { data: userRole, error: roleError } = await supabase
+            const userRoleResult = await supabase
               .from("organization_users")
               .select("role")
               .eq("organization_id", organization_id)
               .eq("user_id", user.id)
               .single();
+            
+            const { data: userRole, error: roleError } = userRoleResult as {
+              data: { role: string } | null;
+              error: any;
+            };
             if (
               !roleError &&
               userRole &&
@@ -79,15 +103,21 @@ export default async function handler(
     }
 
     // Update the comment
-    const { data, error: updateError } = await supabase
-      .from("comments")
-      .update({
-        comment_text,
-        updated_at: new Date().toISOString(),
-      })
+    const updateData: Database["public"]["Tables"]["comments"]["Update"] = {
+      comment_text,
+      updated_at: new Date().toISOString(),
+    };
+    const updateQuery = (supabase
+      .from("comments") as any)
+      .update(updateData)
       .eq("id", comment_id)
       .select()
       .single();
+    const updateResult = await updateQuery as any;
+    const { data, error: updateError } = updateResult as {
+      data: Database["public"]["Tables"]["comments"]["Row"] | null;
+      error: any;
+    };
 
     if (updateError) {
       return res.status(500).json({ error: updateError.message });

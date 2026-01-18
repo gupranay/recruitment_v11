@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { supabaseBrowser } from "@/lib/supabase/browser";
+import { Database } from "@/lib/types/supabase";
 
 export default async function handler(
   req: NextApiRequest,
@@ -22,11 +23,16 @@ export default async function handler(
 
   try {
     // 1) Verify the round exists and get its details
-    const { data: roundData, error: roundError } = await supabase
+    const roundResult = await supabase
       .from("recruitment_rounds")
       .select("id, sort_order, recruitment_cycle_id, name")
       .eq("id", recruitment_round_id)
       .single();
+    
+    const { data: roundData, error: roundError } = roundResult as {
+      data: { id: string; sort_order: number | null; recruitment_cycle_id: string; name: string } | null;
+      error: any;
+    };
 
     if (roundError || !roundData) {
       return res.status(404).json({
@@ -37,11 +43,16 @@ export default async function handler(
     const { sort_order: deletedSortOrder, recruitment_cycle_id } = roundData;
 
     // 2) Check for dependent data - applicant_rounds
-    const { data: applicantRounds, error: applicantRoundsError } = await supabase
+    const applicantRoundsResult = await supabase
       .from("applicant_rounds")
       .select("id")
       .eq("recruitment_round_id", recruitment_round_id)
       .limit(1);
+    
+    const { data: applicantRounds, error: applicantRoundsError } = applicantRoundsResult as {
+      data: Array<{ id: string }> | null;
+      error: any;
+    };
 
     if (applicantRoundsError) {
       return res.status(500).json({
@@ -56,12 +67,16 @@ export default async function handler(
     }
 
     // 3) Check for dependent data - anonymous_readings
-    const { data: anonymousReadings, error: anonymousReadingsError } =
-      await supabase
-        .from("anonymous_readings")
-        .select("id")
-        .eq("recruitment_round_id", recruitment_round_id)
-        .limit(1);
+    const anonymousReadingsResult = await supabase
+      .from("anonymous_readings")
+      .select("id")
+      .eq("recruitment_round_id", recruitment_round_id)
+      .limit(1);
+    
+    const { data: anonymousReadings, error: anonymousReadingsError } = anonymousReadingsResult as {
+      data: Array<{ id: string }> | null;
+      error: any;
+    };
 
     if (anonymousReadingsError) {
       return res.status(500).json({
@@ -77,10 +92,11 @@ export default async function handler(
 
     // 4) All checks passed - safe to delete
     // First, delete associated metrics (if any)
-    const { error: deleteMetricsError } = await supabase
-      .from("metrics")
+    const deleteMetricsQuery = (supabase
+      .from("metrics") as any)
       .delete()
       .eq("recruitment_round_id", recruitment_round_id);
+    const { error: deleteMetricsError } = await deleteMetricsQuery as { error: any };
 
     if (deleteMetricsError) {
       console.error("Error deleting metrics:", deleteMetricsError);
@@ -89,10 +105,11 @@ export default async function handler(
     }
 
     // Delete the round
-    const { error: deleteError } = await supabase
-      .from("recruitment_rounds")
+    const deleteQuery = (supabase
+      .from("recruitment_rounds") as any)
       .delete()
       .eq("id", recruitment_round_id);
+    const { error: deleteError } = await deleteQuery as { error: any };
 
     if (deleteError) {
       return res.status(500).json({
@@ -104,12 +121,17 @@ export default async function handler(
     // We need to update all rounds in the same cycle that have sort_order > deletedSortOrder
     if (deletedSortOrder !== null) {
       // Get all rounds with higher sort_order
-      const { data: roundsToUpdate, error: fetchError } = await supabase
+      const roundsToUpdateResult = await supabase
         .from("recruitment_rounds")
         .select("id, sort_order")
         .eq("recruitment_cycle_id", recruitment_cycle_id)
         .gt("sort_order", deletedSortOrder)
         .order("sort_order", { ascending: true });
+      
+      const { data: roundsToUpdate, error: fetchError } = roundsToUpdateResult as {
+        data: Array<{ id: string; sort_order: number | null }> | null;
+        error: any;
+      };
 
       if (fetchError) {
         console.error("Error fetching rounds to update:", fetchError);
@@ -120,10 +142,14 @@ export default async function handler(
           // Only update if sort_order is not null
           if (round.sort_order !== null) {
             const newSortOrder = round.sort_order - 1;
-            const { error: updateError } = await supabase
-              .from("recruitment_rounds")
-              .update({ sort_order: newSortOrder })
+            const updateData: Database["public"]["Tables"]["recruitment_rounds"]["Update"] = {
+              sort_order: newSortOrder,
+            };
+            const updateQuery = (supabase
+              .from("recruitment_rounds") as any)
+              .update(updateData)
               .eq("id", round.id);
+            const { error: updateError } = await updateQuery as { error: any };
 
             if (updateError) {
               console.error(

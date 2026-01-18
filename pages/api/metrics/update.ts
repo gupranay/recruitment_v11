@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { supabaseBrowser } from "@/lib/supabase/browser";
+import { Database } from "@/lib/types/supabase";
 
 export default async function handler(
   req: NextApiRequest,
@@ -38,11 +39,15 @@ export default async function handler(
   try {
     // Safety check: Verify that no scores exist for this round
     // Get all applicant_rounds for this recruitment round
-    const { data: applicantRounds, error: applicantRoundsError } =
-      await supabase
-        .from("applicant_rounds")
-        .select("id")
-        .eq("recruitment_round_id", recruitment_round_id);
+    const applicantRoundsResult = await supabase
+      .from("applicant_rounds")
+      .select("id")
+      .eq("recruitment_round_id", recruitment_round_id);
+    
+    const { data: applicantRounds, error: applicantRoundsError } = applicantRoundsResult as {
+      data: Array<{ id: string }> | null;
+      error: any;
+    };
 
     if (applicantRoundsError) {
       console.error("Error fetching applicant_rounds:", applicantRoundsError);
@@ -53,11 +58,16 @@ export default async function handler(
       const applicantRoundIds = applicantRounds.map((ar) => ar.id);
 
       // Check if any scores exist
-      const { data: scores, error: scoresError } = await supabase
+      const scoresResult = await supabase
         .from("scores")
         .select("id")
         .in("applicant_round_id", applicantRoundIds)
         .limit(1);
+      
+      const { data: scores, error: scoresError } = scoresResult as {
+        data: Array<{ id: string }> | null;
+        error: any;
+      };
 
       if (scoresError) {
         console.error("Error checking scores:", scoresError);
@@ -73,11 +83,16 @@ export default async function handler(
     }
 
     // Verify the round exists
-    const { data: roundData, error: roundError } = await supabase
+    const roundResult = await supabase
       .from("recruitment_rounds")
       .select("id")
       .eq("id", recruitment_round_id)
       .single();
+    
+    const { data: roundData, error: roundError } = roundResult as {
+      data: { id: string } | null;
+      error: any;
+    };
 
     if (roundError || !roundData) {
       return res.status(404).json({
@@ -86,10 +101,11 @@ export default async function handler(
     }
 
     // Delete existing metrics for this round
-    const { error: deleteError } = await supabase
-      .from("metrics")
+    const deleteQuery = (supabase
+      .from("metrics") as any)
       .delete()
       .eq("recruitment_round_id", recruitment_round_id);
+    const { error: deleteError } = await deleteQuery as { error: any };
 
     if (deleteError) {
       console.error("Error deleting existing metrics:", deleteError);
@@ -105,14 +121,25 @@ export default async function handler(
         weight: m.weight ?? 0,
       }));
 
-      const { data: metricsData, error: metricsError } = await supabase
-        .from("metrics")
-        .insert(metricsToInsert)
+      const insertData: Database["public"]["Tables"]["metrics"]["Insert"][] = metricsToInsert.map(m => ({
+        recruitment_round_id: m.recruitment_round_id,
+        name: m.name,
+        weight: m.weight,
+      }));
+      
+      const metricsResult = await (supabase
+        .from("metrics") as any)
+        .insert(insertData as any)
         .select();
+      
+      const { data: metricsData, error: metricsError } = metricsResult as {
+        data: Database["public"]["Tables"]["metrics"]["Row"][] | null;
+        error: any;
+      };
 
-      if (metricsError) {
-        console.error("Error inserting metrics:", metricsError);
-        return res.status(500).json({ error: metricsError.message });
+      if (metricsError || !metricsData) {
+        console.error("Error inserting metrics:", metricsError?.message || "No data returned");
+        return res.status(500).json({ error: metricsError?.message || "Failed to insert metrics" });
       }
       insertedMetrics = metricsData;
     }

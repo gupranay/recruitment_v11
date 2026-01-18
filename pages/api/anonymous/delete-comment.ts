@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { supabaseApi } from "@/lib/supabase/api";
+import { Database } from "@/lib/types/supabase";
 
 export default async function handler(
   req: NextApiRequest,
@@ -21,11 +22,16 @@ export default async function handler(
 
   try {
     // Fetch the comment to check ownership
-    const { data: comment, error: fetchError } = await supabase
+    const result = await supabase
       .from("comments")
       .select("user_id")
       .eq("id", comment_id)
       .single();
+    
+    const { data: comment, error: fetchError } = result as {
+      data: { user_id: string } | null;
+      error: any;
+    };
 
     if (fetchError || !comment) {
       return res.status(404).json({ error: "Comment not found" });

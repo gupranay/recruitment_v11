@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { supabaseBrowser } from "@/lib/supabase/browser";
+import { Database } from "@/lib/types/supabase";
 
 export default async function handler(
   req: NextApiRequest,
@@ -21,11 +22,16 @@ export default async function handler(
 
   try {
     // First check if user is the owner of the organization
-    const { data: organization, error: orgError } = await supabase
+    const orgResult = await supabase
       .from("organizations")
       .select("owner_id")
       .eq("id", organization_id)
       .single();
+    
+    const { data: organization, error: orgError } = orgResult as {
+      data: { owner_id: string } | null;
+      error: any;
+    };
 
     if (orgError) {
       return res
@@ -39,12 +45,17 @@ export default async function handler(
     }
 
     // If not the owner, check their role in organization_users
-    const { data: userRole, error: roleError } = await supabase
+    const roleResult = await supabase
       .from("organization_users")
       .select("role")
       .eq("organization_id", organization_id)
       .eq("user_id", user_id)
       .single();
+    
+    const { data: userRole, error: roleError } = roleResult as {
+      data: { role: string } | null;
+      error: any;
+    };
       
 
     if (roleError) {

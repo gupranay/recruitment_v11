@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { supabaseBrowser } from "@/lib/supabase/browser";
+import { Database } from "@/lib/types/supabase";
 
 export default async function handler(
   req: NextApiRequest,
@@ -18,13 +19,22 @@ export default async function handler(
   }
 
   const supabase = supabaseBrowser();
-  const { data, error } = await supabase
-    .from("recruitment_cycles")
-    .insert({ name, organization_id })
+  const insertData: Database["public"]["Tables"]["recruitment_cycles"]["Insert"] = {
+    name,
+    organization_id,
+  };
+  const insertResult = await (supabase
+    .from("recruitment_cycles") as any)
+    .insert(insertData as any)
     .select();
+  
+  const { data, error } = insertResult as {
+    data: Database["public"]["Tables"]["recruitment_cycles"]["Row"][] | null;
+    error: any;
+  };
 
-  if (error) {
-    return res.status(400).json({ error: error.message });
+  if (error || !data || data.length === 0) {
+    return res.status(400).json({ error: error?.message || "Failed to create recruitment cycle" });
   }
 
   const recruitmentCycleId = data[0]?.id;

@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { supabaseBrowser } from "@/lib/supabase/browser";
+import { Database } from "@/lib/types/supabase";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") {
@@ -18,7 +19,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     // 1) Find the FIRST applicant in that round, and fetch their data column
     //    We limit(1) so we only get the first row. You could also order by created_at, etc.
-    const { data: rows, error: selectError } = await supabase
+    type RowWithApplicant = {
+      applicant_id: string;
+      applicants: {
+        data: Database["public"]["Tables"]["applicants"]["Row"]["data"];
+      } | null;
+    };
+    
+    const result = await supabase
       .from("applicant_rounds")
       .select(`
         applicant_id,
@@ -28,6 +36,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       `)
       .eq("recruitment_round_id", recruitment_round_id)
       .limit(1); // we only want the first row, not single() in case none found
+    
+    const { data: rows, error: selectError } = result as {
+      data: RowWithApplicant[] | null;
+      error: any;
+    };
 
     if (selectError) {
       console.error("Error fetching first applicant:", selectError.message);

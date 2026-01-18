@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { supabaseBrowser } from "@/lib/supabase/browser";
+import { Database } from "@/lib/types/supabase";
 
 export default async function handler(
   req: NextApiRequest,
@@ -22,13 +23,21 @@ export default async function handler(
   const supabase = supabaseBrowser();
 
   // Update the applicant's status to maybe
-  const { data, error } = await supabase
-    .from("applicant_rounds")
-    .update({ status: "maybe" })
+  const updateData: Database["public"]["Tables"]["applicant_rounds"]["Update"] = {
+    status: "maybe",
+  };
+  const updateQuery = (supabase
+    .from("applicant_rounds") as any)
+    .update(updateData)
     .eq("id", applicant_round_id)
     .eq("applicant_id", applicant_id)
     .select()
     .single();
+  const updateResult = await updateQuery as any;
+  const { data, error } = updateResult as {
+    data: Database["public"]["Tables"]["applicant_rounds"]["Row"] | null;
+    error: any;
+  };
 
   if (error) {
     console.error("Error setting applicant as maybe:", error);

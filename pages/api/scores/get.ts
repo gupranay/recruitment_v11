@@ -51,7 +51,7 @@ export default async function handler(
   const supabase = supabaseBrowser();
 
   try {
-    const { data: scores, error } = await supabase
+    const scoresResult = await supabase
       .from("scores")
       .select(
         `
@@ -73,6 +73,20 @@ export default async function handler(
       .eq("applicant_round_id", applicant_round_id)
       .order("created_at", { ascending: false });
 
+    const { data: scores, error } = scoresResult as {
+      data: Array<{
+        id: string;
+        score_value: number | null;
+        metric_id: string;
+        metrics: { name: string; weight: number } | null;
+        user_id: string | null;
+        created_at: string;
+        submission_id: string | null;
+        users: { full_name: string | null } | null;
+      }> | null;
+      error: any;
+    };
+
     if (error) {
       console.error("Supabase error:", error);
       throw error;
@@ -80,9 +94,9 @@ export default async function handler(
 
     // console.log("Raw scores from database:", scores);
 
-    let filteredScores = scores;
+    let filteredScores = scores || [];
     if (filterUserId) {
-      filteredScores = scores.filter((score) => score.user_id === filterUserId);
+      filteredScores = filteredScores.filter((score) => score.user_id === filterUserId);
     }
 
     if (!filteredScores || filteredScores.length === 0) {

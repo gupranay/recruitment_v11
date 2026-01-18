@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { supabaseBrowser } from "@/lib/supabase/browser";
+import { Database } from "@/lib/types/supabase";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") {
@@ -17,11 +18,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     // Check if user is Owner or Admin
     // First check if user is the organization owner
-    const { data: organization, error: orgError } = await supabase
+    const orgResult = await supabase
       .from("organizations")
       .select("owner_id")
       .eq("id", organization_id)
       .single();
+    
+    const { data: organization, error: orgError } = orgResult as {
+      data: { owner_id: string } | null;
+      error: any;
+    };
 
     if (orgError) {
       return res.status(500).json({ error: "Error checking organization ownership" });
@@ -34,12 +40,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       isOwnerOrAdmin = true;
     } else {
       // Check if user is Owner or Admin in organization_users
-      const { data: userRole, error: roleError } = await supabase
+      const roleResult = await supabase
         .from("organization_users")
         .select("role")
         .eq("organization_id", organization_id)
         .eq("user_id", user_id)
         .single();
+      
+      const { data: userRole, error: roleError } = roleResult as {
+        data: { role: string } | null;
+        error: any;
+      };
 
       if (roleError && roleError.code !== "PGRST116") {
         // PGRST116 is "no rows returned", which is fine
@@ -65,7 +76,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Order by created_at descending (newest first)
     query = query.order("created_at", { ascending: false });
 
-    const { data, error } = await query;
+    const queryResult = await query;
+    const { data, error } = queryResult as {
+      data: Database["public"]["Tables"]["recruitment_cycles"]["Row"][] | null;
+      error: any;
+    };
 
     if (error) {
       return res.status(400).json({ error: error.message });

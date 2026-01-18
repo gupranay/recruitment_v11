@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { supabaseBrowser } from "@/lib/supabase/browser";
+import { Database } from "@/lib/types/supabase";
 
 export default async function handler(
   req: NextApiRequest,
@@ -16,25 +17,35 @@ export default async function handler(
   if (req.method === "PUT") {
     try {
       // First check if user is the organization owner
-      const { data: organization, error: orgError } = await supabase
+      const orgResult = await supabase
         .from("organizations")
         .select("owner_id")
         .eq("id", organizationId.toString())
         .single();
+      
+      const { data: organization, error: orgError } = orgResult as {
+        data: { owner_id: string } | null;
+        error: any;
+      };
 
-      if (orgError) {
+      if (orgError || !organization) {
         return res.status(500).json({ error: "Error checking organization ownership" });
       }
 
       // Check if user is the actual owner
-      if (organization?.owner_id !== user_id) {
+      if (organization.owner_id !== user_id) {
         // If not the owner, check their role in organization_users
-        const { data: membership, error: membershipError } = await supabase
+        const membershipResult = await supabase
           .from("organization_users")
           .select("role")
           .eq("organization_id", organizationId.toString())
           .eq("user_id", user_id)
           .single();
+        
+        const { data: membership, error: membershipError } = membershipResult as {
+          data: { role: string } | null;
+          error: any;
+        };
 
         if (membershipError || !membership || membership.role !== "Owner") {
           return res
@@ -44,12 +55,20 @@ export default async function handler(
       }
 
       // Update the organization
-      const { data, error } = await supabase
-        .from("organizations")
-        .update({ name })
+      const updateData: Database["public"]["Tables"]["organizations"]["Update"] = {
+        name,
+      };
+      const updateQuery = (supabase
+        .from("organizations") as any)
+        .update(updateData)
         .eq("id", organizationId.toString())
         .select()
         .single();
+      const updateResult = await updateQuery as any;
+      const { data, error } = updateResult as {
+        data: Database["public"]["Tables"]["organizations"]["Row"] | null;
+        error: any;
+      };
 
       if (error) throw error;
 
@@ -62,25 +81,35 @@ export default async function handler(
   if (req.method === "DELETE") {
     try {
       // First check if user is the organization owner
-      const { data: organization, error: orgError } = await supabase
+      const orgResult2 = await supabase
         .from("organizations")
         .select("owner_id")
         .eq("id", organizationId.toString())
         .single();
+      
+      const { data: organization, error: orgError } = orgResult2 as {
+        data: { owner_id: string } | null;
+        error: any;
+      };
 
-      if (orgError) {
+      if (orgError || !organization) {
         return res.status(500).json({ error: "Error checking organization ownership" });
       }
 
       // Check if user is the actual owner
-      if (organization?.owner_id !== user_id) {
+      if (organization.owner_id !== user_id) {
         // If not the owner, check their role in organization_users
-        const { data: membership, error: membershipError } = await supabase
+        const membershipResult2 = await supabase
           .from("organization_users")
           .select("role")
           .eq("organization_id", organizationId.toString())
           .eq("user_id", user_id)
           .single();
+        
+        const { data: membership, error: membershipError } = membershipResult2 as {
+          data: { role: string } | null;
+          error: any;
+        };
 
         if (membershipError || !membership || membership.role !== "Owner") {
           return res
@@ -90,10 +119,11 @@ export default async function handler(
       }
 
       // Delete the organization (cascade will handle related records)
-      const { error: deleteError } = await supabase
-        .from("organizations")
+      const deleteQuery = (supabase
+        .from("organizations") as any)
         .delete()
         .eq("id", organizationId.toString());
+      const { error: deleteError } = await deleteQuery as { error: any };
 
       if (deleteError) throw deleteError;
 

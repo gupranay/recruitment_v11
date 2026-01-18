@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { supabaseBrowser } from "@/lib/supabase/browser";
+import { Database } from "@/lib/types/supabase";
 
 export default async function handler(
   req: NextApiRequest,
@@ -39,14 +40,27 @@ export default async function handler(
     }));
 
     // 2) Insert the new scores
-    const { data: insertedScores, error: insertError } = await supabase
-      .from("scores")
-      .insert(insertData)
+    const scoresInsertData: Database["public"]["Tables"]["scores"]["Insert"][] = insertData.map(item => ({
+      applicant_round_id: item.applicant_round_id,
+      metric_id: item.metric_id,
+      score_value: item.score_value,
+      user_id: item.user_id,
+      submission_id: item.submission_id,
+    }));
+    
+    const scoresResult = await (supabase
+      .from("scores") as any)
+      .insert(scoresInsertData as any)
       .select();
+    
+    const { data: insertedScores, error: insertError } = scoresResult as {
+      data: Database["public"]["Tables"]["scores"]["Row"][] | null;
+      error: any;
+    };
 
-    if (insertError) {
-      console.error("Error inserting scores:", insertError);
-      return res.status(500).json({ error: insertError.message });
+    if (insertError || !insertedScores) {
+      console.error("Error inserting scores:", insertError?.message || "No data returned");
+      return res.status(500).json({ error: insertError?.message || "Failed to insert scores" });
     }
 
     // 3) Calculate the weighted average for this submission
@@ -61,7 +75,15 @@ export default async function handler(
       denominator > 0 ? numerator / denominator : null;
 
     // 4) Get all submissions for this applicant_round_id
-    const { data: allScores, error: fetchError } = await supabase
+    type ScoreWithMetric = {
+      submission_id: string;
+      score_value: number;
+      metric: {
+        weight: number;
+      } | null;
+    };
+    
+    const allScoresResult = await supabase
       .from("scores")
       .select(
         `
@@ -73,10 +95,15 @@ export default async function handler(
       `
       )
       .eq("applicant_round_id", applicant_round_id);
+    
+    const { data: allScores, error: fetchError } = allScoresResult as {
+      data: ScoreWithMetric[] | null;
+      error: any;
+    };
 
-    if (fetchError) {
-      console.error("Error fetching all scores:", fetchError);
-      return res.status(500).json({ error: fetchError.message });
+    if (fetchError || !allScores) {
+      console.error("Error fetching all scores:", fetchError?.message || "No data returned");
+      return res.status(500).json({ error: fetchError?.message || "Failed to fetch scores" });
     }
 
     // 5) Calculate the overall weighted average across all submissions
@@ -112,10 +139,14 @@ export default async function handler(
       totalDenominator > 0 ? totalNumerator / totalDenominator : null;
 
     // 6) Update applicant_rounds with the new overall weighted average
-    const { error: updateErr } = await supabase
-      .from("applicant_rounds")
-      .update({ weighted_score: overallWeightedAverage ?? undefined })
+    const updateData: Database["public"]["Tables"]["applicant_rounds"]["Update"] = {
+      weighted_score: overallWeightedAverage ?? null,
+    };
+    const updateQuery = (supabase
+      .from("applicant_rounds") as any)
+      .update(updateData)
       .eq("id", applicant_round_id);
+    const { error: updateErr } = await updateQuery as { error: any };
 
     if (updateErr) {
       console.error("Error updating weighted_score:", updateErr);

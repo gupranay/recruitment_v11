@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { supabaseBrowser } from "@/lib/supabase/browser";
+import { Database } from "@/lib/types/supabase";
 
 function generateRandomSlug() {
   return Math.random().toString(36).substring(2, 8);
@@ -21,15 +22,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   // 1) Create a new row in `anonymous_readings`
   const slug = generateRandomSlug();
 
-  const { data: readingData, error: readingError } = await supabase
+  const insertData: Database["public"]["Tables"]["anonymous_readings"]["Insert"] = {
+    recruitment_round_id,
+    slug,
+    omitted_fields: omitted_fields || [],
+  };
+
+  const result = await supabase
     .from("anonymous_readings")
-    .insert({
-      recruitment_round_id,
-      slug,
-      omitted_fields: omitted_fields || [],
-    })
+    .insert(insertData as any)
     .select()
     .single();
+  
+  const { data: readingData, error: readingError } = result as {
+    data: Database["public"]["Tables"]["anonymous_readings"]["Row"] | null;
+    error: any;
+  };
 
   if (readingError || !readingData) {
     return res.status(500).json({

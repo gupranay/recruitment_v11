@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { supabaseBrowser } from "@/lib/supabase/browser";
+import { Database } from "@/lib/types/supabase";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   // Only allow POST
@@ -19,13 +20,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const supabase = supabaseBrowser();
 
   // Update the bridging record to "accepted"
-  const { data, error } = await supabase
-    .from("applicant_rounds")
-    .update({ status: "accepted" })
+  const updateData: Database["public"]["Tables"]["applicant_rounds"]["Update"] = {
+    status: "accepted",
+  };
+  const updateQuery = (supabase
+    .from("applicant_rounds") as any)
+    .update(updateData)
     .eq("applicant_id", applicant_id)
     .eq("id", applicant_round_id)
     .select()
     .single();
+  const updateResult = await updateQuery as any;
+  const { data, error } = updateResult as {
+    data: Database["public"]["Tables"]["applicant_rounds"]["Row"] | null;
+    error: any;
+  };
 
   if (error) {
     return res.status(500).json({ error: error.message });

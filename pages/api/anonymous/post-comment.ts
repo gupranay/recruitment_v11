@@ -1,6 +1,7 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { supabaseBrowser } from "@/lib/supabase/browser";
 import { supabaseApi } from "@/lib/supabase/api";
+import { Database } from "@/lib/types/supabase";
 
 export default async function handler(
   req: NextApiRequest,
@@ -29,31 +30,41 @@ export default async function handler(
 
   try {
     // First get the applicant_round_id
-    const { data: applicantRound, error: applicantRoundError } = await supabase
+    const applicantRoundResult = await supabase
       .from("applicant_rounds")
       .select("id")
       .eq("applicant_id", applicant_id)
       .eq("recruitment_round_id", recruitment_round_id)
       .single();
+    
+    const { data: applicantRound, error: applicantRoundError } = applicantRoundResult as {
+      data: { id: string } | null;
+      error: any;
+    };
 
-    if (applicantRoundError) {
+    if (applicantRoundError || !applicantRound) {
       return res.status(404).json({ error: "Applicant round not found" });
     }
     console.log("user_id", user_id);
 
     // Insert the comment
-    const { data, error } = await supabase
+    const insertData: Database["public"]["Tables"]["comments"]["Insert"] = {
+      applicant_round_id: applicantRound.id,
+      user_id,
+      comment_text,
+      source,
+    };
+
+    const commentResult = await (supabase
       .from("comments")
-      .insert([
-        {
-          applicant_round_id: applicantRound.id,
-          user_id,
-          comment_text,
-          source,
-        },
-      ])
+      .insert([insertData as any] as any)
       .select()
-      .single();
+      .single() as any);
+    
+    const { data, error } = commentResult as {
+      data: Database["public"]["Tables"]["comments"]["Row"] | null;
+      error: any;
+    };
 
     if (error) {
       console.error("Error creating comment:", error);

@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { supabaseBrowser } from "@/lib/supabase/browser";
+import { Database } from "@/lib/types/supabase";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   // Only allow POST
@@ -16,11 +17,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     // Query the anonymous_readings table for the reading that matches this round
-    const { data: reading, error } = await supabase
+    const result = await supabase
       .from("anonymous_readings")
       .select("slug")
       .eq("recruitment_round_id", recruitment_round_id)
       .single();
+    
+    const { data: reading, error } = result as {
+      data: { slug: string } | null;
+      error: any;
+    };
 
     // Handle possible errors
     if (error) {

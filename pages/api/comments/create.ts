@@ -1,6 +1,7 @@
 // api/comments/create.ts
 import { NextApiRequest, NextApiResponse } from "next";
 import { supabaseApi } from "@/lib/supabase/api";
+import { Database } from "@/lib/types/supabase";
 
 export default async function handler(
   req: NextApiRequest,
@@ -30,18 +31,23 @@ export default async function handler(
 
   try {
     // Insert the comment
-    const { data, error } = await supabase
-      .from("comments")
-      .insert([
-        {
-          applicant_round_id,
-          user_id: user.id,
-          comment_text,
-          source,
-        },
-      ])
+    const insertData: Database["public"]["Tables"]["comments"]["Insert"] = {
+      applicant_round_id,
+      user_id: user.id,
+      comment_text,
+      source,
+    };
+    
+    const insertResult = await (supabase
+      .from("comments") as any)
+      .insert([insertData as any] as any)
       .select()
       .single();
+    
+    const { data, error } = insertResult as {
+      data: Database["public"]["Tables"]["comments"]["Row"] | null;
+      error: any;
+    };
 
     if (error) {
       console.log(error);

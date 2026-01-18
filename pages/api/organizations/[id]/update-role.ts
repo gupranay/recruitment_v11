@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { supabaseBrowser } from "@/lib/supabase/browser";
+import { Database } from "@/lib/types/supabase";
 
 export default async function handler(
   req: NextApiRequest,
@@ -40,13 +41,18 @@ export default async function handler(
   try {
     // Verify the current user has permission (Owner or Admin)
     // First check if user is the organization owner
-    const { data: organization, error: orgError } = await supabase
+    const orgResult = await supabase
       .from("organizations")
       .select("owner_id")
       .eq("id", organizationId.toString())
       .single();
+    
+    const { data: organization, error: orgError } = orgResult as {
+      data: { owner_id: string } | null;
+      error: any;
+    };
 
-    if (orgError) {
+    if (orgError || !organization) {
       return res.status(500).json({ error: "Error checking organization ownership" });
     }
 
@@ -58,12 +64,17 @@ export default async function handler(
       isOwner = true;
     } else {
       // Check user's role in organization_users
-      const { data: currentUserMembership, error: membershipError } = await supabase
+      const membershipResult = await supabase
         .from("organization_users")
         .select("role")
         .eq("organization_id", organizationId.toString())
         .eq("user_id", user_id)
         .single();
+      
+      const { data: currentUserMembership, error: membershipError } = membershipResult as {
+        data: { role: string } | null;
+        error: any;
+      };
 
       if (membershipError) {
         console.error("Error checking current user membership:", membershipError);
@@ -91,12 +102,17 @@ export default async function handler(
     }
 
     // Get the target user's current role
-    const { data: targetMembership, error: targetError } = await supabase
+    const targetResult = await supabase
       .from("organization_users")
       .select("role")
       .eq("organization_id", organizationId.toString())
       .eq("user_id", target_user_id)
       .single();
+    
+    const { data: targetMembership, error: targetError } = targetResult as {
+      data: { role: string } | null;
+      error: any;
+    };
 
     if (targetError) {
       console.error("Error fetching target membership:", targetError);
@@ -155,11 +171,16 @@ export default async function handler(
         });
       }
       // Get the organization to check current owner
-      const { data: organization, error: orgError } = await supabase
+      const orgResult2 = await supabase
         .from("organizations")
         .select("owner_id")
         .eq("id", organizationId.toString())
         .single();
+      
+      const { data: organization, error: orgError } = orgResult2 as {
+        data: { owner_id: string } | null;
+        error: any;
+      };
 
       if (orgError) {
         console.error("Error fetching organization for ownership transfer:", orgError);
@@ -183,11 +204,15 @@ export default async function handler(
       // We must remove the old owner's role BEFORE adding the new owner's role
       
       // 1. First, update old owner's role to Admin (removes Owner constraint)
-      const { error: updateOldOwnerError } = await supabase
-        .from("organization_users")
-        .update({ role: "Admin" })
+      const updateOldOwnerData: Database["public"]["Tables"]["organization_users"]["Update"] = {
+        role: "Admin",
+      };
+      const updateOldOwnerQuery = (supabase
+        .from("organization_users") as any)
+        .update(updateOldOwnerData)
         .eq("organization_id", organizationId.toString())
         .eq("user_id", organization.owner_id);
+      const { error: updateOldOwnerError } = await updateOldOwnerQuery as { error: any };
 
       if (updateOldOwnerError) {
         console.error("Error updating old owner role:", updateOldOwnerError);
@@ -198,20 +223,27 @@ export default async function handler(
       }
 
       // 2. Now update new owner's role to Owner (no constraint violation)
-      const { error: updateNewOwnerError } = await supabase
-        .from("organization_users")
-        .update({ role: "Owner" })
+      const updateNewOwnerData: Database["public"]["Tables"]["organization_users"]["Update"] = {
+        role: "Owner",
+      };
+      const updateNewOwnerQuery = (supabase
+        .from("organization_users") as any)
+        .update(updateNewOwnerData)
         .eq("organization_id", organizationId.toString())
         .eq("user_id", target_user_id);
+      const { error: updateNewOwnerError } = await updateNewOwnerQuery as { error: any };
 
       if (updateNewOwnerError) {
         console.error("Error updating new owner role:", updateNewOwnerError);
         // Rollback: restore old owner's role
-        await supabase
-          .from("organization_users")
-          .update({ role: "Owner" })
+        const rollbackData: Database["public"]["Tables"]["organization_users"]["Update"] = {
+          role: "Owner",
+        };
+        await ((supabase
+          .from("organization_users") as any)
+          .update(rollbackData)
           .eq("organization_id", organizationId.toString())
-          .eq("user_id", organization.owner_id);
+          .eq("user_id", organization.owner_id) as any);
         return res.status(500).json({ 
           error: "Failed to update new owner role", 
           details: updateNewOwnerError.message 
@@ -219,24 +251,35 @@ export default async function handler(
       }
 
       // 3. Finally, update organization owner_id
-      const { error: updateOrgError } = await supabase
-        .from("organizations")
-        .update({ owner_id: target_user_id })
+      const updateOrgData: Database["public"]["Tables"]["organizations"]["Update"] = {
+        owner_id: target_user_id,
+      };
+      const updateOrgQuery = (supabase
+        .from("organizations") as any)
+        .update(updateOrgData)
         .eq("id", organizationId.toString());
+      const { error: updateOrgError } = await updateOrgQuery as { error: any };
 
       if (updateOrgError) {
         console.error("Error updating organization owner_id:", updateOrgError);
         // Rollback: restore both roles
-        await supabase
-          .from("organization_users")
-          .update({ role: "Owner" })
+        const rollbackOldOwnerData: Database["public"]["Tables"]["organization_users"]["Update"] = {
+          role: "Owner",
+        };
+        await ((supabase
+          .from("organization_users") as any)
+          .update(rollbackOldOwnerData)
           .eq("organization_id", organizationId.toString())
-          .eq("user_id", organization.owner_id);
-        await supabase
-          .from("organization_users")
-          .update({ role: oldRole })
+          .eq("user_id", organization.owner_id) as any);
+        
+        const rollbackTargetData: Database["public"]["Tables"]["organization_users"]["Update"] = {
+          role: oldRole as any,
+        };
+        await ((supabase
+          .from("organization_users") as any)
+          .update(rollbackTargetData)
           .eq("organization_id", organizationId.toString())
-          .eq("user_id", target_user_id);
+          .eq("user_id", target_user_id) as any);
         return res
           .status(500)
           .json({ 
@@ -258,11 +301,15 @@ export default async function handler(
           .json({ error: "Cannot change the owner's role" });
       }
 
-      const { error: updateError } = await supabase
-        .from("organization_users")
-        .update({ role: new_role })
+      const updateData: Database["public"]["Tables"]["organization_users"]["Update"] = {
+        role: new_role as any,
+      };
+      const updateQuery = (supabase
+        .from("organization_users") as any)
+        .update(updateData)
         .eq("organization_id", organizationId.toString())
         .eq("user_id", target_user_id);
+      const { error: updateError } = await updateQuery as { error: any };
 
       if (updateError) {
         console.error("Error updating role:", updateError);
