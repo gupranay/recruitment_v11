@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from "next";
-import { supabaseBrowser } from "@/lib/supabase/browser";
+import { supabaseApi } from "@/lib/supabase/api";
 import { Database } from "@/lib/types/supabase";
 
 export default async function handler(
@@ -10,12 +10,21 @@ export default async function handler(
     return res.status(405).json({ error: "Method not allowed" });
   }
 
+  const supabase = supabaseApi(req, res);
+
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
   const { slug } = req.body;
   if (!slug) {
     return res.status(400).json({ error: "Missing required field: slug" });
   }
-
-  const supabase = supabaseBrowser();
 
   try {
     // 1) Fetch the reading for the given slug

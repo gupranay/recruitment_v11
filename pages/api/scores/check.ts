@@ -1,11 +1,22 @@
 import { NextApiRequest, NextApiResponse } from "next";
-import { supabaseBrowser } from "@/lib/supabase/browser";
+import { supabaseApi } from "@/lib/supabase/api";
 import { Database } from "@/lib/types/supabase";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   // Only allow POST
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
+  }
+
+  const supabase = supabaseApi(req, res);
+
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return res.status(401).json({ error: "Unauthorized" });
   }
 
   // Extract applicant_id and recruitment_round_id from the request
@@ -16,8 +27,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       error: "Missing required fields: applicant_id, recruitment_round_id",
     });
   }
-
-  const supabase = supabaseBrowser();
 
   try {
     // 1) Look up the applicant_rounds row for (applicant_id, recruitment_round_id)

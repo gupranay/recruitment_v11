@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from "next";
-import { supabaseBrowser } from "@/lib/supabase/browser";
+import { supabaseApi } from "@/lib/supabase/api";
 import { Database } from "@/lib/types/supabase";
 
 export default async function handler(
@@ -8,6 +8,17 @@ export default async function handler(
 ) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
+  }
+
+  const supabase = supabaseApi(req, res);
+
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return res.status(401).json({ error: "Unauthorized" });
   }
 
   const { applicant_id, applicant_round_id, new_status } = req.body;
@@ -28,8 +39,6 @@ export default async function handler(
         "Invalid status. Must be one of: in_progress, maybe, accepted, rejected",
     });
   }
-
-  const supabase = supabaseBrowser();
 
   try {
     // First, get the current applicant_round record to check if it exists

@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from "next";
-import { supabaseBrowser } from "@/lib/supabase/browser";
+import { supabaseApi } from "@/lib/supabase/api";
 import { Database } from "@/lib/types/supabase";
 
 export default async function handler(
@@ -9,6 +9,17 @@ export default async function handler(
   // Only accept POST
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
+  }
+
+  const supabase = supabaseApi(req, res);
+
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return res.status(401).json({ error: "Unauthorized" });
   }
 
   const { name, recruitment_cycle_id, metrics } = req.body;
@@ -23,8 +34,6 @@ export default async function handler(
   // metrics might be an array of { name, weight }, or could be empty
   // If it's not an array, coerce it to an empty array
   const metricList = Array.isArray(metrics) ? metrics : [];
-
-  const supabase = supabaseBrowser();
 
   // Determine next sort_order within the cycle (max + 1)
   const maxSortResult = await supabase

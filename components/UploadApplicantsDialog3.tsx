@@ -101,6 +101,7 @@ export default function UploadApplicantsDialog({
       emailHeader,
       headShotHeader,
       recruitment_round_id: recruitment_round_id,
+      columnOrder: headers, // Pass the headers in their original CSV order
     };
 
     // console.log("recruitment_round_id", recruitment_round_id);
@@ -143,14 +144,14 @@ export default function UploadApplicantsDialog({
         {headers.length > 0 && (
           <div className="space-y-4 mt-4">
             <div className="grid gap-4">
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-[120px_1fr] items-center gap-4">
                 <div className="font-semibold">Name Header</div>
                 <Select
                   value={nameHeader || undefined}
                   onValueChange={(header) => setNameHeader(header)}
                 >
                   <SelectTrigger className="w-full">
-                    {nameHeader || "Select Name Header"}
+                    <span className="truncate">{nameHeader || "Select Name Header"}</span>
                   </SelectTrigger>
                   <SelectContent>
                     {headers.map((header, index) => (
@@ -161,14 +162,14 @@ export default function UploadApplicantsDialog({
                   </SelectContent>
                 </Select>
               </div>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-[120px_1fr] items-center gap-4">
                 <div className="font-semibold">Email Header</div>
                 <Select
                   value={emailHeader || undefined}
                   onValueChange={(header) => setEmailHeader(header)}
                 >
                   <SelectTrigger className="w-full">
-                    {emailHeader || "Select Email Header"}
+                    <span className="truncate">{emailHeader || "Select Email Header"}</span>
                   </SelectTrigger>
                   <SelectContent>
                     {headers.map((header, index) => (
@@ -179,14 +180,14 @@ export default function UploadApplicantsDialog({
                   </SelectContent>
                 </Select>
               </div>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-[120px_1fr] items-center gap-4">
                 <div className="font-semibold">Headshot URL Header</div>
                 <Select
                   value={headShotHeader || undefined}
                   onValueChange={(header) => setHeadShotHeader(header)}
                 >
                   <SelectTrigger className="w-full">
-                    {headShotHeader || "Select Headshot URL Header"}
+                    <span className="truncate">{headShotHeader || "Select Headshot Header"}</span>
                   </SelectTrigger>
                   <SelectContent>
                     {headers.map((header, index) => (

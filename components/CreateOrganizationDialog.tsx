@@ -47,7 +47,7 @@ export function CreateOrganizationDialog({
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ name, user }),
+        body: JSON.stringify({ name }),
       });
 
       const data = await response.json();

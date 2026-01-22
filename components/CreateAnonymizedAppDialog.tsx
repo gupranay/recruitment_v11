@@ -37,7 +37,10 @@ export default function CreateAnonymizedAppDialog({
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ applicant_id }),
+          body: JSON.stringify({ 
+            applicant_id, 
+            recruitment_round_id 
+          }),
         });
 
         if (!response.ok) {
@@ -55,7 +58,7 @@ export default function CreateAnonymizedAppDialog({
     };
 
     fetchFields();
-  }, [applicant_id, isDialogOpen]);
+  }, [applicant_id, isDialogOpen, recruitment_round_id]);
 
   // Fetch slug if it exists
   useEffect(() => {
@@ -71,14 +74,11 @@ export default function CreateAnonymizedAppDialog({
           body: JSON.stringify({ recruitment_round_id }),
         });
 
-        // 404 is expected when no anonymous app reading exists yet
-        if (response.status === 404) {
+        // Non-200 responses (404, 500, etc.) mean no slug exists yet - this is expected
+        // when no anonymous app reading has been created for this round
+        if (!response.ok) {
           setSlug(null);
           return;
-        }
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch slug");
         }
 
         const { slug: existingSlug } = await response.json();

@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from "next";
-import { supabaseBrowser } from "@/lib/supabase/browser";
+import { supabaseApi } from "@/lib/supabase/api";
 import { Database } from "@/lib/types/supabase";
 
 export default async function handler(
@@ -10,25 +10,35 @@ export default async function handler(
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const supabase = supabaseBrowser();
+  const supabase = supabaseApi(req, res);
+
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
   const organizationId = Array.isArray(req.query.id)
     ? req.query.id[0]
     : req.query.id;
-  const { user_id, new_owner_id } = req.body;
+  const { new_owner_id } = req.body;
 
-  if (!organizationId || !user_id || !new_owner_id) {
+  if (!organizationId || !new_owner_id) {
     return res.status(400).json({ error: "Missing required fields" });
   }
 
   // Prevent transferring to yourself
-  if (user_id === new_owner_id) {
+  if (user.id === new_owner_id) {
     return res
       .status(400)
       .json({ error: "Cannot transfer ownership to yourself" });
   }
 
   try {
-    // First, verify the current user is the owner of the organization
+    // First, verify the authenticated user is the owner of the organization
     const orgResult = await supabase
       .from("organizations")
       .select("owner_id")
@@ -44,7 +54,7 @@ export default async function handler(
       return res.status(500).json({ error: "Error fetching organization" });
     }
 
-    if (!organization || organization.owner_id !== user_id) {
+    if (!organization || organization.owner_id !== user.id) {
       return res
         .status(403)
         .json({ error: "Only the current owner can transfer ownership" });
@@ -98,7 +108,7 @@ export default async function handler(
     if (updateNewOwnerError) {
       // Rollback: revert the organization owner_id
       const rollbackData: Database["public"]["Tables"]["organizations"]["Update"] = {
-        owner_id: user_id,
+        owner_id: user.id,
       };
       await ((supabase
         .from("organizations") as any)
@@ -115,13 +125,13 @@ export default async function handler(
       .from("organization_users") as any)
       .update(updateOldOwnerData)
       .eq("organization_id", organizationId)
-      .eq("user_id", user_id);
+      .eq("user_id", user.id);
     const { error: updateOldOwnerError } = await updateOldOwnerQuery as { error: any };
 
     if (updateOldOwnerError) {
       // Rollback: revert both changes
       const rollbackOrgData: Database["public"]["Tables"]["organizations"]["Update"] = {
-        owner_id: user_id,
+        owner_id: user.id,
       };
       await ((supabase
         .from("organizations") as any)
@@ -135,7 +145,7 @@ export default async function handler(
         .from("organization_users") as any)
         .update(rollbackOldOwnerData)
         .eq("organization_id", organizationId)
-        .eq("user_id", user_id) as any);
+        .eq("user_id", user.id) as any);
       
       const rollbackNewOwnerData: Database["public"]["Tables"]["organization_users"]["Update"] = {
         role: newOwnerMembership.role as any,

@@ -49,7 +49,7 @@ export default async function handler(
         user_id,
         applicant_rounds!comments_applicant_round_id_fkey (
           recruitment_rounds!applicant_rounds_recruitment_round_id_fkey (
-            recruitment_cycles!recruitment_rounds_recruitment_cycle_id_fkey (
+            recruitment_cycles!fk_recruitment_cycle (
               organization_id
             )
           )

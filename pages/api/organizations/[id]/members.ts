@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from "next";
-import { supabaseBrowser } from "@/lib/supabase/browser";
+import { supabaseApi } from "@/lib/supabase/api";
 import { Database } from "@/lib/types/supabase";
 
 type OrganizationUserWithDetails = {
@@ -28,7 +28,17 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
-  const supabase = supabaseBrowser();
+  const supabase = supabaseApi(req, res);
+
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
   const organizationId = Array.isArray(req.query.id)
     ? req.query.id[0]
     : req.query.id;
@@ -118,15 +128,15 @@ export default async function handler(
   }
 
   if (req.method === "POST") {
-    const { email, role, user_id } = req.body;
+    const { email, role } = req.body;
 
     try {
-      // First check if the user making the request has appropriate permissions
+      // First check if the authenticated user has appropriate permissions
       const membershipResult = await supabase
         .from("organization_users")
         .select("role")
         .eq("organization_id", organizationId)
-        .eq("user_id", user_id)
+        .eq("user_id", user.id)
         .single();
       
       const { data: membership, error: membershipError } = membershipResult as {
@@ -225,7 +235,7 @@ export default async function handler(
         organization_id: organizationId,
         email,
         role,
-        invited_by: user_id,
+        invited_by: user.id,
       };
       const createInviteQuery = (supabase
         .from("organization_invites") as any)

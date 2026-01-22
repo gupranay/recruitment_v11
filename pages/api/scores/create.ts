@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from "next";
-import { supabaseBrowser } from "@/lib/supabase/browser";
+import { supabaseApi } from "@/lib/supabase/api";
 import { Database } from "@/lib/types/supabase";
 import { randomUUID } from "crypto";
 
@@ -11,10 +11,20 @@ export default async function handler(
     return res.status(405).json({ error: "Method not allowed" });
   }
 
+  const supabase = supabaseApi(req, res);
+
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
   const {
     applicant_id,
     recruitment_round_id,
-    user_id,
     scores, // array of { metric_id, score_value, weight }
   } = req.body;
 
@@ -30,8 +40,6 @@ export default async function handler(
         "Missing or invalid fields: applicant_id, recruitment_round_id, and a non-empty scores array",
     });
   }
-
-  const supabase = supabaseBrowser();
 
   try {
     // 1) Find or verify the applicant_rounds record
@@ -68,7 +76,7 @@ export default async function handler(
       applicant_round_id: applicantRoundId,
       metric_id: item.metric_id,
       score_value: item.score_value,
-      user_id: user_id || null, // if you track the user
+      user_id: user.id,
       submission_id, // assign the same submission_id to all
     }));
 

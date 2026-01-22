@@ -1,32 +1,4 @@
-// import { supabaseBrowser } from "@/lib/supabase/browser";
-// import { NextApiRequest, NextApiResponse } from "next";
-
-// export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-//   const supabase = supabaseBrowser();
-//   const user = req.body;
-
-//   const id = user.id;
-
-//   if (!id) {
-//     return res.status(401).json({ error: "Unauthorized" });
-//   }
-//   console.log(id);
-//   const { data, error: fetchError } = await supabase
-//     .from("organizations")
-//     .select("*")
-//     .eq("owner_id", id);
-
-//     console.log("data:",data);
-
-//   if (fetchError) {
-//     console.log("fetchError:", fetchError);
-//     return res.status(400).json({ error: fetchError.message });
-//   }
-
-//   res.status(200).json(data);
-// }
-
-import { supabaseBrowser } from "@/lib/supabase/browser";
+import { supabaseApi } from "@/lib/supabase/api";
 import { NextApiRequest, NextApiResponse } from "next";
 import { Database } from "@/lib/types/supabase";
 
@@ -34,18 +6,19 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
-  const supabase = supabaseBrowser();
-  const user = req.body;
+  const supabase = supabaseApi(req, res);
 
-  const id = user.id;
-  // console.log("id:", id);
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
 
-  if (!id) {
+  if (authError || !user) {
     return res.status(401).json({ error: "Unauthorized" });
   }
 
   try {
-    // Fetch organizations where the user is a part of (via organization_users table)
+    // Fetch organizations where the authenticated user is a part of (via organization_users table)
     type MemberOrganization = {
       organization_id: string;
       role: string;
@@ -71,7 +44,7 @@ export default async function handler(
         )
       `
       )
-      .eq("user_id", id);
+      .eq("user_id", user.id);
     
     const { data: memberOrganizations, error: memberFetchError } = memberResult as {
       data: MemberOrganization[] | null;

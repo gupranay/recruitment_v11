@@ -43,6 +43,12 @@ interface Applicant {
   rejected: boolean;
 }
 
+type DeleteDialogType = 
+  | "confirm" 
+  | "onlyRoundWithApplicants" 
+  | "notLastRoundWithApplicants" 
+  | "lastRoundWithApplicants";
+
 function Sidebar({
   rounds,
   setRecruitmentRounds,
@@ -58,16 +64,18 @@ function Sidebar({
   currentRound: number;
   setCurrentRound: (index: number) => void;
   currentRecruitmentCycle: RecruitmentCycle;
-  onDeleteRound: (roundId: string, roundIndex: number) => Promise<void>;
+  onDeleteRound: (roundId: string, roundIndex: number, mode?: string) => Promise<void>;
   currentOrg: Organization | null;
   user: any;
 }) {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteDialogType, setDeleteDialogType] = useState<DeleteDialogType>("confirm");
   const [roundToDelete, setRoundToDelete] = useState<{
     id: string;
     name: string;
     index: number;
   } | null>(null);
+  const [applicantCount, setApplicantCount] = useState(0);
   const [isDeleting, setIsDeleting] = useState(false);
   const [metricsDialogOpen, setMetricsDialogOpen] = useState(false);
   const [roundForMetrics, setRoundForMetrics] = useState<{
@@ -89,6 +97,7 @@ function Sidebar({
   ) => {
     e.stopPropagation(); // Prevent triggering the round selection
     setRoundToDelete({ id: round.id, name: round.name, index });
+    setDeleteDialogType("confirm");
     setDeleteDialogOpen(true);
   };
 
@@ -101,14 +110,46 @@ function Sidebar({
     setMetricsDialogOpen(true);
   };
 
-  const handleConfirmDelete = async () => {
+  const handleConfirmDelete = async (mode?: string) => {
     if (!roundToDelete) return;
 
     setIsDeleting(true);
     try {
-      await onDeleteRound(roundToDelete.id, roundToDelete.index);
+      await onDeleteRound(roundToDelete.id, roundToDelete.index, mode);
       setDeleteDialogOpen(false);
       setRoundToDelete(null);
+      setDeleteDialogType("confirm");
+      toast.success("Round deleted successfully");
+    } catch (error: any) {
+      // Check if error has a specific code for special handling
+      if (error.code === "HAS_APPLICANTS_ONLY_ROUND") {
+        setApplicantCount(error.applicantCount || 0);
+        setDeleteDialogType("onlyRoundWithApplicants");
+      } else if (error.code === "HAS_APPLICANTS_NOT_LAST_ROUND") {
+        setDeleteDialogType("notLastRoundWithApplicants");
+      } else if (error.code === "HAS_APPLICANTS_LAST_ROUND") {
+        setApplicantCount(error.applicantCount || 0);
+        setDeleteDialogType("lastRoundWithApplicants");
+      } else {
+        const errorMessage =
+          error instanceof Error ? error.message : "Failed to delete round";
+        toast.error(errorMessage);
+        setDeleteDialogOpen(false);
+      }
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleForceDelete = async (mode: "deleteAllApplicants" | "deleteRoundDataOnly") => {
+    if (!roundToDelete) return;
+
+    setIsDeleting(true);
+    try {
+      await onDeleteRound(roundToDelete.id, roundToDelete.index, mode);
+      setDeleteDialogOpen(false);
+      setRoundToDelete(null);
+      setDeleteDialogType("confirm");
       toast.success("Round deleted successfully");
     } catch (error) {
       const errorMessage =
@@ -118,6 +159,41 @@ function Sidebar({
       setIsDeleting(false);
     }
   };
+
+  const getDialogContent = () => {
+    switch (deleteDialogType) {
+      case "onlyRoundWithApplicants":
+        return {
+          title: "Delete Round and All Applicants?",
+          description: `This is the only round and it contains ${applicantCount} applicant${applicantCount !== 1 ? "s" : ""}. Deleting this round will also permanently delete all applicants and their data (scores, comments, etc.). This action cannot be undone.`,
+          confirmText: "Delete Round & All Applicants",
+          onConfirm: () => handleForceDelete("deleteAllApplicants"),
+        };
+      case "notLastRoundWithApplicants":
+        return {
+          title: "Cannot Delete Round",
+          description: "This round contains applicants and has subsequent rounds that depend on it. You can only delete the last round when rounds contain applicants. Please delete later rounds first, or remove all applicants from this round before deleting.",
+          confirmText: null,
+          onConfirm: null,
+        };
+      case "lastRoundWithApplicants":
+        return {
+          title: "Delete Round Data?",
+          description: `This round contains ${applicantCount} applicant${applicantCount !== 1 ? "s" : ""}. Deleting this round will remove all scores and comments from this round. The applicants will remain in previous rounds. This action cannot be undone.`,
+          confirmText: "Delete Round Data",
+          onConfirm: () => handleForceDelete("deleteRoundDataOnly"),
+        };
+      default:
+        return {
+          title: "Delete Recruitment Round",
+          description: `Are you sure you want to delete "${roundToDelete?.name}"? This action cannot be undone.`,
+          confirmText: "Delete",
+          onConfirm: () => handleConfirmDelete(),
+        };
+    }
+  };
+
+  const dialogContent = getDialogContent();
 
   return (
     <>
@@ -195,25 +271,35 @@ function Sidebar({
         </ScrollArea>
       </aside>
 
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+      <AlertDialog open={deleteDialogOpen} onOpenChange={(open) => {
+        setDeleteDialogOpen(open);
+        if (!open) {
+          setDeleteDialogType("confirm");
+        }
+      }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Recruitment Round</AlertDialogTitle>
+            <AlertDialogTitle>{dialogContent.title}</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete "{roundToDelete?.name}"? This
-              action cannot be undone. The round must be empty (no applicants
-              or anonymous readings) to be deleted.
+              {dialogContent.description}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleConfirmDelete}
-              disabled={isDeleting}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {isDeleting ? "Deleting..." : "Delete"}
-            </AlertDialogAction>
+            <AlertDialogCancel disabled={isDeleting}>
+              {deleteDialogType === "notLastRoundWithApplicants" ? "Close" : "Cancel"}
+            </AlertDialogCancel>
+            {dialogContent.confirmText && dialogContent.onConfirm && (
+              <AlertDialogAction
+                onClick={(e) => {
+                  e.preventDefault();
+                  dialogContent.onConfirm?.();
+                }}
+                disabled={isDeleting}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {isDeleting ? "Deleting..." : dialogContent.confirmText}
+              </AlertDialogAction>
+            )}
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -408,59 +494,66 @@ export default function Component() {
 
   // Handle round deletion
   const handleDeleteRound = useCallback(
-    async (roundId: string, roundIndex: number) => {
+    async (roundId: string, roundIndex: number, mode?: string) => {
       if (!currentCycle) {
         throw new Error("No recruitment cycle selected");
       }
 
-      try {
-        const response = await fetch("/api/recruitment_rounds/delete", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ recruitment_round_id: roundId }),
-        });
+      const response = await fetch("/api/recruitment_rounds/delete", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ 
+          recruitment_round_id: roundId,
+          mode: mode || "normal"
+        }),
+      });
 
-        if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.error || "Failed to delete round");
+      if (!response.ok) {
+        const errorData = await response.json();
+        // Create a custom error with the code attached
+        const error = new Error(errorData.error || "Failed to delete round") as Error & { 
+          code?: string; 
+          applicantCount?: number;
+        };
+        if (errorData.code) {
+          error.code = errorData.code;
+          error.applicantCount = errorData.applicantCount;
         }
-
-        // Refresh the rounds list
-        const fetchResponse = await fetch("/api/recruitment_rounds", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ recruitment_cycle_id: currentCycle.id }),
-        });
-
-        if (!fetchResponse.ok) {
-          throw new Error("Failed to refresh rounds list");
-        }
-
-        const updatedRounds: RecruitmentRound[] = await fetchResponse.json();
-        setRecruitmentRounds(updatedRounds);
-
-        // Adjust currentRound index if needed
-        if (updatedRounds.length === 0) {
-          // No rounds left
-          setCurrentRound(0);
-        } else if (roundIndex < currentRound) {
-          // Deleted round was before current, decrement index
-          setCurrentRound(currentRound - 1);
-        } else if (roundIndex === currentRound) {
-          // Deleted round was the current one
-          // If it was the last round, move to the new last round
-          // Otherwise, stay at the same index (which now points to the next round)
-          setCurrentRound(Math.min(currentRound, updatedRounds.length - 1));
-        }
-        // If deleted round was after current (roundIndex > currentRound), no adjustment needed
-      } catch (error) {
-        console.error("Error deleting round:", error);
-        throw error; // Re-throw to be handled by Sidebar
+        throw error;
       }
+
+      // Refresh the rounds list
+      const fetchResponse = await fetch("/api/recruitment_rounds", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ recruitment_cycle_id: currentCycle.id }),
+      });
+
+      if (!fetchResponse.ok) {
+        throw new Error("Failed to refresh rounds list");
+      }
+
+      const updatedRounds: RecruitmentRound[] = await fetchResponse.json();
+      setRecruitmentRounds(updatedRounds);
+
+      // Adjust currentRound index if needed
+      if (updatedRounds.length === 0) {
+        // No rounds left
+        setCurrentRound(0);
+      } else if (roundIndex < currentRound) {
+        // Deleted round was before current, decrement index
+        setCurrentRound(currentRound - 1);
+      } else if (roundIndex === currentRound) {
+        // Deleted round was the current one
+        // If it was the last round, move to the new last round
+        // Otherwise, stay at the same index (which now points to the next round)
+        setCurrentRound(Math.min(currentRound, updatedRounds.length - 1));
+      }
+      // If deleted round was after current (roundIndex > currentRound), no adjustment needed
     },
     [currentCycle, currentRound, setRecruitmentRounds]
   );

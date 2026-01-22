@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from "next";
-import { supabaseBrowser } from "@/lib/supabase/browser";
+import { supabaseApi } from "@/lib/supabase/api";
 
 interface Score {
   id: string;
@@ -21,13 +21,22 @@ export default async function handler(
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const { score_id, score_value, user_id } = req.body;
+  const supabase = supabaseApi(req, res);
 
-  if (!score_id || score_value === undefined || !user_id) {
-    return res.status(400).json({ error: "Missing required fields" });
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return res.status(401).json({ error: "Unauthorized" });
   }
 
-  const supabase = supabaseBrowser();
+  const { score_id, score_value } = req.body;
+
+  if (!score_id || score_value === undefined) {
+    return res.status(400).json({ error: "Missing required fields" });
+  }
 
   try {
     // First, get the score to check ownership and get the submission_id
@@ -70,7 +79,7 @@ export default async function handler(
       return res.status(404).json({ error: "Score not found" });
     }
 
-    if (score.user_id !== user_id) {
+    if (score.user_id !== user.id) {
       return res
         .status(403)
         .json({ error: "Not authorized to update this score" });
@@ -100,7 +109,7 @@ export default async function handler(
         )
       `
       )
-      .eq("user_id", user_id)
+      .eq("user_id", user.id)
       .eq("created_at", score.created_at);
 
     const { data: submissionScores, error: scoresError } = submissionScoresResult as {

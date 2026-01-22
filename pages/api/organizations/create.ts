@@ -1,6 +1,4 @@
-import { supabaseBrowser } from "@/lib/supabase/browser";
-import { supabaseServer } from "@/lib/supabase/server";
-import { createClient } from "@supabase/supabase-js";
+import { supabaseApi } from "@/lib/supabase/api";
 import { NextApiRequest, NextApiResponse } from "next";
 import { Database } from "@/lib/types/supabase";
 
@@ -12,20 +10,29 @@ export default async function handler(
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const { name, user } = req.body;
+  const supabase = supabaseApi(req, res);
 
-  if (!user) {
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
     return res.status(401).json({ error: "Unauthorized" });
   }
 
-  const supabase = supabaseBrowser();
+  const { name } = req.body;
+
+  if (!name || typeof name !== "string" || name.trim().length === 0) {
+    return res.status(400).json({ error: "Organization name is required" });
+  }
 
   try {
     // First check if organization name already exists
     const checkResult = await supabase
       .from("organizations")
       .select("id")
-      .eq("name", name)
+      .eq("name", name.trim())
       .single();
     
     const { data: existingOrg, error: checkError } = checkResult as {
@@ -44,9 +51,9 @@ export default async function handler(
       throw checkError;
     }
 
-    // Create the organization
+    // Create the organization - SECURITY: Use authenticated user.id, not from request
     const insertData: Database["public"]["Tables"]["organizations"]["Insert"] = {
-      name,
+      name: name.trim(),
       owner_id: user.id,
     };
     const orgResult = await (supabase
@@ -64,7 +71,7 @@ export default async function handler(
       throw orgError || new Error("Failed to create organization");
     }
 
-    // Create org_user entry for the owner
+    // Create org_user entry for the owner - SECURITY: Use authenticated user.id
     const orgUserInsertData: Database["public"]["Tables"]["organization_users"]["Insert"] = {
       organization_id: organization.id,
       user_id: user.id,

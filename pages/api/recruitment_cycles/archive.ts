@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from "next";
-import { supabaseBrowser } from "@/lib/supabase/browser";
+import { supabaseApi } from "@/lib/supabase/api";
 import { Database } from "@/lib/types/supabase";
 
 export default async function handler(
@@ -10,18 +10,27 @@ export default async function handler(
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const { cycle_id, user_id, organization_id, archived } = req.body;
+  const supabase = supabaseApi(req, res);
 
-  if (!cycle_id || !user_id || !organization_id || typeof archived !== "boolean") {
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
+  const { cycle_id, organization_id, archived } = req.body;
+
+  if (!cycle_id || !organization_id || typeof archived !== "boolean") {
     return res.status(400).json({ 
-      error: "Missing required fields: cycle_id, user_id, organization_id, archived (boolean)" 
+      error: "Missing required fields: cycle_id, organization_id, archived (boolean)" 
     });
   }
 
-  const supabase = supabaseBrowser();
-
   try {
-    // Verify the user is Owner only
+    // Verify the authenticated user is Owner only
     // First check if user is the organization owner
     const orgResult = await supabase
       .from("organizations")
@@ -40,16 +49,16 @@ export default async function handler(
 
     let isOwner = false;
 
-    // Check if user is the actual owner
-    if (organization?.owner_id === user_id) {
+    // Check if authenticated user is the actual owner
+    if (organization?.owner_id === user.id) {
       isOwner = true;
     } else {
-      // Check if user is Owner in organization_users
+      // Check if authenticated user is Owner in organization_users
       const roleResult = await supabase
         .from("organization_users")
         .select("role")
         .eq("organization_id", organization_id)
-        .eq("user_id", user_id)
+        .eq("user_id", user.id)
         .single();
       
       const { data: userRole, error: roleError } = roleResult as {

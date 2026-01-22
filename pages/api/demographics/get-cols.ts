@@ -1,10 +1,21 @@
 import { NextApiRequest, NextApiResponse } from "next";
-import { supabaseBrowser } from "@/lib/supabase/browser";
+import { supabaseApi } from "@/lib/supabase/api";
 import { Database } from "@/lib/types/supabase";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
+  }
+
+  const supabase = supabaseApi(req, res);
+
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return res.status(401).json({ error: "Unauthorized" });
   }
 
   const { recruitment_round_id } = req.body;
@@ -14,11 +25,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
   }
 
-  const supabase = supabaseBrowser();
-
   try {
-    // 1) Find the FIRST applicant in that round, and fetch their data column
-    //    We limit(1) so we only get the first row. You could also order by created_at, etc.
+    // 1) First try to get the column order from the recruitment round
+    const roundResult = await supabase
+      .from("recruitment_rounds")
+      .select("column_order")
+      .eq("id", recruitment_round_id)
+      .single();
+    
+    const { data: roundData, error: roundError } = roundResult as {
+      data: { column_order: string[] | null } | null;
+      error: any;
+    };
+
+    if (roundError && roundError.code !== "PGRST116") {
+      // PGRST116 = no rows returned; other errors are unexpected
+      console.error("Error fetching recruitment round:", roundError.message);
+      return res.status(500).json({ error: roundError.message });
+    }
+
+    // 2) Find the FIRST applicant in that round, and fetch their data column
     type RowWithApplicant = {
       applicant_id: string;
       applicants: {
@@ -52,21 +78,40 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(200).json([]);
     }
 
-    // 2) Extract the data JSON from the first row
-    //    row shape: { applicant_id, applicants: { data: ... } }
+    // 3) Extract the data JSON from the first row
     const row = rows[0];
-    const applicantData = row.applicants?.data; // this is presumably a JSON object
+    const applicantData = row.applicants?.data;
 
     // If there's no data or it's not an object, return empty
     if (!applicantData || typeof applicantData !== "object") {
       return res.status(200).json([]);
     }
 
-    // 3) Get the top-level keys
-    //    If applicantData is indeed a JS object, just do Object.keys
-    const columns = Object.keys(applicantData);
+    // 4) Get the top-level keys
+    let columns = Object.keys(applicantData);
 
-    // 4) Return the list of columns
+    // 5) If we have a stored column order, use it
+    if (roundData?.column_order && Array.isArray(roundData.column_order)) {
+      const orderedColumns: string[] = [];
+      const dataKeys = new Set(columns);
+      
+      // Add columns in the stored order
+      for (const col of roundData.column_order) {
+        if (dataKeys.has(col)) {
+          orderedColumns.push(col);
+          dataKeys.delete(col);
+        }
+      }
+      
+      // Add any remaining columns that weren't in the stored order
+      for (const col of dataKeys) {
+        orderedColumns.push(col);
+      }
+      
+      columns = orderedColumns;
+    }
+
+    // 6) Return the list of columns
     return res.status(200).json(columns);
   } catch (err) {
     console.error("Unexpected error:", err);

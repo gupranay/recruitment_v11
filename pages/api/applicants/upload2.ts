@@ -1,12 +1,23 @@
 import { NextApiRequest, NextApiResponse } from "next";
-import { supabaseBrowser } from "@/lib/supabase/browser";
+import { supabaseApi } from "@/lib/supabase/api";
 import { Database } from "@/lib/types/supabase";
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  const supabase = supabaseBrowser();
+type RecruitmentRound = Database["public"]["Tables"]["recruitment_rounds"]["Row"];
 
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
+  }
+
+  const supabase = supabaseApi(req, res);
+
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return res.status(401).json({ error: "Unauthorized" });
   }
 
   const {
@@ -14,13 +25,64 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     nameHeader,
     emailHeader,
     headShotHeader,
-    recruitment_round_id
+    recruitment_round_id,
+    columnOrder
   } = req.body;
 
   console.log("recruitment_round_id: ", recruitment_round_id);
 
   if (!parsedData || !nameHeader || !emailHeader || !recruitment_round_id) {
     return res.status(400).json({ error: "Missing required fields" });
+  }
+
+  // Save the column order to the recruitment round if provided
+  // Uses a merge approach: preserve existing column order, append new columns at the end
+  if (columnOrder && Array.isArray(columnOrder) && columnOrder.length > 0) {
+    // First, fetch the existing column order
+    const roundResult = await supabase
+      .from("recruitment_rounds")
+      .select("column_order")
+      .eq("id", recruitment_round_id)
+      .single();
+    
+    if (roundResult.error) {
+      console.error("Error fetching existing column order:", roundResult.error.message);
+      // Proceed with new columnOrder only, or handle as needed
+    }
+
+    const existingRound = roundResult.data as Pick<RecruitmentRound, "column_order"> | null;
+
+    let mergedColumnOrder: string[];
+
+    if (existingRound?.column_order && Array.isArray(existingRound.column_order) && existingRound.column_order.length > 0) {
+      // Merge: keep existing order, append any new columns from this upload
+      const existingOrder = existingRound.column_order;
+      const existingSet = new Set(existingOrder);
+      
+      // Start with existing order
+      mergedColumnOrder = [...existingOrder];
+      
+      // Append any new columns that weren't in the existing order
+      for (const col of columnOrder) {
+        if (!existingSet.has(col)) {
+          mergedColumnOrder.push(col);
+        }
+      }
+    } else {
+      // No existing order, use the new one as-is
+      mergedColumnOrder = columnOrder;
+    }
+
+    const updateResult = await (supabase
+      .from("recruitment_rounds") as any)
+      .update({ column_order: mergedColumnOrder })
+      .eq("id", recruitment_round_id);
+    const updateError = updateResult.error;
+
+    if (updateError) {
+      console.error("Error updating column order:", updateError.message);
+      // Don't fail the upload, just log the error
+    }
   }
 
   // Function to convert Google Drive link format

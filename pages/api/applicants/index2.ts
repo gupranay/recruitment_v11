@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from "next";
-import { supabaseBrowser } from "@/lib/supabase/browser";
+import { supabaseApi } from "@/lib/supabase/api";
 
 type ApplicantRoundWithApplicant = {
   id: string;
@@ -28,6 +28,17 @@ export default async function handler(
     return res.status(405).json({ error: "Method not allowed" });
   }
 
+  const supabase = supabaseApi(req, res);
+
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
   const { recruitment_round_id, last_round_id } = req.body;
 
   if (!recruitment_round_id) {
@@ -35,8 +46,6 @@ export default async function handler(
       .status(400)
       .json({ error: "Missing required field: recruitment_round_id" });
   }
-
-  const supabase = supabaseBrowser();
 
   try {
     // -----------------------------

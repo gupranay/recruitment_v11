@@ -1,17 +1,26 @@
 import { NextApiRequest, NextApiResponse } from "next";
-import { supabaseBrowser } from "@/lib/supabase/browser";
+import { supabaseApi } from "@/lib/supabase/api";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
+  const supabase = supabaseApi(req, res);
+
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
   const { applicant_round_id } = req.body;
   if (!applicant_round_id) {
     return res.status(400).json({ error: "Missing applicant_round_id" });
   }
-
-  const supabase = supabaseBrowser();
 
   try {
     // 1) Find the bridging row to get the recruitment_round_id

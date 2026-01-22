@@ -32,16 +32,21 @@ export async function GET(request: Request) {
     const { data, error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error && data?.user) {
       // Process any pending invites
+      // The API endpoint will use getUser() to verify the session, not trust request body
       try {
+        // Get all cookies to forward to the API request
+        const allCookies = cookieStore.getAll();
+        const cookieHeader = allCookies
+          .map((c) => `${c.name}=${c.value}`)
+          .join("; ");
+
         await fetch(`${HOSTNAME}/api/auth/handle-invites`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            Cookie: cookieHeader,
           },
-          body: JSON.stringify({
-            email: data.user.email,
-            userId: data.user.id,
-          }),
+          body: JSON.stringify({}), // No longer sending user data - API gets it from session
         });
       } catch (error) {
         console.error("Error processing invites:", error);

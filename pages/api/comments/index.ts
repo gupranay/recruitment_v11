@@ -54,7 +54,7 @@ export default async function handler(
       created_at: string;
       updated_at: string;
       source: string | null;
-      user: { full_name: string | null } | null;
+      user: { full_name: string | null; avatar_url: string | null } | null;
     }> | null;
     recruitment_rounds: { name: string } | null;
   };
@@ -75,7 +75,8 @@ export default async function handler(
         updated_at,
         source,
         user:users!comments_user_id_fkey (
-          full_name
+          full_name,
+          avatar_url
         )
       ),
       recruitment_rounds!applicant_rounds_recruitment_round_id_fkey (
@@ -107,6 +108,7 @@ export default async function handler(
         created_at: c.created_at,
         updated_at: c.updated_at,
         user_name: c.user?.full_name ?? null,
+        avatar_url: c.user?.avatar_url ?? null,
         round_name: roundName,
         source: c.source,
         is_edited:

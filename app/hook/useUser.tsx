@@ -16,13 +16,25 @@ export default function useUser() {
     queryKey: ["user"],
     queryFn: async () => {
       const supabase = supabaseBrowser();
-      const { data } = await supabase.auth.getSession();
-      if (data.session?.user) {
-        const { data: user } = await supabase
+      // getSession() only reads from cookies without validation and can be spoofed
+      const { data: { user: authUser }, error } = await supabase.auth.getUser();
+      if (authUser && !error) {
+        const { data: user, error: dbError } = await supabase
           .from("users")
           .select("*")
-          .eq("id", data.session.user.id)
+          .eq("id", authUser.id)
           .single();
+        
+        if (dbError) {
+          console.error("Error fetching user from database:", dbError.message);
+          return initUser;
+        }
+        
+        if (!user) {
+          console.warn("No user found in database for auth user:", authUser.id);
+          return initUser;
+        }
+        
         return user;
       }
       return initUser;

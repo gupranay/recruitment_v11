@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from "next";
-import { supabaseBrowser } from "@/lib/supabase/browser";
+import { supabaseApi } from "@/lib/supabase/api";
 import { Database } from "@/types/supabase";
 
 interface Score {
@@ -20,6 +20,7 @@ interface Submission {
   created_at: string;
   user_id: string;
   user_name: string | null;
+  avatar_url: string | null;
   scores: {
     score_id: string;
     score_value: number;
@@ -38,8 +39,18 @@ export default async function handler(
     return res.status(405).json({ error: "Method not allowed" });
   }
 
+  const supabase = supabaseApi(req, res);
+
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
   const { applicant_round_id, user_id: filterUserId } = req.body;
-  const userId = req.headers["x-user-id"] as string;
 
   if (!applicant_round_id) {
     return res.status(400).json({ error: "Applicant round ID is required" });
@@ -47,8 +58,6 @@ export default async function handler(
 
   // console.log("Received request with applicant_round_id:", applicant_round_id);
   // console.log("User ID:", userId);
-
-  const supabase = supabaseBrowser();
 
   try {
     const scoresResult = await supabase
@@ -66,7 +75,8 @@ export default async function handler(
         created_at,
         submission_id,
         users!scores_user_id_fkey (
-          full_name
+          full_name,
+          avatar_url
         )
       `
       )
@@ -82,7 +92,7 @@ export default async function handler(
         user_id: string | null;
         created_at: string;
         submission_id: string | null;
-        users: { full_name: string | null } | null;
+        users: { full_name: string | null; avatar_url: string | null } | null;
       }> | null;
       error: any;
     };
@@ -119,9 +129,10 @@ export default async function handler(
             created_at: score.created_at,
             user_id: score.user_id,
             user_name:
-              score.user_id === userId
+              score.user_id === user.id
                 ? "You"
                 : score.users?.full_name || "Unknown User",
+            avatar_url: score.users?.avatar_url || null,
             scores: [],
             weighted_average: 0,
           };

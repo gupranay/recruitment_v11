@@ -10,17 +10,24 @@ export default async function handler(
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const { applicant_id, recruitment_round_id, user_id } = req.body;
+  const supabase = supabaseApi(req, res);
 
-  // Basic validation
-  if (!applicant_id || !recruitment_round_id || !user_id) {
-    return res.status(400).json({
-      error:
-        "Missing required fields: applicant_id, recruitment_round_id, user_id",
-    });
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return res.status(401).json({ error: "Unauthorized" });
   }
 
-  const supabase = supabaseApi(req, res);
+  const { applicant_id, recruitment_round_id } = req.body;
+
+  if (!applicant_id || !recruitment_round_id) {
+    return res.status(400).json({
+      error: "Missing required fields: applicant_id, recruitment_round_id",
+    });
+  }
 
   try {
     // 1) Look up the bridging row in `applicant_rounds`
@@ -52,7 +59,7 @@ export default async function handler(
       .from("comments")
       .select("id, comment_text, created_at, updated_at") // Specify only the fields you want
       .eq("applicant_round_id", applicantRoundId)
-      .eq("user_id", user_id);
+      .eq("user_id", user.id);
     
     const { data: comments, error: commentsErr } = commentsResult as {
       data: Array<{

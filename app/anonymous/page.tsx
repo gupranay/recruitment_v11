@@ -250,21 +250,50 @@ const ReadingPageContent = () => {
       const response = await fetch(`/api/applicant/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ applicant_id: applicant.id }),
+        body: JSON.stringify({ 
+          applicant_id: applicant.id,
+          applicant_round_id: applicant.applicant_round_id
+        }),
       });
 
       if (!response.ok) {
         throw new Error("Failed to fetch applicant data");
       }
 
-      const { data } = await response.json();
+      const { data, column_order } = await response.json();
 
-      const filteredData = Object.keys(data)
-        .filter((key) => !readingDetails.omitted_fields.includes(key))
-        .reduce((obj: Record<string, any>, key) => {
-          obj[key] = data[key];
-          return obj;
-        }, {});
+      // Build filtered data respecting the column order
+      let orderedKeys: string[];
+      const omittedFields = readingDetails?.omitted_fields ?? [];
+      if (column_order && Array.isArray(column_order)) {
+        // Use stored order, filtering out omitted fields
+        const dataKeys = new Set(Object.keys(data));
+        orderedKeys = [];
+        
+        for (const key of column_order) {
+          if (dataKeys.has(key) && !omittedFields.includes(key)) {
+            orderedKeys.push(key);
+            dataKeys.delete(key);
+          }
+        }
+        
+        // Add any remaining keys not in the stored order
+        for (const key of dataKeys) {
+          if (!omittedFields.includes(key)) {
+            orderedKeys.push(key);
+          }
+        }
+      } else {
+        // Fallback to default order, filtering out omitted fields
+        orderedKeys = Object.keys(data).filter(
+          (key) => !omittedFields.includes(key)
+        );
+      }
+
+      const filteredData = orderedKeys.reduce((obj: Record<string, any>, key) => {
+        obj[key] = data[key];
+        return obj;
+      }, {});
 
       setSelectedApplicant({
         id: applicant.id,

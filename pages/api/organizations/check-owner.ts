@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from "next";
-import { supabaseBrowser } from "@/lib/supabase/browser";
+import { supabaseApi } from "@/lib/supabase/api";
 import { Database } from "@/lib/types/supabase";
 
 export default async function handler(
@@ -10,18 +10,27 @@ export default async function handler(
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const { user_id, organization_id } = req.body;
+  const supabase = supabaseApi(req, res);
 
-  if (!user_id || !organization_id) {
-    return res
-      .status(400)
-      .json({ error: "Missing required fields: user_id, organization_id" });
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return res.status(401).json({ error: "Unauthorized" });
   }
 
-  const supabase = supabaseBrowser();
+  const { organization_id } = req.body;
+
+  if (!organization_id) {
+    return res
+      .status(400)
+      .json({ error: "Missing required field: organization_id" });
+  }
 
   try {
-    // First check if user is the owner of the organization
+    // First check if authenticated user is the owner of the organization
     const orgResult = await supabase
       .from("organizations")
       .select("owner_id")
@@ -39,8 +48,8 @@ export default async function handler(
         .json({ error: "Error checking organization ownership" });
     }
 
-    // If user is the owner, return true immediately
-    if (organization?.owner_id === user_id) {
+    // If authenticated user is the owner, return true immediately
+    if (organization?.owner_id === user.id) {
       return res.status(200).json({ isOwner: true });
     }
 
@@ -49,7 +58,7 @@ export default async function handler(
       .from("organization_users")
       .select("role")
       .eq("organization_id", organization_id)
-      .eq("user_id", user_id)
+      .eq("user_id", user.id)
       .single();
     
     const { data: userRole, error: roleError } = roleResult as {

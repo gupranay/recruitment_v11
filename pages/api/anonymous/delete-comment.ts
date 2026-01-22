@@ -10,15 +10,22 @@ export default async function handler(
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const { comment_id, user_id } = req.body;
+  const supabase = supabaseApi(req, res);
 
-  if (!comment_id || !user_id) {
-    return res
-      .status(400)
-      .json({ error: "Missing required fields: comment_id, user_id" });
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return res.status(401).json({ error: "Unauthorized" });
   }
 
-  const supabase = supabaseApi(req, res);
+  const { comment_id } = req.body;
+
+  if (!comment_id) {
+    return res.status(400).json({ error: "Missing required field: comment_id" });
+  }
 
   try {
     // Fetch the comment to check ownership
@@ -37,7 +44,7 @@ export default async function handler(
       return res.status(404).json({ error: "Comment not found" });
     }
 
-    if (comment.user_id !== user_id) {
+    if (comment.user_id !== user.id) {
       return res
         .status(403)
         .json({ error: "Not authorized to delete this comment" });

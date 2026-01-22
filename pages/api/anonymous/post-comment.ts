@@ -1,5 +1,4 @@
 import { NextApiRequest, NextApiResponse } from "next";
-import { supabaseBrowser } from "@/lib/supabase/browser";
 import { supabaseApi } from "@/lib/supabase/api";
 import { Database } from "@/lib/types/supabase";
 
@@ -11,22 +10,30 @@ export default async function handler(
     return res.status(405).json({ error: "Method not allowed" });
   }
 
+  const supabase = supabaseApi(req, res);
+
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
   const {
     applicant_id,
     comment_text,
-    user_id,
     recruitment_round_id,
     source = "A", // Default to anonymous for this endpoint
   } = req.body;
 
-  if (!applicant_id || !comment_text || !user_id || !recruitment_round_id) {
+  if (!applicant_id || !comment_text || !recruitment_round_id) {
     return res.status(400).json({
       error:
-        "Missing required fields: applicant_id, comment_text, user_id, recruitment_round_id",
+        "Missing required fields: applicant_id, comment_text, recruitment_round_id",
     });
   }
-
-  const supabase = supabaseApi(req, res);
 
   try {
     // First get the applicant_round_id
@@ -45,12 +52,11 @@ export default async function handler(
     if (applicantRoundError || !applicantRound) {
       return res.status(404).json({ error: "Applicant round not found" });
     }
-    console.log("user_id", user_id);
 
-    // Insert the comment
+    // Insert the comment - SECURITY: Use authenticated user.id
     const insertData: Database["public"]["Tables"]["comments"]["Insert"] = {
       applicant_round_id: applicantRound.id,
-      user_id,
+      user_id: user.id,
       comment_text,
       source,
     };

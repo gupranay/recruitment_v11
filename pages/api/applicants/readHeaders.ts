@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from "next";
-import { supabaseBrowser } from "@/lib/supabase/browser";
+import { supabaseApi } from "@/lib/supabase/api";
 // import csv from "csv-parser";
 import csv from "csvtojson";
 import { Readable } from "stream";
@@ -17,12 +17,19 @@ export default async function handler(
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
-  // try{
+
+  const supabase = supabaseApi(req, res);
+
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
 
   const { filePath } = req.body;
-  // console.log("File Path", filePath);
-
-  const supabase = supabaseBrowser();
 
   const { data, error } = await supabase.storage
     .from("Applicant_Uploads")

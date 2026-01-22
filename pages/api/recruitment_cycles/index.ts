@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from "next";
-import { supabaseBrowser } from "@/lib/supabase/browser";
+import { supabaseApi } from "@/lib/supabase/api";
 import { Database } from "@/lib/types/supabase";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -7,16 +7,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const { organization_id, user_id } = req.body;
+  const supabase = supabaseApi(req, res);
 
-  if (!organization_id || !user_id) {
-    return res.status(400).json({ error: "Missing required fields: organization_id, user_id" });
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return res.status(401).json({ error: "Unauthorized" });
   }
 
-  const supabase = supabaseBrowser();
+  const { organization_id } = req.body;
+
+  if (!organization_id) {
+    return res.status(400).json({ error: "Missing required field: organization_id" });
+  }
 
   try {
-    // Check if user is Owner or Admin
+    // Check if authenticated user is Owner or Admin
     // First check if user is the organization owner
     const orgResult = await supabase
       .from("organizations")
@@ -35,16 +44,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     let isOwnerOrAdmin = false;
 
-    // Check if user is the owner
-    if (organization?.owner_id === user_id) {
+    // Check if authenticated user is the owner
+    if (organization?.owner_id === user.id) {
       isOwnerOrAdmin = true;
     } else {
-      // Check if user is Owner or Admin in organization_users
+      // Check if authenticated user is Owner or Admin in organization_users
       const roleResult = await supabase
         .from("organization_users")
         .select("role")
         .eq("organization_id", organization_id)
-        .eq("user_id", user_id)
+        .eq("user_id", user.id)
         .single();
       
       const { data: userRole, error: roleError } = roleResult as {

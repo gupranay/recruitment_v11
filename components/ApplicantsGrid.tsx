@@ -360,6 +360,8 @@ export default function ApplicantGrid({
               applicantId={selectedApplicant.applicant_id}
               applicantRoundId={selectedApplicant.applicant_round_id}
               userId={user.id}
+              userAvatarUrl={user.avatar_url}
+              applicantStatus={selectedApplicant.status}
               isOpen={!!selectedApplicant}
               onClose={handleCloseDialog}
               fetchApplicants={fetchApplicants}

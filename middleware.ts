@@ -55,13 +55,14 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  const { data } = await supabase.auth.getSession();
+  // getSession() only reads from cookies without validation and can be spoofed
+  const { data: { user }, error } = await supabase.auth.getUser();
   const url = new URL(request.url);
 
   // Reconstruct the `next` parameter, preserving query params
   const nextPath = url.pathname + url.search;
 
-  if (data?.session) {
+  if (user && !error) {
     // Redirect logged-in users away from the auth page
     if (url.pathname === "/auth") {
       return NextResponse.redirect(new URL("/", request.url));

@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from "next";
-import { supabaseBrowser } from "@/lib/supabase/browser";
+import { supabaseApi } from "@/lib/supabase/api";
 import { Database } from "@/lib/types/supabase";
 
 export default async function handler(
@@ -10,15 +10,27 @@ export default async function handler(
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const { email, userId } = req.body;
-  if (!email || !userId) {
-    return res.status(400).json({ error: "Email and userId are required" });
+  const supabase = supabaseApi(req, res);
+
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return res.status(401).json({ error: "Unauthorized" });
   }
 
-  const supabase = supabaseBrowser();
+  // This prevents attackers from claiming invites for other users
+  const email = user.email;
+  const userId = user.id;
+
+  if (!email) {
+    return res.status(400).json({ error: "User email not found" });
+  }
 
   try {
-    // Get all pending invites for this email
+    // Get all pending invites for this authenticated user's email
     const invitesResult = await supabase
       .from("organization_invites")
       .select("*")

@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from "next";
-import { supabaseBrowser } from "@/lib/supabase/browser";
+import { supabaseApi } from "@/lib/supabase/api";
 import { Database } from "@/lib/types/supabase";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -8,9 +8,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const { applicant_id, applicant_round_id, reason } = req.body;
-  // console.log("reject applicant_id: ", applicant_id);
-  // console.log("reject applicant_round_id: ", applicant_round_id);
+  const supabase = supabaseApi(req, res);
+
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
+  const { applicant_id, applicant_round_id } = req.body;
 
   // Validate inputs
   if (!applicant_id || !applicant_round_id) {
@@ -18,8 +27,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .status(400)
       .json({ error: "Missing required fields: applicant_id, applicant_round_id" });
   }
-
-  const supabase = supabaseBrowser();
 
   // 1) Update the bridging record to 'rejected'
   const updateData: Database["public"]["Tables"]["applicant_rounds"]["Update"] = {

@@ -1,22 +1,32 @@
 import { NextApiRequest, NextApiResponse } from "next";
-import { supabaseBrowser } from "@/lib/supabase/browser";
+import { supabaseApi } from "@/lib/supabase/api";
 import { Database } from "@/lib/types/supabase";
 
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
-  const supabase = supabaseBrowser();
-  const { id: organizationId } = req.query;
-  const { name, user_id } = req.body;
+  const supabase = supabaseApi(req, res);
 
-  if (!organizationId || !user_id) {
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
+  const { id: organizationId } = req.query;
+  const { name } = req.body;
+
+  if (!organizationId || (req.method === "PUT" && !name)) {
     return res.status(400).json({ error: "Missing required fields" });
   }
 
   if (req.method === "PUT") {
     try {
-      // First check if user is the organization owner
+      // First check if authenticated user is the organization owner
       const orgResult = await supabase
         .from("organizations")
         .select("owner_id")
@@ -32,14 +42,14 @@ export default async function handler(
         return res.status(500).json({ error: "Error checking organization ownership" });
       }
 
-      // Check if user is the actual owner
-      if (organization.owner_id !== user_id) {
+      // Check if authenticated user is the actual owner
+      if (organization.owner_id !== user.id) {
         // If not the owner, check their role in organization_users
         const membershipResult = await supabase
           .from("organization_users")
           .select("role")
           .eq("organization_id", organizationId.toString())
-          .eq("user_id", user_id)
+          .eq("user_id", user.id)
           .single();
         
         const { data: membership, error: membershipError } = membershipResult as {
@@ -80,7 +90,7 @@ export default async function handler(
 
   if (req.method === "DELETE") {
     try {
-      // First check if user is the organization owner
+      // First check if authenticated user is the organization owner
       const orgResult2 = await supabase
         .from("organizations")
         .select("owner_id")
@@ -96,14 +106,14 @@ export default async function handler(
         return res.status(500).json({ error: "Error checking organization ownership" });
       }
 
-      // Check if user is the actual owner
-      if (organization.owner_id !== user_id) {
+      // Check if authenticated user is the actual owner
+      if (organization.owner_id !== user.id) {
         // If not the owner, check their role in organization_users
         const membershipResult2 = await supabase
           .from("organization_users")
           .select("role")
           .eq("organization_id", organizationId.toString())
-          .eq("user_id", user_id)
+          .eq("user_id", user.id)
           .single();
         
         const { data: membership, error: membershipError } = membershipResult2 as {

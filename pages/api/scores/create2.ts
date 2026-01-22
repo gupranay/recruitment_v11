@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from "next";
-import { supabaseBrowser } from "@/lib/supabase/browser";
+import { supabaseApi } from "@/lib/supabase/api";
 import { Database } from "@/lib/types/supabase";
 
 export default async function handler(
@@ -10,9 +10,19 @@ export default async function handler(
     return res.status(405).json({ error: "Method not allowed" });
   }
 
+  const supabase = supabaseApi(req, res);
+
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
   const {
     applicant_round_id,
-    user_id,
     scores, // array of { metric_id, score_value, weight }
   } = req.body;
 
@@ -24,18 +34,16 @@ export default async function handler(
     });
   }
 
-  const supabase = supabaseBrowser();
-
   try {
     // Generate a new submission_id for this set of scores
     const submission_id = crypto.randomUUID();
 
-    // 1) Build the insert data for scores
+    // 1) Build the insert data for scores - SECURITY: Use authenticated user.id
     const insertData = scores.map((item: any) => ({
       applicant_round_id,
       metric_id: item.metric_id,
       score_value: item.score_value,
-      user_id: user_id || null,
+      user_id: user.id,
       submission_id,
     }));
 

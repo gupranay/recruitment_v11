@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from "next";
-import { supabaseBrowser } from "@/lib/supabase/browser";
+import { supabaseApi } from "@/lib/supabase/api";
 import { Database } from "@/lib/types/supabase";
 
 export default async function handler(
@@ -10,15 +10,22 @@ export default async function handler(
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const { name, organization_id } = req.body;
+  const supabase = supabaseApi(req, res);
 
-  //TODO: check if the user has access to the organization
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
+  const { name, organization_id } = req.body;
 
   if (!name || !organization_id) {
     return res.status(400).json({ error: "Missing required fields" });
   }
-
-  const supabase = supabaseBrowser();
   const insertData: Database["public"]["Tables"]["recruitment_cycles"]["Insert"] = {
     name,
     organization_id,

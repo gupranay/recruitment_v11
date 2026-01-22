@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from "next";
-import { supabaseBrowser } from "@/lib/supabase/browser";
+import { supabaseApi } from "@/lib/supabase/api";
 import { Database } from "@/lib/types/supabase";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -8,12 +8,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(405).json({ error: "Method not allowed" });
   }
 
+  const supabase = supabaseApi(req, res);
+
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
   const { recruitment_round_id } = req.body;
   if (!recruitment_round_id) {
     return res.status(400).json({ error: "Missing required field: recruitment_round_id" });
   }
-
-  const supabase = supabaseBrowser();
 
   try {
     // Query the anonymous_readings table for the reading that matches this round
@@ -30,6 +39,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // Handle possible errors
     if (error) {
+      // PGRST116 is returned when .single() finds no rows - this is expected when no reading exists
+      if (error.code === "PGRST116") {
+        return res.status(404).json({ error: "No reading found for that round" });
+      }
       return res.status(500).json({ error: error.message });
     }
     if (!reading) {

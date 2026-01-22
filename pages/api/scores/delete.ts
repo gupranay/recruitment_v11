@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from "next";
-import { supabaseBrowser } from "@/lib/supabase/browser";
+import { supabaseApi } from "@/lib/supabase/api";
 
 export default async function handler(
   req: NextApiRequest,
@@ -9,18 +9,27 @@ export default async function handler(
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const { submission_id, user_id } = req.body;
+  const supabase = supabaseApi(req, res);
 
-  if (!submission_id || !user_id) {
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
+  const { submission_id } = req.body;
+
+  if (!submission_id) {
     return res.status(400).json({
-      error: "Missing required fields: submission_id and user_id",
+      error: "Missing required field: submission_id",
     });
   }
 
-  const supabase = supabaseBrowser();
-
   try {
-    // First verify that the user owns this submission
+    // First verify that the authenticated user owns this submission
     const submissionResult = await supabase
       .from("scores")
       .select("user_id")
@@ -44,7 +53,7 @@ export default async function handler(
         .json({ error: "Submission not found" });
     }
 
-    if (submission.user_id !== user_id) {
+    if (submission.user_id !== user.id) {
       return res
         .status(403)
         .json({ error: "Not authorized to delete this submission" });

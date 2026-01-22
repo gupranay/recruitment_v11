@@ -1,30 +1,40 @@
 import { NextApiRequest, NextApiResponse } from "next";
-import { supabaseBrowser } from "@/lib/supabase/browser";
+import { supabaseApi } from "@/lib/supabase/api";
 import { Database } from "@/lib/types/supabase";
 
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
-  const supabase = supabaseBrowser();
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const { id: organizationId } = req.query;
-  const { deleteId, user_id } = req.body;
+  const supabase = supabaseApi(req, res);
 
-  if (!organizationId || !deleteId || !user_id) {
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
+  const { id: organizationId } = req.query;
+  const { deleteId } = req.body;
+
+  if (!organizationId || Array.isArray(organizationId) || !deleteId) {
     return res.status(400).json({ error: "Missing required fields" });
   }
 
   try {
-    // First check if the user making the request is an owner or admin
+    // First check if the authenticated user is an owner or admin
     const membershipResult = await supabase
       .from("organization_users")
       .select("role")
       .eq("organization_id", organizationId.toString())
-      .eq("user_id", user_id)
+      .eq("user_id", user.id)
       .single();
     
     const { data: membership, error: membershipError } = membershipResult as {

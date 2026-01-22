@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from "next";
-import { supabaseBrowser } from "@/lib/supabase/browser";
+import { supabaseApi } from "@/lib/supabase/api";
 import { Database } from "@/lib/types/supabase";
 
 export default async function handler(
@@ -10,24 +10,33 @@ export default async function handler(
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const supabase = supabaseBrowser();
+  const supabase = supabaseApi(req, res);
+
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
   const organizationId = Array.isArray(req.query.id)
     ? req.query.id[0]
     : req.query.id;
-  const { user_id, target_user_id, new_role } = req.body;
+  const { target_user_id, new_role } = req.body;
 
   // Log request for debugging
   console.log("Update role request:", {
     organizationId,
-    user_id,
+    user_id: user.id,
     target_user_id,
     new_role,
   });
 
-  if (!organizationId || !user_id || !target_user_id || !new_role) {
+  if (!organizationId || !target_user_id || !new_role) {
     console.error("Missing required fields:", {
       organizationId: !!organizationId,
-      user_id: !!user_id,
       target_user_id: !!target_user_id,
       new_role: !!new_role,
     });
@@ -39,7 +48,7 @@ export default async function handler(
   }
 
   try {
-    // Verify the current user has permission (Owner or Admin)
+    // Verify the authenticated user has permission (Owner or Admin)
     // First check if user is the organization owner
     const orgResult = await supabase
       .from("organizations")
@@ -59,8 +68,8 @@ export default async function handler(
     let isOwner = false;
     let isAdmin = false;
 
-    // Check if user is the actual owner
-    if (organization?.owner_id === user_id) {
+    // Check if authenticated user is the actual owner
+    if (organization?.owner_id === user.id) {
       isOwner = true;
     } else {
       // Check user's role in organization_users
@@ -68,7 +77,7 @@ export default async function handler(
         .from("organization_users")
         .select("role")
         .eq("organization_id", organizationId.toString())
-        .eq("user_id", user_id)
+        .eq("user_id", user.id)
         .single();
       
       const { data: currentUserMembership, error: membershipError } = membershipResult as {

@@ -353,6 +353,8 @@ export default function ApplicantCard({
         applicantId={applicant.applicant_id}
         applicantRoundId={applicant.applicant_round_id}
         userId={user?.id}
+        userAvatarUrl={user?.avatar_url}
+        applicantStatus={applicant.status}
         isOpen={isApplicationDialogOpen}
         onClose={() => setIsApplicationDialogOpen(false)}
         fetchApplicants={fetchApplicants}
