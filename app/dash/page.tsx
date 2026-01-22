@@ -414,7 +414,7 @@ export default function Component() {
 
   // Fetch Recruitment Cycles
   useEffect(() => {
-    if (!currentOrg) {
+    if (!currentOrg || !user?.id) {
       setRecruitmentCycles([]);
       setCurrentCycle(null);
       return;
@@ -430,7 +430,7 @@ export default function Component() {
           },
           body: JSON.stringify({ 
             organization_id: currentOrg.id,
-            user_id: user?.id 
+            user_id: user.id 
           }),
         });
 
@@ -440,7 +440,49 @@ export default function Component() {
 
         const data: RecruitmentCycle[] = await response.json();
         setRecruitmentCycles(data);
-        setCurrentCycle(data.length > 0 ? data[data.length - 1] : null);
+
+        // Try to load the last used cycle from localStorage
+        const lastUsedCycleKey = `lastUsedCycle_${user.id}_${currentOrg.id}`;
+        const lastUsedCycleStr = localStorage.getItem(lastUsedCycleKey);
+        
+        if (lastUsedCycleStr) {
+          try {
+            const lastUsedCycle = JSON.parse(lastUsedCycleStr);
+            // Find the cycle in the fetched data
+            const foundCycle = data.find(c => c.id === lastUsedCycle.id);
+            
+            if (foundCycle) {
+              // Check if user can access this cycle (not archived, or user is owner/admin)
+              const isOwnerOrAdmin = currentOrg && (
+                currentOrg.owner_id === user.id ||
+                currentOrg.role === "Owner" ||
+                currentOrg.role === "Admin"
+              );
+              
+              // If cycle is archived and user is not owner/admin, skip it
+              if (foundCycle.archived && !isOwnerOrAdmin) {
+                // Fall back to first active cycle
+                const firstActiveCycle = data.find(c => !c.archived);
+                setCurrentCycle(firstActiveCycle || null);
+              } else {
+                // Use the saved cycle
+                setCurrentCycle(foundCycle);
+              }
+            } else {
+              // Cycle not found, use first active cycle or first cycle
+              const firstActiveCycle = data.find(c => !c.archived);
+              setCurrentCycle(firstActiveCycle || (data.length > 0 ? data[0] : null));
+            }
+          } catch (e) {
+            // Invalid JSON, fall back to first active cycle
+            const firstActiveCycle = data.find(c => !c.archived);
+            setCurrentCycle(firstActiveCycle || (data.length > 0 ? data[0] : null));
+          }
+        } else {
+          // No saved cycle, use first active cycle or first cycle
+          const firstActiveCycle = data.find(c => !c.archived);
+          setCurrentCycle(firstActiveCycle || (data.length > 0 ? data[0] : null));
+        }
       } catch (error) {
         console.error((error as Error).message);
       }
@@ -448,7 +490,7 @@ export default function Component() {
     };
 
     fetchRecruitmentCycles();
-  }, [currentOrg]);
+  }, [currentOrg, user?.id]);
 
   // Fetch Recruitment Rounds
   useEffect(() => {
@@ -491,6 +533,16 @@ export default function Component() {
   useEffect(() => {
     saveCurrentRoundToLocalStorage();
   }, [currentRound, saveCurrentRoundToLocalStorage]);
+
+  // Save current cycle to localStorage whenever it changes
+  useEffect(() => {
+    if (currentOrg && currentCycle && user?.id) {
+      localStorage.setItem(
+        `lastUsedCycle_${user.id}_${currentOrg.id}`,
+        JSON.stringify({ id: currentCycle.id, name: currentCycle.name })
+      );
+    }
+  }, [currentOrg, currentCycle, user?.id]);
 
   // Handle round deletion
   const handleDeleteRound = useCallback(

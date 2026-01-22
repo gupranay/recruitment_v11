@@ -17,6 +17,8 @@ import {
   MessageSquare,
   BarChart3,
   Presentation,
+  Maximize2,
+  X,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import Image from "next/image";
@@ -36,7 +38,11 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useOrganization } from "@/contexts/OrganizationContext";
-import RichTextEditor from "./RichTextEditor";
+import RichTextEditor, {
+  ToolbarItem,
+  createDefaultToolbarItems,
+} from "./RichTextEditor";
+import RichTextEditorSettings from "./RichTextEditorSettings";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -313,6 +319,52 @@ export default function ApplicationDialog({
   const [showDeleteApplicantDialog, setShowDeleteApplicantDialog] =
     useState(false);
   const [isDeletingApplicant, setIsDeletingApplicant] = useState(false);
+  
+  // Full-screen editor dialog state
+  const [isFullScreenEditorOpen, setIsFullScreenEditorOpen] = useState(false);
+  
+  // Toolbar configuration state
+  const [toolbarConfig, setToolbarConfig] = useState<ToolbarItem[]>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("richTextEditorToolbarConfig");
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          const defaultItems = createDefaultToolbarItems();
+          const iconMap = new Map(defaultItems.map((item) => [item.id, item.icon]));
+          
+          const validItems: ToolbarItem[] = parsed
+            .filter((item: { id: string }) => iconMap.has(item.id))
+            .map((item: { id: string }): ToolbarItem | undefined => {
+              const defaultItem = defaultItems.find((d) => d.id === item.id);
+              return defaultItem;
+            })
+            .filter((item: ToolbarItem | undefined): item is ToolbarItem => item !== null && item !== undefined);
+          
+          if (validItems.length > 0) {
+            return validItems;
+          }
+        } catch (e) {
+          console.error("Error loading toolbar config:", e);
+        }
+      }
+    }
+    return createDefaultToolbarItems();
+  });
+
+  // Save toolbar config to localStorage
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const configToSave = toolbarConfig.map((item) => ({
+        id: item.id,
+        label: item.label,
+      }));
+      localStorage.setItem(
+        "richTextEditorToolbarConfig",
+        JSON.stringify(configToSave)
+      );
+    }
+  }, [toolbarConfig]);
 
   // Check if user is Owner or Admin (not just Member)
   const isOwnerOrAdmin = selectedOrganization && (
@@ -1162,6 +1214,7 @@ export default function ApplicationDialog({
                                     <RichTextEditor
                                       content={editingCommentText}
                                       onChange={setEditingCommentText}
+                                      toolbarItems={toolbarConfig}
                                     />
                                     <div className="flex justify-end gap-2">
                                       <Button
@@ -1277,25 +1330,65 @@ export default function ApplicationDialog({
                       {/* Add Comment Form */}
                       <Card>
                         <CardHeader className="pb-3">
-                          <CardTitle className="text-lg">Add a Comment</CardTitle>
+                          <div className="flex items-center justify-between">
+                            <CardTitle className="text-lg">
+                              {editingCommentId ? "Edit Comment" : "Add a Comment"}
+                            </CardTitle>
+                            <div className="flex items-center gap-2">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setIsFullScreenEditorOpen(true)}
+                                title="Open in full screen"
+                              >
+                                <Maximize2 className="h-4 w-4" />
+                              </Button>
+                              <RichTextEditorSettings
+                                toolbarItems={toolbarConfig}
+                                onToolbarChange={setToolbarConfig}
+                              />
+                            </div>
+                          </div>
                         </CardHeader>
                         <CardContent className="space-y-4">
                           <RichTextEditor
-                            content={newComment}
-                            onChange={setNewComment}
+                            content={editingCommentId ? editingCommentText : newComment}
+                            onChange={
+                              editingCommentId
+                                ? setEditingCommentText
+                                : setNewComment
+                            }
                             placeholder="Write your comment here..."
+                            toolbarItems={toolbarConfig}
                           />
-                          <Button
-                            onClick={handleAddComment}
-                            disabled={isAddingComment || !newComment.trim()}
-                            className="w-full"
-                          >
-                            {isAddingComment && (
-                              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                          <div className="flex justify-end gap-2">
+                            {editingCommentId && (
+                              <Button
+                                variant="outline"
+                                onClick={() => {
+                                  setEditingCommentId(null);
+                                  setEditingCommentText("");
+                                }}
+                              >
+                                Cancel
+                              </Button>
                             )}
-                            <Send className="h-4 w-4 mr-2" />
-                            Post Comment
-                          </Button>
+                            <Button
+                              onClick={editingCommentId ? handleEditComment : handleAddComment}
+                              disabled={
+                                editingCommentId
+                                  ? isEditingComment || !editingCommentText.trim()
+                                  : isAddingComment || !newComment.trim()
+                              }
+                              className={editingCommentId ? "" : "w-full"}
+                            >
+                              {(editingCommentId ? isEditingComment : isAddingComment) && (
+                                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                              )}
+                              <Send className="h-4 w-4 mr-2" />
+                              {editingCommentId ? "Save Changes" : "Post Comment"}
+                            </Button>
+                          </div>
                         </CardContent>
                       </Card>
                     </div>
@@ -1378,6 +1471,83 @@ export default function ApplicationDialog({
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* Full-Screen Editor Dialog */}
+        {isFullScreenEditorOpen && (
+          <div className="fixed inset-0 z-[100] bg-background flex flex-col">
+            <div className="flex-shrink-0 px-6 py-4 border-b flex items-center justify-between">
+              <h2 className="text-lg font-semibold">
+                {editingCommentId ? "Edit Comment" : "Add a Comment"}
+              </h2>
+              <div className="flex items-center gap-2">
+                <RichTextEditorSettings
+                  toolbarItems={toolbarConfig}
+                  onToolbarChange={setToolbarConfig}
+                />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsFullScreenEditorOpen(false)}
+                  className="h-8 w-8 p-0"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+            <div className="flex-1 flex flex-col overflow-hidden min-h-0 p-6">
+              <div className="flex-1 flex flex-col min-h-0">
+                <RichTextEditor
+                  content={editingCommentId ? editingCommentText : newComment}
+                  onChange={
+                    editingCommentId
+                      ? setEditingCommentText
+                      : setNewComment
+                  }
+                  placeholder="Write your comment here..."
+                  toolbarItems={toolbarConfig}
+                />
+                <div className="mt-4 flex justify-end gap-2 flex-shrink-0">
+                  {editingCommentId && (
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setEditingCommentId(null);
+                        setEditingCommentText("");
+                        setIsFullScreenEditorOpen(false);
+                      }}
+                      size="lg"
+                    >
+                      Cancel
+                    </Button>
+                  )}
+                  <Button
+                    onClick={async () => {
+                      if (editingCommentId) {
+                        await handleEditComment();
+                        setIsFullScreenEditorOpen(false);
+                      } else {
+                        await handleAddComment();
+                        setIsFullScreenEditorOpen(false);
+                      }
+                    }}
+                    disabled={
+                      editingCommentId
+                        ? isEditingComment || !editingCommentText.trim()
+                        : isAddingComment || !newComment.trim()
+                    }
+                    size="lg"
+                  >
+                    {(editingCommentId ? isEditingComment : isAddingComment) && (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    )}
+                    <Send className="h-4 w-4 mr-2" />
+                    {editingCommentId ? "Save Changes" : "Post Comment"}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );

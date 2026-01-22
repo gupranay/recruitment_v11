@@ -128,6 +128,8 @@ export default function Header({
     setCurrentOrg(org);
     setSelectedOrganization(org); // Update the context
     localStorage.setItem(`lastUsedOrg_${userId}`, JSON.stringify(org));
+    // Clear the cycle selection when org changes - it will be restored by the dash page
+    setCurrentCycle(null);
   };
 
   const handleArchiveClick = (cycle: RecruitmentCycle, archive: boolean) => {
@@ -320,15 +322,23 @@ export default function Header({
                 {activeCycles.map((cycle) => (
                   <DropdownMenuItem
                     key={cycle.id}
-                    onSelect={() =>
-                      setCurrentCycle({
+                    onSelect={() => {
+                      const selectedCycle = {
                         id: cycle.id,
                         name: cycle.name,
                         created_at: cycle.created_at,
                         organization_id: cycle.organization_id,
                         archived: cycle.archived,
-                      })
-                    }
+                      };
+                      setCurrentCycle(selectedCycle);
+                      // Save to localStorage
+                      if (currentOrg && userId) {
+                        localStorage.setItem(
+                          `lastUsedCycle_${userId}_${currentOrg.id}`,
+                          JSON.stringify({ id: cycle.id, name: cycle.name })
+                        );
+                      }
+                    }}
                     className={cn(
                       "flex items-center justify-between group relative pl-8",
                       currentCycle?.id === cycle.id && "bg-accent font-semibold"
@@ -365,15 +375,23 @@ export default function Header({
                 {archivedCycles.map((cycle) => (
                   <DropdownMenuItem
                     key={cycle.id}
-                    onSelect={() =>
-                      setCurrentCycle({
+                    onSelect={() => {
+                      const selectedCycle = {
                         id: cycle.id,
                         name: cycle.name,
                         created_at: cycle.created_at,
                         organization_id: cycle.organization_id,
                         archived: cycle.archived,
-                      })
-                    }
+                      };
+                      setCurrentCycle(selectedCycle);
+                      // Save to localStorage
+                      if (currentOrg && userId) {
+                        localStorage.setItem(
+                          `lastUsedCycle_${userId}_${currentOrg.id}`,
+                          JSON.stringify({ id: cycle.id, name: cycle.name })
+                        );
+                      }
+                    }}
                     className={cn(
                       "text-muted-foreground italic flex items-center justify-between group relative pl-8",
                       currentCycle?.id === cycle.id && "bg-accent font-semibold not-italic"
