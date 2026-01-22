@@ -16,6 +16,7 @@ import {
   Link as LinkIcon,
   MessageSquare,
   BarChart3,
+  Presentation,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import Image from "next/image";
@@ -780,19 +781,27 @@ export default function ApplicationDialog({
                     </div>
                     {/* Add right margin to account for the dialog close button */}
                     <div className="flex items-center gap-2 mr-8">
-                      {isOwnerOrAdmin && (
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 w-8 p-0"
-                            >
-                              <MoreVertical className="h-4 w-4" />
-                              <span className="sr-only">Open menu</span>
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0"
+                          >
+                            <MoreVertical className="h-4 w-4" />
+                            <span className="sr-only">Open menu</span>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onClick={() => {
+                              window.open(`/interview/${applicantRoundId}`, '_blank');
+                            }}
+                          >
+                            <Presentation className="mr-2 h-4 w-4" />
+                            Open Interview Mode
+                          </DropdownMenuItem>
+                          {isOwnerOrAdmin && (
                             <DropdownMenuItem
                               onClick={() => setShowDeleteApplicantDialog(true)}
                               className="text-destructive focus:text-destructive"
@@ -800,9 +809,9 @@ export default function ApplicationDialog({
                               <Trash2 className="mr-2 h-4 w-4" />
                               Delete Applicant
                             </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      )}
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </div>
                 </div>
