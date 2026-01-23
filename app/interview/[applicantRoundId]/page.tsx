@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import {
@@ -308,6 +308,106 @@ const ResumeViewer = ({ resumeUrl }: { resumeUrl: string | null }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [scale, setScale] = useState(1);
+  const [isLoading, setIsLoading] = useState(true);
+  const [hasError, setHasError] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
+  const [currentEmbedUrl, setCurrentEmbedUrl] = useState<string | null>(null);
+  const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const loadTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const MAX_RETRIES = 3;
+  const LOAD_TIMEOUT = 10000; // 10 seconds timeout for iframe to load
+
+  // Generate embed URL from resume URL
+  const generateEmbedUrl = (url: string): string => {
+    if (url.includes("drive.google.com")) {
+      // Convert Google Drive sharing link to embed format
+      const fileIdMatch = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+      if (fileIdMatch) {
+        return `https://drive.google.com/file/d/${fileIdMatch[1]}/preview`;
+      }
+    } else if (!url.toLowerCase().endsWith(".pdf")) {
+      // For non-PDF URLs, try using Google Docs viewer
+      return `https://docs.google.com/viewer?url=${encodeURIComponent(
+        url
+      )}&embedded=true`;
+    }
+    return url;
+  };
+
+  // Retry loading with exponential backoff
+  const retryLoad = useCallback(() => {
+    if (retryCount >= MAX_RETRIES || !resumeUrl) {
+      setHasError(true);
+      setIsLoading(false);
+      return;
+    }
+
+    const delay = Math.min(1000 * Math.pow(2, retryCount), 5000); // Exponential backoff, max 5s
+    
+    retryTimeoutRef.current = setTimeout(() => {
+      setRetryCount((prev) => prev + 1);
+      setIsLoading(true);
+      setHasError(false);
+      
+      // Force iframe reload by changing the src
+      const embedUrl = generateEmbedUrl(resumeUrl);
+      setCurrentEmbedUrl(`${embedUrl}?retry=${retryCount + 1}&t=${Date.now()}`);
+    }, delay);
+  }, [retryCount, resumeUrl]);
+
+  // Handle iframe load success
+  const handleLoad = useCallback(() => {
+    setIsLoading(false);
+    setHasError(false);
+    if (loadTimeoutRef.current) {
+      clearTimeout(loadTimeoutRef.current);
+    }
+  }, []);
+
+  // Handle iframe load error
+  const handleError = useCallback(() => {
+    setIsLoading(false);
+    retryLoad();
+  }, [retryLoad]);
+
+  // Initialize embed URL when resumeUrl changes
+  useEffect(() => {
+    if (resumeUrl) {
+      setRetryCount(0);
+      setIsLoading(true);
+      setHasError(false);
+      const embedUrl = generateEmbedUrl(resumeUrl);
+      setCurrentEmbedUrl(embedUrl);
+    }
+
+    return () => {
+      if (retryTimeoutRef.current) {
+        clearTimeout(retryTimeoutRef.current);
+      }
+      if (loadTimeoutRef.current) {
+        clearTimeout(loadTimeoutRef.current);
+      }
+    };
+  }, [resumeUrl]);
+
+  // Set up load timeout
+  useEffect(() => {
+    if (isLoading && currentEmbedUrl) {
+      loadTimeoutRef.current = setTimeout(() => {
+        // If still loading after timeout, consider it an error
+        if (isLoading) {
+          handleError();
+        }
+      }, LOAD_TIMEOUT);
+    }
+
+    return () => {
+      if (loadTimeoutRef.current) {
+        clearTimeout(loadTimeoutRef.current);
+      }
+    };
+  }, [isLoading, currentEmbedUrl, handleError]);
 
   useEffect(() => {
     const updateScale = () => {
@@ -338,62 +438,107 @@ const ResumeViewer = ({ resumeUrl }: { resumeUrl: string | null }) => {
     );
   }
 
-  // Check if it's a Google Drive link and convert to preview format
-  let embedUrl = resumeUrl;
-  if (resumeUrl.includes("drive.google.com")) {
-    // Convert Google Drive sharing link to embed format
-    const fileIdMatch = resumeUrl.match(/\/d\/([a-zA-Z0-9_-]+)/);
-    if (fileIdMatch) {
-      embedUrl = `https://drive.google.com/file/d/${fileIdMatch[1]}/preview`;
-    }
-  } else if (!resumeUrl.toLowerCase().endsWith(".pdf")) {
-    // For non-PDF URLs, try using Google Docs viewer
-    embedUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(
-      resumeUrl
-    )}&embedded=true`;
-  }
-
   return (
     <div className="h-full w-full flex flex-col overflow-hidden">
       <div className="flex items-center justify-between p-2 border-b bg-muted/30">
         <span className="text-sm text-muted-foreground truncate max-w-[70%]">
           {resumeUrl}
         </span>
-        <a
-          href={resumeUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 text-sm text-primary hover:text-primary/80"
-        >
-          Open in new tab
-          <ExternalLink className="h-3 w-3" />
-        </a>
+        <div className="flex items-center gap-2">
+          {isLoading && (
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Loader2 className="h-3 w-3 animate-spin" />
+              {retryCount > 0 && (
+                <span>Retrying... ({retryCount}/{MAX_RETRIES})</span>
+              )}
+            </div>
+          )}
+          {hasError && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setRetryCount(0);
+                setHasError(false);
+                setIsLoading(true);
+                const embedUrl = generateEmbedUrl(resumeUrl);
+                setCurrentEmbedUrl(`${embedUrl}?retry=0&t=${Date.now()}`);
+              }}
+              className="h-7 text-xs"
+            >
+              Retry
+            </Button>
+          )}
+          <a
+            href={resumeUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 text-sm text-primary hover:text-primary/80"
+          >
+            Open in new tab
+            <ExternalLink className="h-3 w-3" />
+          </a>
+        </div>
       </div>
       <div
         ref={containerRef}
         className="flex-1 w-full overflow-auto"
         style={{ position: "relative" }}
       >
-        <div
-          style={{
-            width: "816px",
-            transform: `scale(${scale})`,
-            transformOrigin: "top left",
-            height: `${1056 * scale}px`, // Standard letter size height scaled
-          }}
-        >
-          <iframe
-            ref={iframeRef}
-            src={embedUrl}
-            className="border-0"
+        {hasError && retryCount >= MAX_RETRIES ? (
+          <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+            <FileIcon className="h-16 w-16 mb-4 opacity-50" />
+            <p className="text-lg font-medium">Failed to Load Resume</p>
+            <p className="text-sm mt-2 mb-4">
+              The resume could not be loaded after {MAX_RETRIES} attempts.
+            </p>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setRetryCount(0);
+                setHasError(false);
+                setIsLoading(true);
+                const embedUrl = generateEmbedUrl(resumeUrl);
+                setCurrentEmbedUrl(`${embedUrl}?retry=0&t=${Date.now()}`);
+              }}
+            >
+              Try Again
+            </Button>
+          </div>
+        ) : (
+          <div
             style={{
               width: "816px",
-              height: "1056px",
+              transform: `scale(${scale})`,
+              transformOrigin: "top left",
+              height: `${1056 * scale}px`, // Standard letter size height scaled
             }}
-            title="Resume"
-            allow="autoplay"
-          />
-        </div>
+          >
+            {isLoading && (
+              <div className="absolute inset-0 flex items-center justify-center bg-muted/50 z-10">
+                <div className="flex flex-col items-center gap-2">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  <p className="text-sm text-muted-foreground">Loading resume...</p>
+                </div>
+              </div>
+            )}
+            <iframe
+              ref={iframeRef}
+              src={currentEmbedUrl || undefined}
+              className="border-0"
+              style={{
+                width: "816px",
+                height: "1056px",
+                opacity: isLoading ? 0 : 1,
+                transition: "opacity 0.3s ease-in-out",
+              }}
+              title="Resume"
+              allow="autoplay"
+              onLoad={handleLoad}
+              onError={handleError}
+            />
+          </div>
+        )}
       </div>
     </div>
   );
