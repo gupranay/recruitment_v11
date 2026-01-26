@@ -51,13 +51,25 @@ export default async function handler(
         .json({ error: "Only owners and admins can delete invites" });
     }
 
+    // Verify the invite exists and belongs to this organization
+    const inviteCheck = await supabase
+      .from("organization_invites")
+      .select("id")
+      .eq("id", inviteId.toString())
+      .eq("organization_id", organizationId.toString())
+      .single();
+
+    if (inviteCheck.error || !inviteCheck.data) {
+      return res.status(404).json({ error: "Invite not found" });
+    }
+
     // Delete the invite
-    const deleteQuery = (supabase
-      .from("organization_invites") as any)
+    const deleteResult = await supabase
+      .from("organization_invites")
       .delete()
       .eq("id", inviteId.toString())
       .eq("organization_id", organizationId.toString());
-    const { error: deleteError } = await deleteQuery as { error: any };
+    const { error: deleteError } = deleteResult as { error: any };
 
     if (deleteError) throw deleteError;
 

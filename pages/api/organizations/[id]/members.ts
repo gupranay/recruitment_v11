@@ -18,6 +18,7 @@ type InviteWithDetails = {
   email: string;
   role: Database["public"]["Enums"]["role_type"];
   created_at: string;
+  expires_at: string | null;
   invited_by: {
     email: string;
     full_name: string | null;
@@ -73,7 +74,7 @@ export default async function handler(
 
       if (membersError) throw membersError;
 
-      // Get all pending invites
+      // Get all pending invites (we'll filter expired ones after fetching)
       const invitesResult = await supabase
         .from("organization_invites")
         .select(
@@ -82,6 +83,7 @@ export default async function handler(
           email,
           role,
           created_at,
+          expires_at,
           invited_by (
             email,
             full_name
@@ -90,12 +92,18 @@ export default async function handler(
         )
         .eq("organization_id", organizationId);
       
-      const { data: invites, error: invitesError } = invitesResult as {
+      const { data: allInvites, error: invitesError } = invitesResult as {
         data: InviteWithDetails[] | null;
         error: any;
       };
 
       if (invitesError) throw invitesError;
+
+      // Filter out expired invites
+      const now = new Date().toISOString();
+      const invites = (allInvites || []).filter(
+        (invite) => !invite.expires_at || invite.expires_at >= now
+      );
 
       // Transform the data to match our Member type
       const activeMembers = (members || []).map(
@@ -159,24 +167,34 @@ export default async function handler(
           .json({ error: "Only owners and admins can add members" });
       }
 
-      // Check if there's already a pending invite
+      // Check if there's already a pending (non-expired) invite
+      const now = new Date().toISOString();
       const inviteResult = await supabase
         .from("organization_invites")
-        .select("id")
+        .select("id, expires_at")
         .eq("organization_id", organizationId)
         .eq("email", email)
-        .single();
+        .or(`expires_at.is.null,expires_at.gt.${now}`);
       
-      const { data: existingInvite, error: inviteError } = inviteResult as {
-        data: { id: string } | null;
+      const { data: existingInvites, error: inviteError } = inviteResult as {
+        data: { id: string; expires_at: string | null }[] | null;
         error: any;
       };
 
-      if (existingInvite) {
+      // If there's a non-expired invite, return error
+      if (existingInvites && existingInvites.length > 0) {
         return res
           .status(400)
-          .json({ error: "An invitation has already been sent to this email" });
+          .json({ error: "An active invitation has already been sent to this email" });
       }
+
+      // Clean up any expired invites for this email/organization
+      await supabase
+        .from("organization_invites")
+        .delete()
+        .eq("organization_id", organizationId)
+        .eq("email", email)
+        .lt("expires_at", now);
 
       // Check if the user already exists
       const userResult = await supabase
@@ -258,12 +276,17 @@ export default async function handler(
   if (req.method === "DELETE") {
     const { userId } = req.body;
 
+    if (!userId) {
+      return res.status(400).json({ error: "User ID is required" });
+    }
+
     try {
-      // First check if the user making the request is an owner
+      // First check if the user making the request is an owner or admin
       const membershipResult2 = await supabase
         .from("organization_users")
         .select("role")
         .eq("organization_id", organizationId)
+        .eq("user_id", user.id)
         .single();
       
       const { data: membership, error: membershipError } = membershipResult2 as {
@@ -271,8 +294,40 @@ export default async function handler(
         error: any;
       };
 
-      if (membershipError || !membership || membership.role !== "Owner") {
+      if (membershipError || !membership) {
         return res.status(403).json({ error: "Unauthorized" });
+      }
+
+      // Only owners can remove members, but admins can remove other members (not owners/admins)
+      if (membership.role !== "Owner" && membership.role !== "Admin") {
+        return res.status(403).json({ error: "Only owners and admins can remove members" });
+      }
+
+      // Check the role of the member being removed
+      const targetMemberResult = await supabase
+        .from("organization_users")
+        .select("role")
+        .eq("organization_id", organizationId)
+        .eq("user_id", userId)
+        .single();
+
+      const { data: targetMember, error: targetMemberError } = targetMemberResult as {
+        data: { role: string } | null;
+        error: any;
+      };
+
+      if (targetMemberError || !targetMember) {
+        return res.status(404).json({ error: "Member not found" });
+      }
+
+      // Admins can only remove Members, not other Admins or Owners
+      if (membership.role === "Admin" && targetMember.role !== "Member") {
+        return res.status(403).json({ error: "Admins can only remove members, not other admins or owners" });
+      }
+
+      // Owners cannot remove themselves
+      if (membership.role === "Owner" && userId === user.id) {
+        return res.status(400).json({ error: "Owners cannot remove themselves. Transfer ownership first." });
       }
 
       // Remove the member
