@@ -1,10 +1,11 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { supabaseApi } from "@/lib/supabase/api";
 import { Database } from "@/lib/types/supabase";
+import type { PostgrestError } from "@supabase/supabase-js";
 
 export default async function handler(
   req: NextApiRequest,
-  res: NextApiResponse
+  res: NextApiResponse,
 ) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
@@ -31,30 +32,24 @@ export default async function handler(
 
   try {
     // Get all pending invites for this authenticated user's email
-    // We'll filter expired invites after fetching
+    // Filter expired invites at the database level (expires_at is null OR expires_at >= now)
+    const now = new Date().toISOString();
     const invitesResult = await supabase
       .from("organization_invites")
       .select("*")
-      .eq("email", email);
-    
-    const { data: allInvites, error: invitesError } = invitesResult as {
-      data: Database["public"]["Tables"]["organization_invites"]["Row"][] | null;
+      .eq("email", email)
+      .or(`expires_at.is.null,expires_at.gte.${now}`);
+
+    const { data: invites, error: invitesError } = invitesResult as {
+      data:
+        | Database["public"]["Tables"]["organization_invites"]["Row"][]
+        | null;
       error: any;
     };
 
     if (invitesError) throw invitesError;
 
-    if (!allInvites || allInvites.length === 0) {
-      return res.status(200).json({ message: "No pending invites" });
-    }
-
-    // Filter out expired invites (where expires_at is null or in the future)
-    const now = new Date().toISOString();
-    const invites = allInvites.filter(
-      (invite) => !invite.expires_at || invite.expires_at >= now
-    );
-
-    if (invites.length === 0) {
+    if (!invites || invites.length === 0) {
       return res.status(200).json({ message: "No pending invites" });
     }
 
@@ -74,10 +69,16 @@ export default async function handler(
 
         if (orgCheck.error || !orgCheck.data) {
           // Organization doesn't exist, delete the orphaned invite
-          await supabase
+          const deleteResult = await supabase
             .from("organization_invites")
             .delete()
             .eq("id", invite.id);
+          const { error: deleteError } = deleteResult as { error: any };
+
+          if (deleteError) {
+            console.error(`Failed to delete orphaned invite ${invite.id}:`, deleteError);
+            // Continue processing other invites even if delete fails
+          }
           skippedCount++;
           continue;
         }
@@ -97,28 +98,42 @@ export default async function handler(
 
         if (existingMember) {
           // User is already a member, just delete the invite
-          await supabase
+          const deleteResult = await supabase
             .from("organization_invites")
             .delete()
             .eq("id", invite.id);
+          const { error: deleteError } = deleteResult as { error: any };
+
+          if (deleteError) {
+            console.error(`Failed to delete invite ${invite.id} (user already member):`, deleteError);
+            // Continue processing other invites even if delete fails
+          }
           skippedCount++;
           continue;
         }
 
         // Add user to organization
-        const insertData: Database["public"]["Tables"]["organization_users"]["Insert"] = {
-          organization_id: invite.organization_id,
-          user_id: userId,
-          role: invite.role,
-        };
+        const insertData: Database["public"]["Tables"]["organization_users"]["Insert"] =
+          {
+            organization_id: invite.organization_id,
+            user_id: userId,
+            role: invite.role,
+          };
+        // Type assertion needed due to TypeScript inference limitations with createServerClient
+        // The insertData and error types are properly typed below
         const memberResult = await (supabase
-          .from("organization_users") as any)
-          .insert(insertData as any);
-        const { error: memberError } = memberResult as { error: any };
+          .from("organization_users") as Parameters<typeof supabase.from>[0] extends "organization_users" 
+            ? ReturnType<typeof supabase.from<"organization_users">>
+            : never)
+          .insert(insertData);
+        const { error: memberError }: { error: PostgrestError | null } = memberResult;
 
         if (memberError) {
           // Check if it's a duplicate key error (race condition)
-          if (memberError.code === "23505" || memberError.message?.includes("duplicate")) {
+          if (
+            memberError.code === "23505" ||
+            memberError.message?.includes("duplicate")
+          ) {
             // User was added by another process, just delete the invite
             await supabase
               .from("organization_invites")
@@ -150,28 +165,31 @@ export default async function handler(
       }
     }
 
-    const responseMessage = 
+    const responseMessage =
       processedCount > 0
         ? `Successfully processed ${processedCount} invite${processedCount > 1 ? "s" : ""}`
         : "No invites were processed";
 
+    // Check errors first - return 207 Multi-Status if any errors exist
+    if (errors.length > 0) {
+      return res.status(207).json({
+        message: responseMessage,
+        processed: processedCount,
+        skipped: skippedCount > 0 ? skippedCount : undefined,
+        errors,
+      });
+    }
+
+    // If no errors but there are skips, return 200 with skip info
     if (skippedCount > 0) {
       return res.status(200).json({
         message: `${responseMessage} (${skippedCount} skipped - already members or invalid)`,
         processed: processedCount,
         skipped: skippedCount,
-        errors: errors.length > 0 ? errors : undefined,
       });
     }
 
-    if (errors.length > 0) {
-      return res.status(207).json({
-        message: responseMessage,
-        processed: processedCount,
-        errors,
-      });
-    }
-
+    // Pure success - no errors, no skips
     return res.status(200).json({
       message: responseMessage,
       processed: processedCount,

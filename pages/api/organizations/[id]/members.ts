@@ -74,7 +74,8 @@ export default async function handler(
 
       if (membersError) throw membersError;
 
-      // Get all pending invites (we'll filter expired ones after fetching)
+      // Get all pending invites (non-expired only)
+      const now = new Date().toISOString();
       const invitesResult = await supabase
         .from("organization_invites")
         .select(
@@ -90,20 +91,15 @@ export default async function handler(
           )
         `
         )
-        .eq("organization_id", organizationId);
+        .eq("organization_id", organizationId)
+        .or(`expires_at.is.null,expires_at.gt.${now}`);
       
-      const { data: allInvites, error: invitesError } = invitesResult as {
+      const { data: invites, error: invitesError } = invitesResult as {
         data: InviteWithDetails[] | null;
         error: any;
       };
 
       if (invitesError) throw invitesError;
-
-      // Filter out expired invites
-      const now = new Date().toISOString();
-      const invites = (allInvites || []).filter(
-        (invite) => !invite.expires_at || invite.expires_at >= now
-      );
 
       // Transform the data to match our Member type
       const activeMembers = (members || []).map(
@@ -189,12 +185,16 @@ export default async function handler(
       }
 
       // Clean up any expired invites for this email/organization
-      await supabase
+      const { error } = await supabase
         .from("organization_invites")
         .delete()
         .eq("organization_id", organizationId)
         .eq("email", email)
         .lt("expires_at", now);
+
+      if (error) {
+        console.warn("Failed to cleanup expired invites:", error);
+      }
 
       // Check if the user already exists
       const userResult = await supabase
@@ -316,18 +316,22 @@ export default async function handler(
         error: any;
       };
 
-      if (targetMemberError || !targetMember) {
+      if (targetMemberError) {
+        return res.status(500).json({ error: targetMemberError.message || "Error fetching target member" });
+      }
+
+      if (!targetMember) {
         return res.status(404).json({ error: "Member not found" });
+      }
+
+      // Explicit self-removal check - users cannot remove themselves
+      if (userId === user.id) {
+        return res.status(400).json({ error: "Users cannot remove themselves. Transfer ownership or leave organization appropriately." });
       }
 
       // Admins can only remove Members, not other Admins or Owners
       if (membership.role === "Admin" && targetMember.role !== "Member") {
         return res.status(403).json({ error: "Admins can only remove members, not other admins or owners" });
-      }
-
-      // Owners cannot remove themselves
-      if (membership.role === "Owner" && userId === user.id) {
-        return res.status(400).json({ error: "Owners cannot remove themselves. Transfer ownership first." });
       }
 
       // Remove the member
