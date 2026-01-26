@@ -263,6 +263,10 @@ const ReadingPageContent = () => {
       const { data, column_order } = await response.json();
 
       // Build filtered data respecting the column order
+      if (!data || typeof data !== 'object') {
+        throw new Error("Invalid data received from server");
+      }
+
       let orderedKeys: string[];
       const omittedFields = readingDetails?.omitted_fields ?? [];
       if (column_order && Array.isArray(column_order)) {

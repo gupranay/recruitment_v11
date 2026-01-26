@@ -138,13 +138,16 @@ export default async function handler(
           };
         }
 
-        acc[submissionId].scores.push({
-          score_id: score.id,
-          score_value: score.score_value,
-          metric_id: score.metric_id,
-          metric_name: score.metrics.name,
-          metric_weight: score.metrics.weight,
-        });
+        // Only add score if metrics exists
+        if (score.metrics) {
+          acc[submissionId].scores.push({
+            score_id: score.id,
+            score_value: score.score_value,
+            metric_id: score.metric_id,
+            metric_name: score.metrics.name,
+            metric_weight: score.metrics.weight,
+          });
+        }
 
         return acc;
       },
@@ -159,12 +162,18 @@ export default async function handler(
         (sum, score) => sum + (score.metric_weight || 0),
         0
       );
-      const weightedSum = submission.scores.reduce(
-        (sum, score) =>
-          sum + (score.score_value * (score.metric_weight || 0)) / totalWeight,
-        0
-      );
-      submission.weighted_average = weightedSum;
+      // Prevent division by zero
+      if (totalWeight > 0) {
+        const weightedSum = submission.scores.reduce(
+          (sum, score) =>
+            sum + (score.score_value * (score.metric_weight || 0)) / totalWeight,
+          0
+        );
+        submission.weighted_average = weightedSum;
+      } else {
+        // If no weights, set average to 0
+        submission.weighted_average = 0;
+      }
     });
 
     const finalResponse = Object.values(submissions);
