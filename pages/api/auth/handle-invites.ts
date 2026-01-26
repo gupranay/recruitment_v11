@@ -119,14 +119,14 @@ export default async function handler(
             user_id: userId,
             role: invite.role,
           };
-        // Type assertion needed due to TypeScript inference limitations with createServerClient
-        // The insertData and error types are properly typed below
-        const memberResult = await (supabase
-          .from("organization_users") as Parameters<typeof supabase.from>[0] extends "organization_users" 
-            ? ReturnType<typeof supabase.from<"organization_users">>
-            : never)
-          .insert(insertData);
-        const { error: memberError }: { error: PostgrestError | null } = memberResult;
+        // Type assertion needed due to TypeScript inference limitation with createServerClient from @supabase/ssr
+        // insertData is properly typed, and we properly type the error below
+        type InsertResult = { data: null; error: PostgrestError | null };
+        const tableBuilder = supabase.from("organization_users") as unknown as {
+          insert: (values: Database["public"]["Tables"]["organization_users"]["Insert"]) => Promise<InsertResult>;
+        };
+        const memberResult = await tableBuilder.insert(insertData);
+        const { error: memberError } = memberResult;
 
         if (memberError) {
           // Check if it's a duplicate key error (race condition)
