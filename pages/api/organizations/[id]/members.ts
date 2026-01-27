@@ -1,6 +1,8 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { supabaseApi } from "@/lib/supabase/api";
 import { Database } from "@/lib/types/supabase";
+import { sendOrganizationMemberEmail } from "@/lib/email/email-service";
+import { HOSTNAME } from "@/lib/constant/inedx";
 
 type OrganizationUserWithDetails = {
   id: string;
@@ -27,7 +29,7 @@ type InviteWithDetails = {
 
 export default async function handler(
   req: NextApiRequest,
-  res: NextApiResponse
+  res: NextApiResponse,
 ) {
   const supabase = supabaseApi(req, res);
 
@@ -63,10 +65,10 @@ export default async function handler(
             full_name,
             avatar_url
           )
-        `
+        `,
         )
         .eq("organization_id", organizationId);
-      
+
       const { data: members, error: membersError } = membersResult as {
         data: OrganizationUserWithDetails[] | null;
         error: any;
@@ -89,11 +91,11 @@ export default async function handler(
             email,
             full_name
           )
-        `
+        `,
         )
         .eq("organization_id", organizationId)
         .or(`expires_at.is.null,expires_at.gt.${now}`);
-      
+
       const { data: invites, error: invitesError } = invitesResult as {
         data: InviteWithDetails[] | null;
         error: any;
@@ -102,16 +104,14 @@ export default async function handler(
       if (invitesError) throw invitesError;
 
       // Transform the data to match our Member type
-      const activeMembers = (members || []).map(
-        (member) => ({
-          id: member.users.id,
-          email: member.users.email,
-          name: member.users.full_name,
-          avatar: member.users.avatar_url,
-          role: member.role,
-          status: "active" as const,
-        })
-      );
+      const activeMembers = (members || []).map((member) => ({
+        id: member.users.id,
+        email: member.users.email,
+        name: member.users.full_name,
+        avatar: member.users.avatar_url,
+        role: member.role,
+        status: "active" as const,
+      }));
 
       // Add pending invites to the members list
       const pendingMembers = (invites || []).map((invite) => ({
@@ -134,6 +134,24 @@ export default async function handler(
   if (req.method === "POST") {
     const { email, role } = req.body;
 
+    // Validate email presence and type
+    if (!email || typeof email !== "string") {
+      return res.status(400).json({ error: "Invalid email address" });
+    }
+
+    // Normalize email once at the start
+    const normalizedEmail = email.trim().toLowerCase();
+
+    // Validate email format using normalized email
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+      return res.status(400).json({ error: "Invalid email address" });
+    }
+
+    // Validate role
+    if (!role || !["Owner", "Admin", "Member"].includes(role)) {
+      return res.status(400).json({ error: "Invalid role" });
+    }
+
     try {
       // First check if the authenticated user has appropriate permissions
       const membershipResult = await supabase
@@ -142,7 +160,7 @@ export default async function handler(
         .eq("organization_id", organizationId)
         .eq("user_id", user.id)
         .single();
-      
+
       const { data: membership, error: membershipError } = membershipResult as {
         data: { role: string } | null;
         error: any;
@@ -169,9 +187,9 @@ export default async function handler(
         .from("organization_invites")
         .select("id, expires_at")
         .eq("organization_id", organizationId)
-        .eq("email", email)
+        .eq("email", normalizedEmail)
         .or(`expires_at.is.null,expires_at.gt.${now}`);
-      
+
       const { data: existingInvites, error: inviteError } = inviteResult as {
         data: { id: string; expires_at: string | null }[] | null;
         error: any;
@@ -181,7 +199,9 @@ export default async function handler(
       if (existingInvites && existingInvites.length > 0) {
         return res
           .status(400)
-          .json({ error: "An active invitation has already been sent to this email" });
+          .json({
+            error: "An active invitation has already been sent to this email",
+          });
       }
 
       // Clean up any expired invites for this email/organization
@@ -189,7 +209,7 @@ export default async function handler(
         .from("organization_invites")
         .delete()
         .eq("organization_id", organizationId)
-        .eq("email", email)
+        .eq("email", normalizedEmail)
         .lt("expires_at", now);
 
       if (error) {
@@ -200,9 +220,9 @@ export default async function handler(
       const userResult = await supabase
         .from("users")
         .select("id")
-        .eq("email", email)
+        .eq("email", normalizedEmail)
         .single();
-      
+
       const { data: existingUser, error: userError } = userResult as {
         data: { id: string } | null;
         error: any;
@@ -217,7 +237,7 @@ export default async function handler(
           .eq("organization_id", organizationId)
           .eq("user_id", existingUser.id)
           .single();
-        
+
         const { data: existingMember } = existingMemberResult as {
           data: { id: string } | null;
           error: any;
@@ -230,17 +250,31 @@ export default async function handler(
         }
 
         // Add them as a member
-        const insertData: Database["public"]["Tables"]["organization_users"]["Insert"] = {
-          organization_id: organizationId,
-          user_id: existingUser.id,
-          role: role,
-        };
-        const addQuery = (supabase
-          .from("organization_users") as any)
-          .insert(insertData as any);
-        const { error: addError } = await addQuery as { error: any };
+        const insertData: Database["public"]["Tables"]["organization_users"]["Insert"] =
+          {
+            organization_id: organizationId,
+            user_id: existingUser.id,
+            role: role,
+          };
+        const addQuery = (supabase.from("organization_users") as any).insert(
+          insertData as any,
+        );
+        const { error: addError } = (await addQuery) as { error: any };
 
         if (addError) throw addError;
+
+        // Send email notification (non-blocking)
+        // Note: Email sending is done asynchronously and errors are logged but don't block the response
+        sendEmailNotificationForMember({
+          supabase,
+          organizationId,
+          inviterId: user.id,
+          recipientId: existingUser.id,
+          role,
+          hasAccount: true,
+        }).catch((emailError) => {
+          console.error("Failed to send member addition email:", emailError);
+        });
 
         return res.status(200).json({
           message: "Member added successfully",
@@ -249,21 +283,35 @@ export default async function handler(
       }
 
       // If user doesn't exist, create an invitation
-      const inviteInsertData: Database["public"]["Tables"]["organization_invites"]["Insert"] = {
-        organization_id: organizationId,
-        email,
-        role,
-        invited_by: user.id,
+      const inviteInsertData: Database["public"]["Tables"]["organization_invites"]["Insert"] =
+        {
+          organization_id: organizationId,
+          email: normalizedEmail,
+          role,
+          invited_by: user.id,
+        };
+      const createInviteQuery = (
+        supabase.from("organization_invites") as any
+      ).insert(inviteInsertData as any);
+      const { error: createInviteError } = (await createInviteQuery) as {
+        error: any;
       };
-      const createInviteQuery = (supabase
-        .from("organization_invites") as any)
-        .insert(inviteInsertData as any);
-      const { error: createInviteError } = await createInviteQuery as { error: any };
 
       if (createInviteError) throw createInviteError;
 
-      // Here you would typically send an email invitation
-      // For now, we'll just return success
+      // Send email notification for invite (non-blocking)
+      // Note: Email sending is done asynchronously and errors are logged but don't block the response
+      sendEmailNotificationForInvite({
+        supabase,
+        organizationId,
+        inviterId: user.id,
+        recipientEmail: normalizedEmail,
+        role,
+        hasAccount: false,
+      }).catch((emailError) => {
+        console.error("Failed to send invite email:", emailError);
+      });
+
       return res.status(200).json({
         message: "Invitation sent successfully",
         status: "invited",
@@ -288,11 +336,12 @@ export default async function handler(
         .eq("organization_id", organizationId)
         .eq("user_id", user.id)
         .single();
-      
-      const { data: membership, error: membershipError } = membershipResult2 as {
-        data: { role: string } | null;
-        error: any;
-      };
+
+      const { data: membership, error: membershipError } =
+        membershipResult2 as {
+          data: { role: string } | null;
+          error: any;
+        };
 
       if (membershipError || !membership) {
         return res.status(403).json({ error: "Unauthorized" });
@@ -300,7 +349,9 @@ export default async function handler(
 
       // Only owners can remove members, but admins can remove other members (not owners/admins)
       if (membership.role !== "Owner" && membership.role !== "Admin") {
-        return res.status(403).json({ error: "Only owners and admins can remove members" });
+        return res
+          .status(403)
+          .json({ error: "Only owners and admins can remove members" });
       }
 
       // Check the role of the member being removed
@@ -311,13 +362,18 @@ export default async function handler(
         .eq("user_id", userId)
         .single();
 
-      const { data: targetMember, error: targetMemberError } = targetMemberResult as {
-        data: { role: string } | null;
-        error: any;
-      };
+      const { data: targetMember, error: targetMemberError } =
+        targetMemberResult as {
+          data: { role: string } | null;
+          error: any;
+        };
 
       if (targetMemberError) {
-        return res.status(500).json({ error: targetMemberError.message || "Error fetching target member" });
+        return res
+          .status(500)
+          .json({
+            error: targetMemberError.message || "Error fetching target member",
+          });
       }
 
       if (!targetMember) {
@@ -326,21 +382,29 @@ export default async function handler(
 
       // Explicit self-removal check - users cannot remove themselves
       if (userId === user.id) {
-        return res.status(400).json({ error: "Users cannot remove themselves. Transfer ownership or leave organization appropriately." });
+        return res
+          .status(400)
+          .json({
+            error:
+              "Users cannot remove themselves. Transfer ownership or leave organization appropriately.",
+          });
       }
 
       // Admins can only remove Members, not other Admins or Owners
       if (membership.role === "Admin" && targetMember.role !== "Member") {
-        return res.status(403).json({ error: "Admins can only remove members, not other admins or owners" });
+        return res
+          .status(403)
+          .json({
+            error: "Admins can only remove members, not other admins or owners",
+          });
       }
 
       // Remove the member
-      const deleteQuery = (supabase
-        .from("organization_users") as any)
+      const deleteQuery = (supabase.from("organization_users") as any)
         .delete()
         .eq("organization_id", organizationId)
         .eq("user_id", userId);
-      const { error } = await deleteQuery as { error: any };
+      const { error } = (await deleteQuery) as { error: any };
 
       if (error) throw error;
 
@@ -351,4 +415,134 @@ export default async function handler(
   }
 
   return res.status(405).json({ error: "Method not allowed" });
+}
+
+/**
+ * Helper function to send email notification when a member is added
+ * This prevents code duplication and centralizes email sending logic
+ */
+async function sendEmailNotificationForMember({
+  supabase,
+  organizationId,
+  inviterId,
+  recipientId,
+  role,
+  hasAccount,
+}: {
+  supabase: any;
+  organizationId: string;
+  inviterId: string;
+  recipientId: string;
+  role: string;
+  hasAccount: boolean;
+}): Promise<void> {
+  // Fetch all required data in parallel for efficiency
+  const [orgResult, inviterResult, recipientResult] = await Promise.all([
+    supabase
+      .from("organizations")
+      .select("name")
+      .eq("id", organizationId)
+      .single(),
+    supabase
+      .from("users")
+      .select("email, full_name")
+      .eq("id", inviterId)
+      .single(),
+    supabase
+      .from("users")
+      .select("email, full_name")
+      .eq("id", recipientId)
+      .single(),
+  ]);
+
+  const organization = orgResult.data as { name: string } | null;
+  const inviter = inviterResult.data as {
+    email: string;
+    full_name: string | null;
+  } | null;
+  const recipient = recipientResult.data as {
+    email: string;
+    full_name: string | null;
+  } | null;
+
+  if (!organization || !inviter || !recipient) {
+    console.warn("Missing data for email notification:", {
+      organization: !!organization,
+      inviter: !!inviter,
+      recipient: !!recipient,
+    });
+    return;
+  }
+
+  const dashboardUrl = `${HOSTNAME.replace(/\/$/, "")}/dash`;
+  await sendOrganizationMemberEmail({
+    recipientEmail: recipient.email,
+    recipientName: recipient.full_name,
+    organizationName: organization.name,
+    inviterName: inviter.full_name,
+    inviterEmail: inviter.email,
+    role,
+    hasAccount,
+    dashboardUrl,
+  });
+}
+
+/**
+ * Helper function to send email notification when an invite is created
+ * This prevents code duplication and centralizes email sending logic
+ */
+async function sendEmailNotificationForInvite({
+  supabase,
+  organizationId,
+  inviterId,
+  recipientEmail,
+  role,
+  hasAccount,
+}: {
+  supabase: any;
+  organizationId: string;
+  inviterId: string;
+  recipientEmail: string;
+  role: string;
+  hasAccount: boolean;
+}): Promise<void> {
+  // Fetch required data in parallel for efficiency
+  const [orgResult, inviterResult] = await Promise.all([
+    supabase
+      .from("organizations")
+      .select("name")
+      .eq("id", organizationId)
+      .single(),
+    supabase
+      .from("users")
+      .select("email, full_name")
+      .eq("id", inviterId)
+      .single(),
+  ]);
+
+  const organization = orgResult.data as { name: string } | null;
+  const inviter = inviterResult.data as {
+    email: string;
+    full_name: string | null;
+  } | null;
+
+  if (!organization || !inviter) {
+    console.warn("Missing data for email notification:", {
+      organization: !!organization,
+      inviter: !!inviter,
+    });
+    return;
+  }
+
+  const dashboardUrl = `${HOSTNAME.replace(/\/$/, "")}/dash`;
+  await sendOrganizationMemberEmail({
+    recipientEmail,
+    recipientName: null, // User doesn't exist, so no name
+    organizationName: organization.name,
+    inviterName: inviter.full_name,
+    inviterEmail: inviter.email,
+    role,
+    hasAccount,
+    dashboardUrl,
+  });
 }

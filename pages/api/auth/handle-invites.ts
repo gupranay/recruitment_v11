@@ -2,6 +2,8 @@ import { NextApiRequest, NextApiResponse } from "next";
 import { supabaseApi } from "@/lib/supabase/api";
 import { Database } from "@/lib/types/supabase";
 import type { PostgrestError } from "@supabase/supabase-js";
+import { sendOrganizationMemberEmail } from "@/lib/email/email-service";
+import { HOSTNAME } from "@/lib/constant/inedx";
 
 export default async function handler(
   req: NextApiRequest,
@@ -30,20 +32,58 @@ export default async function handler(
     return res.status(400).json({ error: "User email not found" });
   }
 
+  // Fetch full_name if not available in user_metadata
+  let recipientFullName: string | null = user.user_metadata?.full_name || null;
+  if (!recipientFullName) {
+    const fullNameResult = await supabase
+      .from("users")
+      .select("full_name")
+      .eq("id", userId)
+      .single();
+    
+    const { data: fullNameData, error: fullNameError } = fullNameResult as {
+      data: { full_name: string | null } | null;
+      error: any;
+    };
+    
+    if (fullNameError) {
+      console.error("Error fetching full_name from users table:", fullNameError);
+    }
+    
+    if (fullNameData) {
+      recipientFullName = fullNameData.full_name;
+    }
+  }
+
   try {
     // Get all pending invites for this authenticated user's email
     // Filter expired invites at the database level (expires_at is null OR expires_at >= now)
+    // Also fetch organization and inviter details for email notifications
     const now = new Date().toISOString();
     const invitesResult = await supabase
       .from("organization_invites")
-      .select("*")
+      .select(`
+        *,
+        organizations (
+          id,
+          name
+        ),
+        invited_by_user:users!organization_invites_invited_by_fkey (
+          id,
+          email,
+          full_name
+        )
+      `)
       .eq("email", email)
       .or(`expires_at.is.null,expires_at.gte.${now}`);
 
+    type InviteWithDetails = Database["public"]["Tables"]["organization_invites"]["Row"] & {
+      organizations: { id: string; name: string } | null;
+      invited_by_user: { id: string; email: string; full_name: string | null } | null;
+    };
+
     const { data: invites, error: invitesError } = invitesResult as {
-      data:
-        | Database["public"]["Tables"]["organization_invites"]["Row"][]
-        | null;
+      data: InviteWithDetails[] | null;
       error: any;
     };
 
@@ -155,6 +195,25 @@ export default async function handler(
         if (deleteError) {
           console.error(`Failed to delete invite ${invite.id}:`, deleteError);
           // Continue processing other invites even if delete fails
+        }
+
+        // Send email notification (non-blocking)
+        // Note: Email sending is done asynchronously and errors are logged but don't block the response
+        if (invite.organizations && invite.invited_by_user) {
+          // Use authenticated user's email and fetched full_name
+          const dashboardUrl = `${HOSTNAME.replace(/\/$/, "")}/dash`;
+          sendOrganizationMemberEmail({
+            recipientEmail: email,
+            recipientName: recipientFullName,
+            organizationName: invite.organizations.name,
+            inviterName: invite.invited_by_user.full_name,
+            inviterEmail: invite.invited_by_user.email,
+            role: invite.role,
+            hasAccount: true, // User is authenticated, so they have an account
+            dashboardUrl: dashboardUrl,
+          }).catch((emailError) => {
+            console.error(`Failed to send member addition email for invite ${invite.id}:`, emailError);
+          });
         }
 
         processedCount++;
