@@ -48,7 +48,7 @@ type Member = {
 };
 
 function AddMemberForm({ onClose }: { onClose: () => void }) {
-  const [email, setEmail] = useState("");
+  const [emailsInput, setEmailsInput] = useState("");
   const [role, setRole] = useState<"Admin" | "Member">("Member");
   const [loading, setLoading] = useState(false);
   const { selectedOrganization } = useOrganization();
@@ -58,11 +58,38 @@ function AddMemberForm({ onClose }: { onClose: () => void }) {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   };
 
+  const parseEmails = (input: string) => {
+    const parts = input
+      .split(",")
+      .map((p) => p.trim())
+      .filter(Boolean);
+    // keep user intent order, de-dupe by normalized email
+    const seen = new Set<string>();
+    const unique: string[] = [];
+    for (const p of parts) {
+      const normalized = p.toLowerCase();
+      if (seen.has(normalized)) continue;
+      seen.add(normalized);
+      unique.push(p);
+    }
+    return unique;
+  };
+
   const addMember = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedOrganization || !user) return;
-    if (!isValidEmail(email)) {
-      toast.error("Please enter a valid email address");
+    const emails = parseEmails(emailsInput);
+    if (emails.length === 0) {
+      toast.error("Please enter at least one email address");
+      return;
+    }
+    const invalidEmails = emails.filter((em) => !isValidEmail(em.trim()));
+    if (invalidEmails.length > 0) {
+      toast.error(
+        `Invalid email${invalidEmails.length > 1 ? "s" : ""}: ${invalidEmails
+          .slice(0, 3)
+          .join(", ")}${invalidEmails.length > 3 ? "…" : ""}`,
+      );
       return;
     }
 
@@ -76,7 +103,7 @@ function AddMemberForm({ onClose }: { onClose: () => void }) {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            email,
+            emails,
             role,
             user_id: user.id,
           }),
@@ -88,9 +115,33 @@ function AddMemberForm({ onClose }: { onClose: () => void }) {
         throw new Error(error.error || "Failed to add member");
       }
 
-      const result = await response.json();
-      toast.success(result.message);
-      onClose();
+      const result = (await response.json()) as {
+        message?: string;
+        results?: { email: string; status: string; error?: string }[];
+        successCount?: number;
+        errorCount?: number;
+      };
+
+      const errorResults = (result.results || []).filter(
+        (r) => r.status === "error",
+      );
+      const successCount =
+        typeof result.successCount === "number"
+          ? result.successCount
+          : Math.max(0, emails.length - errorResults.length);
+
+      if (errorResults.length === 0) {
+        toast.success(result.message || "Member(s) added successfully");
+        onClose();
+      } else {
+        toast.success(`Processed ${successCount}/${emails.length} email(s)`);
+        toast.error(
+          `Failed: ${errorResults
+            .slice(0, 3)
+            .map((r) => r.email)
+            .join(", ")}${errorResults.length > 3 ? "…" : ""}`,
+        );
+      }
     } catch (error: any) {
       toast.error(error.message || "Failed to add member");
     } finally {
@@ -98,18 +149,31 @@ function AddMemberForm({ onClose }: { onClose: () => void }) {
     }
   };
 
+  const parsedEmails = parseEmails(emailsInput);
+  const invalidCount = parsedEmails.filter((e) => !isValidEmail(e)).length;
+
   return (
     <form onSubmit={addMember} className="space-y-4">
       <div className="space-y-2">
-        <Label htmlFor="email">Email</Label>
+        <Label htmlFor="emails">Emails</Label>
         <Input
-          id="email"
-          type="email"
-          placeholder="member@example.com"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          id="emails"
+          type="text"
+          placeholder="member1@example.com, member2@example.com"
+          value={emailsInput}
+          onChange={(e) => setEmailsInput(e.target.value)}
           required
         />
+        <p className="text-sm text-muted-foreground">
+          Separate multiple emails with commas.
+          {parsedEmails.length > 1 && (
+            <span className={invalidCount ? "text-destructive" : ""}>
+              {" "}
+              ({parsedEmails.length} detected
+              {invalidCount ? `, ${invalidCount} invalid` : ""})
+            </span>
+          )}
+        </p>
       </div>
       <div className="space-y-2">
         <Label htmlFor="role">Role</Label>
@@ -139,7 +203,7 @@ function AddMemberForm({ onClose }: { onClose: () => void }) {
         <Button
           type="submit"
           className="h-10"
-          disabled={loading || !isValidEmail(email)}
+          disabled={loading || parsedEmails.length === 0 || invalidCount > 0}
         >
           {loading ? "Adding..." : "Add Member"}
         </Button>

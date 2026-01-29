@@ -132,27 +132,38 @@ export default async function handler(
   }
 
   if (req.method === "POST") {
-    const { email, role } = req.body;
-
-    // Validate email presence and type
-    if (!email || typeof email !== "string") {
-      return res.status(400).json({ error: "Invalid email address" });
-    }
-
-    // Normalize email once at the start
-    const normalizedEmail = email.trim().toLowerCase();
-
-    // Validate email format using normalized email
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
-      return res.status(400).json({ error: "Invalid email address" });
-    }
-
-    // Validate role
-    if (!role || !["Owner", "Admin", "Member"].includes(role)) {
-      return res.status(400).json({ error: "Invalid role" });
-    }
-
     try {
+      const { email, emails, role } = req.body as {
+        email?: unknown;
+        emails?: unknown;
+        role?: unknown;
+      };
+
+      const rawEmails: string[] = Array.isArray(emails)
+        ? emails.filter((e): e is string => typeof e === "string")
+        : typeof email === "string"
+          ? [email]
+          : [];
+
+      if (rawEmails.length === 0) {
+        return res.status(400).json({ error: "Invalid email address" });
+      }
+
+      if (rawEmails.length > 50) {
+        return res
+          .status(400)
+          .json({ error: "Too many emails (max 50 per request)" });
+      }
+
+      if (
+        typeof role !== "string" ||
+        !["Owner", "Admin", "Member"].includes(role)
+      ) {
+        return res.status(400).json({ error: "Invalid role" });
+      }
+
+      const roleEnum = role as Database["public"]["Enums"]["role_type"];
+
       // First check if the authenticated user has appropriate permissions
       const membershipResult = await supabase
         .from("organization_users")
@@ -181,140 +192,74 @@ export default async function handler(
           .json({ error: "Only owners and admins can add members" });
       }
 
-      // Check if there's already a pending (non-expired) invite
-      const now = new Date().toISOString();
-      const inviteResult = await supabase
-        .from("organization_invites")
-        .select("id, expires_at")
-        .eq("organization_id", organizationId)
-        .eq("email", normalizedEmail)
-        .or(`expires_at.is.null,expires_at.gt.${now}`);
+      const isValidEmail = (em: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em);
 
-      const { data: existingInvites, error: inviteError } = inviteResult as {
-        data: { id: string; expires_at: string | null }[] | null;
-        error: any;
-      };
+      // normalize + de-dupe while preserving order
+      const seen = new Set<string>();
+      const uniqueNormalized: string[] = [];
+      for (const raw of rawEmails) {
+        const normalized = raw.trim().toLowerCase();
+        if (!normalized) continue;
+        if (seen.has(normalized)) continue;
+        seen.add(normalized);
+        uniqueNormalized.push(normalized);
+      }
 
-      // If there's a non-expired invite, return error
-      if (existingInvites && existingInvites.length > 0) {
-        return res
-          .status(400)
-          .json({
-            error: "An active invitation has already been sent to this email",
+      if (uniqueNormalized.length === 0) {
+        return res.status(400).json({ error: "Invalid email address" });
+      }
+
+      const results: { email: string; status: "added" | "invited" | "error"; error?: string }[] =
+        [];
+
+      for (const normalizedEmail of uniqueNormalized) {
+        if (!isValidEmail(normalizedEmail)) {
+          results.push({
+            email: normalizedEmail,
+            status: "error",
+            error: "Invalid email address",
           });
-      }
-
-      // Clean up any expired invites for this email/organization
-      const { error } = await supabase
-        .from("organization_invites")
-        .delete()
-        .eq("organization_id", organizationId)
-        .eq("email", normalizedEmail)
-        .lt("expires_at", now);
-
-      if (error) {
-        console.warn("Failed to cleanup expired invites:", error);
-      }
-
-      // Check if the user already exists
-      const userResult = await supabase
-        .from("users")
-        .select("id")
-        .eq("email", normalizedEmail)
-        .single();
-
-      const { data: existingUser, error: userError } = userResult as {
-        data: { id: string } | null;
-        error: any;
-      };
-
-      // If user exists, add them directly
-      if (existingUser) {
-        // Check if they're already a member
-        const existingMemberResult = await supabase
-          .from("organization_users")
-          .select("id")
-          .eq("organization_id", organizationId)
-          .eq("user_id", existingUser.id)
-          .single();
-
-        const { data: existingMember } = existingMemberResult as {
-          data: { id: string } | null;
-          error: any;
-        };
-
-        if (existingMember) {
-          return res
-            .status(400)
-            .json({ error: "User is already a member of this organization" });
+          continue;
         }
 
-        // Add them as a member
-        const insertData: Database["public"]["Tables"]["organization_users"]["Insert"] =
-          {
-            organization_id: organizationId,
-            user_id: existingUser.id,
-            role: role,
-          };
-        const addQuery = (supabase.from("organization_users") as any).insert(
-          insertData as any,
-        );
-        const { error: addError } = (await addQuery) as { error: any };
+        try {
+          const result = await processSingleEmail({
+            supabase,
+            organizationId,
+            inviterId: user.id,
+            normalizedEmail,
+            role: roleEnum,
+          });
+          results.push(result);
+        } catch (e: any) {
+          results.push({
+            email: normalizedEmail,
+            status: "error",
+            error: e?.message || "Failed to add member",
+          });
+        }
+      }
 
-        if (addError) throw addError;
+      const successCount = results.filter((r) => r.status !== "error").length;
+      const errorCount = results.length - successCount;
 
-        // Send email notification (non-blocking)
-        // Note: Email sending is done asynchronously and errors are logged but don't block the response
-        sendEmailNotificationForMember({
-          supabase,
-          organizationId,
-          inviterId: user.id,
-          recipientId: existingUser.id,
-          role,
-          hasAccount: true,
-        }).catch((emailError) => {
-          console.error("Failed to send member addition email:", emailError);
-        });
-
-        return res.status(200).json({
-          message: "Member added successfully",
-          status: "added",
+      if (successCount === 0) {
+        return res.status(400).json({
+          error: "Failed to add/invite any of the provided emails",
+          results,
+          successCount,
+          errorCount,
         });
       }
 
-      // If user doesn't exist, create an invitation
-      const inviteInsertData: Database["public"]["Tables"]["organization_invites"]["Insert"] =
-        {
-          organization_id: organizationId,
-          email: normalizedEmail,
-          role,
-          invited_by: user.id,
-        };
-      const createInviteQuery = (
-        supabase.from("organization_invites") as any
-      ).insert(inviteInsertData as any);
-      const { error: createInviteError } = (await createInviteQuery) as {
-        error: any;
-      };
-
-      if (createInviteError) throw createInviteError;
-
-      // Send email notification for invite (non-blocking)
-      // Note: Email sending is done asynchronously and errors are logged but don't block the response
-      sendEmailNotificationForInvite({
-        supabase,
-        organizationId,
-        inviterId: user.id,
-        recipientEmail: normalizedEmail,
-        role,
-        hasAccount: false,
-      }).catch((emailError) => {
-        console.error("Failed to send invite email:", emailError);
-      });
-
       return res.status(200).json({
-        message: "Invitation sent successfully",
-        status: "invited",
+        message:
+          errorCount === 0
+            ? "Member(s) processed successfully"
+            : `Processed ${successCount}/${results.length} email(s)`,
+        results,
+        successCount,
+        errorCount,
       });
     } catch (error: any) {
       return res.status(500).json({ error: error.message });
@@ -545,4 +490,142 @@ async function sendEmailNotificationForInvite({
     hasAccount,
     dashboardUrl,
   });
+}
+
+async function processSingleEmail({
+  supabase,
+  organizationId,
+  inviterId,
+  normalizedEmail,
+  role,
+}: {
+  supabase: any;
+  organizationId: string;
+  inviterId: string;
+  normalizedEmail: string;
+  role: Database["public"]["Enums"]["role_type"];
+}): Promise<{ email: string; status: "added" | "invited" | "error"; error?: string }> {
+  // Check if there's already a pending (non-expired) invite
+  const now = new Date().toISOString();
+  const inviteResult = await supabase
+    .from("organization_invites")
+    .select("id, expires_at")
+    .eq("organization_id", organizationId)
+    .eq("email", normalizedEmail)
+    .or(`expires_at.is.null,expires_at.gt.${now}`);
+
+  const { data: existingInvites } = inviteResult as {
+    data: { id: string; expires_at: string | null }[] | null;
+    error: any;
+  };
+
+  if (existingInvites && existingInvites.length > 0) {
+    return {
+      email: normalizedEmail,
+      status: "error",
+      error: "An active invitation has already been sent to this email",
+    };
+  }
+
+  // Clean up any expired invites for this email/organization
+  const cleanup = await supabase
+    .from("organization_invites")
+    .delete()
+    .eq("organization_id", organizationId)
+    .eq("email", normalizedEmail)
+    .lt("expires_at", now);
+  if ((cleanup as any)?.error) {
+    console.warn("Failed to cleanup expired invites:", (cleanup as any).error);
+  }
+
+  // Check if the user already exists (avoid `.single()` so "no rows" isn't an exception)
+  const userResult = await supabase
+    .from("users")
+    .select("id")
+    .eq("email", normalizedEmail)
+    .limit(1);
+
+  const { data: existingUsers, error: userLookupError } = userResult as {
+    data: { id: string }[] | null;
+    error: any;
+  };
+
+  if (userLookupError) throw userLookupError;
+
+  const existingUser = existingUsers && existingUsers.length > 0 ? existingUsers[0] : null;
+
+  if (existingUser) {
+    const existingMemberResult = await supabase
+      .from("organization_users")
+      .select("id")
+      .eq("organization_id", organizationId)
+      .eq("user_id", existingUser.id)
+      .limit(1);
+
+    const { data: existingMemberRows, error: existingMemberError } =
+      existingMemberResult as {
+        data: { id: string }[] | null;
+        error: any;
+      };
+
+    if (existingMemberError) throw existingMemberError;
+    if (existingMemberRows && existingMemberRows.length > 0) {
+      return {
+        email: normalizedEmail,
+        status: "error",
+        error: "User is already a member of this organization",
+      };
+    }
+
+    const insertData: Database["public"]["Tables"]["organization_users"]["Insert"] = {
+      organization_id: organizationId,
+      user_id: existingUser.id,
+      role: role,
+    };
+
+    const addQuery = (supabase.from("organization_users") as any).insert(insertData as any);
+    const { error: addError } = (await addQuery) as { error: any };
+    if (addError) throw addError;
+
+    sendEmailNotificationForMember({
+      supabase,
+      organizationId,
+      inviterId,
+      recipientId: existingUser.id,
+      role,
+      hasAccount: true,
+    }).catch((emailError) => {
+      console.error("Failed to send member addition email:", emailError);
+    });
+
+    return { email: normalizedEmail, status: "added" };
+  }
+
+  const inviteInsertData: Database["public"]["Tables"]["organization_invites"]["Insert"] = {
+    organization_id: organizationId,
+    email: normalizedEmail,
+    role,
+    invited_by: inviterId,
+  };
+
+  const createInviteQuery = (supabase.from("organization_invites") as any).insert(
+    inviteInsertData as any,
+  );
+  const { error: createInviteError } = (await createInviteQuery) as {
+    error: any;
+  };
+  if (createInviteError) throw createInviteError;
+
+  sendEmailNotificationForInvite({
+    supabase,
+    organizationId,
+    inviterId,
+    recipientEmail: normalizedEmail,
+    role,
+    hasAccount: false,
+  }).catch((emailError) => {
+    console.error("Failed to send invite email:", emailError);
+  });
+
+  return { email: normalizedEmail, status: "invited" };
 }
