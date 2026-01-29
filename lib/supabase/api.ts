@@ -1,7 +1,7 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { serialize } from "cookie";
-import { Database } from "../types/supabase";
+import type { Database } from "@/database.types";
 
 export function supabaseApi(req: NextApiRequest, res: NextApiResponse) {
   return createServerClient<Database>(

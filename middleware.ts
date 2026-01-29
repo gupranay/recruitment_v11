@@ -62,6 +62,10 @@ export async function middleware(request: NextRequest) {
   // Reconstruct the `next` parameter, preserving query params
   const nextPath = url.pathname + url.search;
 
+  const isProtected = protectedPaths.some(
+    (path) => url.pathname === path || url.pathname.startsWith(path + "/")
+  );
+
   if (user && !error) {
     // Redirect logged-in users away from the auth page
     if (url.pathname === "/auth") {
@@ -70,7 +74,7 @@ export async function middleware(request: NextRequest) {
     return response;
   } else {
     // Redirect unauthenticated users to /auth with the next path (including query params)
-    if (protectedPaths.includes(url.pathname)) {
+    if (isProtected) {
       return NextResponse.redirect(
         new URL(`/auth?next=${encodeURIComponent(nextPath)}`, request.url)
       );

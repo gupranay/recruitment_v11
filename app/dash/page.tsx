@@ -15,7 +15,8 @@ import CreateRecruitmentRoundDialog from "@/components/CreateRecruitmentRoundDia
 import ApplicantGrid from "@/components/ApplicantsGrid";
 import Header from "@/components/Header";
 import UpdateMetricsDialog from "@/components/UpdateMetricsDialog";
-import { Trash2, MoreVertical, BarChart3 } from "lucide-react";
+import { Trash2, MoreVertical, BarChart3, Gavel } from "lucide-react";
+import { useRouter } from "next/navigation";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -68,6 +69,7 @@ function Sidebar({
   currentOrg: Organization | null;
   user: any;
 }) {
+  const router = useRouter();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteDialogType, setDeleteDialogType] = useState<DeleteDialogType>("confirm");
   const [roundToDelete, setRoundToDelete] = useState<{
@@ -241,6 +243,17 @@ function Sidebar({
                       </button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
+                      {index === rounds.length - 1 && (
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            router.push(`/delibs/${round.id}`);
+                          }}
+                        >
+                          <Gavel className="mr-2 h-4 w-4" />
+                          Open Delibs
+                        </DropdownMenuItem>
+                      )}
                       <DropdownMenuItem
                         onClick={(e) => {
                           e.stopPropagation();

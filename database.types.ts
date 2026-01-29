@@ -7,6 +7,11 @@ export type Json =
   | Json[]
 
 export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "12.2.12 (cd3cf9e)"
+  }
   public: {
     Tables: {
       anonymous_readings: {
@@ -169,6 +174,100 @@ export type Database = {
           },
         ]
       }
+      delibs_sessions: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          locked_at: string | null
+          recruitment_round_id: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          locked_at?: string | null
+          recruitment_round_id: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          locked_at?: string | null
+          recruitment_round_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "delibs_sessions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delibs_sessions_recruitment_round_id_fkey"
+            columns: ["recruitment_round_id"]
+            isOneToOne: true
+            referencedRelation: "recruitment_rounds"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      delibs_votes: {
+        Row: {
+          applicant_round_id: string
+          created_at: string
+          delibs_session_id: string
+          id: string
+          updated_at: string
+          vote_value: number
+          voter_user_id: string
+        }
+        Insert: {
+          applicant_round_id: string
+          created_at?: string
+          delibs_session_id: string
+          id?: string
+          updated_at?: string
+          vote_value: number
+          voter_user_id: string
+        }
+        Update: {
+          applicant_round_id?: string
+          created_at?: string
+          delibs_session_id?: string
+          id?: string
+          updated_at?: string
+          vote_value?: number
+          voter_user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "delibs_votes_applicant_round_id_fkey"
+            columns: ["applicant_round_id"]
+            isOneToOne: false
+            referencedRelation: "applicant_rounds"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delibs_votes_delibs_session_id_fkey"
+            columns: ["delibs_session_id"]
+            isOneToOne: false
+            referencedRelation: "delibs_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delibs_votes_voter_user_id_fkey"
+            columns: ["voter_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       metrics: {
         Row: {
           created_at: string
@@ -304,29 +403,37 @@ export type Database = {
           name?: string
           owner_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "organizations_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       recruitment_cycles: {
         Row: {
+          archived: boolean
           created_at: string | null
           id: string
           name: string
           organization_id: string | null
-          archived: boolean
         }
         Insert: {
+          archived?: boolean
           created_at?: string | null
           id?: string
           name: string
           organization_id?: string | null
-          archived?: boolean
         }
         Update: {
+          archived?: boolean
           created_at?: string | null
           id?: string
           name?: string
           organization_id?: string | null
-          archived?: boolean
         }
         Relationships: [
           {
@@ -340,28 +447,28 @@ export type Database = {
       }
       recruitment_rounds: {
         Row: {
+          column_order: string[] | null
           created_at: string | null
           id: string
           name: string
           recruitment_cycle_id: string
           sort_order: number | null
-          column_order: string[] | null
         }
         Insert: {
+          column_order?: string[] | null
           created_at?: string | null
           id?: string
           name: string
           recruitment_cycle_id: string
           sort_order?: number | null
-          column_order?: string[] | null
         }
         Update: {
+          column_order?: string[] | null
           created_at?: string | null
           id?: string
           name?: string
           recruitment_cycle_id?: string
           sort_order?: number | null
-          column_order?: string[] | null
         }
         Relationships: [
           {
@@ -451,17 +558,83 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      delibs_applicant_aggregates: {
+        Row: {
+          applicant_id: string | null
+          applicant_round_id: string | null
+          avg_vote: number | null
+          delibs_session_id: string | null
+          rank_dense: number | null
+          vote_count: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "applicant_rounds_applicant_id_fkey"
+            columns: ["applicant_id"]
+            isOneToOne: false
+            referencedRelation: "applicants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delibs_votes_applicant_round_id_fkey"
+            columns: ["applicant_round_id"]
+            isOneToOne: false
+            referencedRelation: "applicant_rounds"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delibs_votes_delibs_session_id_fkey"
+            columns: ["delibs_session_id"]
+            isOneToOne: false
+            referencedRelation: "delibs_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
+      get_delibs_results: {
+        Args: { round_id: string }
+        Returns: {
+          applicant_id: string
+          applicant_round_id: string
+          avg_vote: number
+          headshot_url: string
+          is_tied: boolean
+          name: string
+          rank_dense: number
+          vote_count: number
+        }[]
+      }
       get_demographics: {
         Args: { field_name: string; round_id: string }
         Returns: {
-          status: string
-          field_value: string
           count: number
+          field_value: string
           percentage: number
+          status: string
         }[]
+      }
+      is_applicant_round_in_delibs_session: {
+        Args: { applicant_round_id: string; delibs_session_id: string }
+        Returns: boolean
+      }
+      is_delibs_session_open: { Args: { session_id: string }; Returns: boolean }
+      is_org_admin_for_delibs_session: {
+        Args: { session_id: string; user_id: string }
+        Returns: boolean
+      }
+      is_org_admin_for_round: {
+        Args: { round_id: string; user_id: string }
+        Returns: boolean
+      }
+      is_org_member_for_delibs_session: {
+        Args: { session_id: string; user_id: string }
+        Returns: boolean
+      }
+      is_org_member_for_round: {
+        Args: { round_id: string; user_id: string }
+        Returns: boolean
       }
     }
     Enums: {
@@ -474,21 +647,25 @@ export type Database = {
   }
 }
 
-type DefaultSchema = Database[Extract<keyof Database, "public">]
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
 export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
-    | { schema: keyof Database },
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof Database
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof (Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-        Database[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
     : never = never,
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
-  ? (Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-      Database[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
       Row: infer R
     }
     ? R
@@ -506,14 +683,16 @@ export type Tables<
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
-    | { schema: keyof Database },
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof Database
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
-  ? Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Insert: infer I
     }
     ? I
@@ -529,14 +708,16 @@ export type TablesInsert<
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
-    | { schema: keyof Database },
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof Database
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
-  ? Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Update: infer U
     }
     ? U
@@ -552,14 +733,16 @@ export type TablesUpdate<
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
-    | { schema: keyof Database },
+    | { schema: keyof DatabaseWithoutInternals },
   EnumName extends DefaultSchemaEnumNameOrOptions extends {
-    schema: keyof Database
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof Database[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
     : never = never,
-> = DefaultSchemaEnumNameOrOptions extends { schema: keyof Database }
-  ? Database[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
   : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
     ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
     : never
@@ -567,14 +750,16 @@ export type Enums<
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
-    | { schema: keyof Database },
+    | { schema: keyof DatabaseWithoutInternals },
   CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
-    schema: keyof Database
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
     : never = never,
-> = PublicCompositeTypeNameOrOptions extends { schema: keyof Database }
-  ? Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
     ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
     : never

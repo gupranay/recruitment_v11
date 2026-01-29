@@ -7,6 +7,8 @@ export const protectedPaths = [
   "/profile",
   "/newdash",
   "/dash",
+  "/delibs",
+   "/full-application",
   "/anonymous",
   "/pages/anonymous/[slug].tsx",
   "/anonymous/[slug]",
