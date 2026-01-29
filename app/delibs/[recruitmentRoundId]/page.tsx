@@ -868,7 +868,11 @@ export default function DelibsPage() {
       <header className="border-b px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => router.back()}>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => router.push("/dash")}
+            >
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <div>
