@@ -18,6 +18,10 @@ const nextConfig = {
         protocol: "https",
         hostname: "drive.usercontent.google.com",
       },
+      {
+        protocol: "https",
+        hostname: "media.licdn.com", // Add this line
+      },
     ],
   },
   async rewrites() {
