@@ -188,19 +188,19 @@ export default function ApplicantGrid({
 
   return (
     <div className="relative">
-      {/* Action Buttons */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="font-medium text-lg">Applicant Overview</div>
-        <div className="flex flex-wrap items-center gap-2 ml-auto">
-          {/* Primary Actions Group - Only for Owner/Admin */}
+      {/* Header + Actions */}
+      <div className="mb-5 space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
+              Applicants
+            </div>
+            <div className="font-semibold text-lg">Overview</div>
+          </div>
+
           {isOwnerOrAdmin && (
             <div className="flex flex-wrap items-center gap-2">
-              <Button
-                onClick={() => handleRoundChange(rounds[currentRound].id)}
-                className="bg-blue-500 text-white"
-              >
-                View Demographics
-              </Button>
+              {/* Primary action */}
               <Button
                 onClick={() => {
                   const encodedRoundId = encodeURIComponent(
@@ -208,31 +208,12 @@ export default function ApplicantGrid({
                   );
                   window.open(`/feedback/?id=${encodedRoundId}`, "_blank");
                 }}
-                className="bg-orange-500 text-white"
+                className="bg-emerald-500 text-white hover:bg-emerald-600"
               >
-                Launch Feedback Form
+                Launch feedback
               </Button>
-            </div>
-          )}
 
-          {/* Secondary Actions Group - Only for Owner/Admin */}
-          {isOwnerOrAdmin && (
-            <div className="flex flex-wrap items-center gap-2">
-              <Button
-                onClick={() => {
-                  exportToCSV(
-                    applicants.map(({ name, email, status }) => ({
-                      name: name || "N/A",
-                      email: email || "N/A",
-                      status: status || "N/A",
-                    })),
-                    rounds[currentRound].name || "applicants"
-                  );
-                }}
-                variant="outline"
-              >
-                Export Decisions
-              </Button>
+              {/* Sub-primary: anonymized reading */}
               <CreateAnonymizedAppDialog
                 recruitment_round_id={rounds[currentRound].id || ""}
                 recruitment_round_name={
@@ -240,80 +221,119 @@ export default function ApplicantGrid({
                 }
                 applicant_id={applicants[0]?.applicant_id || ""}
               />
-              <UploadApplicantsDialog3
-                recruitment_round_id={rounds[currentRound].id}
-                fetchApplicants={fetchApplicants}
-              />
-            </div>
-          )}
 
-          {/* View Controls Group */}
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium text-muted-foreground">
-                Filter by Decision:
-              </span>
-              <div className="w-52">
-                <MultiSelect
-                  options={["accepted", "in_progress", "maybe", "rejected"]}
-                  selectedOptions={selectedDecisions}
-                  onChange={setSelectedDecisions}
-                  placeholder="All decisions"
+              {/* Neutral utilities */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    More
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  <DropdownMenuItem
+                    onClick={() => handleRoundChange(rounds[currentRound].id)}
+                  >
+                    View demographics
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => {
+                      exportToCSV(
+                        applicants.map(({ name, email, status }) => ({
+                          name: name || "N/A",
+                          email: email || "N/A",
+                          status: status || "N/A",
+                        })),
+                        rounds[currentRound].name || "applicants"
+                      );
+                    }}
+                  >
+                    Export decisions (CSV)
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              {currentRound === 0 && (
+                <UploadApplicantsDialog3
+                  recruitment_round_id={rounds[currentRound].id}
+                  fetchApplicants={fetchApplicants}
                 />
-              </div>
-              {selectedDecisions.length > 0 && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setSelectedDecisions([])}
-                  className="text-xs text-muted-foreground hover:text-foreground"
-                >
-                  Clear
-                </Button>
               )}
             </div>
+          )}
+        </div>
+
+        {/* Filters & view controls row */}
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border/60 pt-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm font-medium text-muted-foreground">
+              Filter by decision
+            </span>
+            <div className="w-56">
+              <MultiSelect
+                options={["accepted", "in_progress", "maybe", "rejected"]}
+                selectedOptions={selectedDecisions}
+                onChange={setSelectedDecisions}
+                placeholder="All decisions"
+              />
+            </div>
+            {selectedDecisions.length > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setSelectedDecisions([])}
+                className="text-xs text-muted-foreground hover:text-foreground"
+              >
+                Clear
+              </Button>
+            )}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline">Sort Applicants</Button>
+                <Button variant="outline" size="sm">
+                  Sort applicants
+                </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent>
                 <DropdownMenuItem
                   onClick={() => setSortOption("current_weighted_asc")}
                 >
-                  Current Round Weighted (Ascending)
+                  Current round weighted (asc)
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => setSortOption("current_weighted_desc")}
                 >
-                  Current Round Weighted (Descending)
+                  Current round weighted (desc)
                 </DropdownMenuItem>
                 {currentRound > 0 && (
                   <>
                     <DropdownMenuItem
                       onClick={() => setSortOption("last_weighted_asc")}
                     >
-                      Last Round Weighted (Ascending)
+                      Last round weighted (asc)
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       onClick={() => setSortOption("last_weighted_desc")}
                     >
-                      Last Round Weighted (Descending)
+                      Last round weighted (desc)
                     </DropdownMenuItem>
                   </>
                 )}
                 <DropdownMenuItem onClick={() => setSortOption("status")}>
-                  Accepted / Rejected (Default)
+                  Accepted / rejected (default)
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            <div className="flex items-center space-x-2">
-              <span className="text-sm">Grid View</span>
+
+            <div className="flex items-center space-x-2 text-sm">
+              <span>Grid view</span>
               <Switch
                 checked={isListView}
                 onCheckedChange={setIsListView}
                 className="toggle-view"
               />
-              <span className="text-sm">List View</span>
+              <span>List view</span>
             </div>
           </div>
         </div>

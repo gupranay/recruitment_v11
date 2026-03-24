@@ -23,6 +23,8 @@ type CreateRecruitmentCycleDialogProps = {
   recruitmentCycles: RecruitmentCycle[];
   setRecruitmentCycles: (cycles: RecruitmentCycle[]) => void;
   setCurrentCycle?: (cycle: RecruitmentCycle) => void;
+  forceOpen?: boolean;
+  onForceOpenChange?: (open: boolean) => void;
 };
 
 export default function CreateRecruitmentCycleDialog({
@@ -30,10 +32,24 @@ export default function CreateRecruitmentCycleDialog({
   recruitmentCycles,
   setRecruitmentCycles,
   setCurrentCycle,
+  forceOpen,
+  onForceOpenChange,
 }: CreateRecruitmentCycleDialogProps) {
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isControlled = typeof forceOpen === "boolean";
+  const open = isControlled ? (forceOpen as boolean) : internalOpen;
+  const handleOpenChange = (next: boolean) => {
+    if (isControlled) {
+      onForceOpenChange?.(next);
+      if (!next) {
+        setInternalOpen(false);
+      }
+    } else {
+      setInternalOpen(next);
+    }
+  };
   const { setSelectedRecruitmentCycle } = useRecruitmentCycle();
 
   const handleCreate = async () => {
@@ -62,7 +78,7 @@ export default function CreateRecruitmentCycleDialog({
         }
 
         toast.success("Recruitment cycle created successfully!");
-        setOpen(false);
+        handleOpenChange(false);
         setName(""); // Reset the input field
       } else {
         const error = await response.json();
@@ -77,13 +93,16 @@ export default function CreateRecruitmentCycleDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-          <Plus className="mr-2 h-4 w-4" />
-          Create Recruitment Cycle
-        </DropdownMenuItem>
-      </DialogTrigger>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      {/* When controlled via forceOpen, caller decides how to open it, so omit trigger */}
+      {!isControlled && (
+        <DialogTrigger asChild>
+          <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+            <Plus className="mr-2 h-4 w-4" />
+            Create Recruitment Cycle
+          </DropdownMenuItem>
+        </DialogTrigger>
+      )}
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Create Recruitment Cycle</DialogTitle>

@@ -230,125 +230,158 @@
 
 //components/landing.tsx
 import Link from "next/link";
-import { Button } from "./ui/button";
-import Profile from "./Profile";
-import useUser from "@/app/hook/useUser";
 import Navbar from "./NavBar";
 import { HeroGeometric } from "@/components/ui/shape-landing-hero";
 import { FeaturesSectionWithHoverEffects } from "./ui/feature-section-with-hover-effects";
 import { motion } from "framer-motion";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
+import { gsap } from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
+
+gsap.registerPlugin(ScrollTrigger);
 
 function LandingAnimatedSections() {
+  const stepsRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!stepsRef.current) return;
+
+    const ctx = gsap.context(() => {
+      const line =
+        stepsRef.current?.querySelector<HTMLElement>("[data-how-line]");
+      if (!line) return;
+
+      // Fill line from top to bottom in sync with scroll (no card in/out animation)
+      gsap.fromTo(
+        line,
+        { scaleY: 0, transformOrigin: "top center" },
+        {
+          scaleY: 1,
+          ease: "none",
+          scrollTrigger: {
+            trigger: stepsRef.current,
+            start: "top 70%",
+            end: "bottom 30%",
+            scrub: true,
+          },
+        },
+      );
+    }, stepsRef);
+
+    return () => ctx.revert();
+  }, []);
+
   return (
     <>
       {/* Hero Section */}
       <HeroGeometric
         badge="Recruitment Platform"
-        title1="Recruit the Best Talent"
+        title1="Run Better Recruitment"
         title2="For Your Organization"
       />
-      {/* Features Section */}
+      {/* Process/Stepper Section */}
+      <motion.section
+        initial={{ opacity: 0, y: 40 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.9, delay: 0.1 }}
+        viewport={{ once: true, amount: 0.2 }}
+        className="w-full flex justify-center items-stretch min-h-screen pt-14 md:pt-20 pb-0"
+        id="how-it-works"
+      >
+        <div
+          ref={stepsRef}
+          className="relative max-w-5xl w-full rounded-3xl p-8 md:p-14 md:pb-24 ink-card dark:ink-card-dark"
+        >
+          <div className="flex flex-col items-center text-center mb-10">
+            <h2 className="font-display text-4xl sm:text-5xl font-semibold tracking-tight text-neutral-950 dark:text-white">
+              How Recruitify Works
+            </h2>
+            <p className="mt-3 text-sm text-neutral-800/70 dark:text-white/60 max-w-2xl">
+              A simple flow your board can follow without training sessions or
+              messy spreadsheets.
+            </p>
+          </div>
+
+          <div className="relative flex flex-col gap-6 md:gap-7">
+            {/* Timeline spine, tucked just to the left of cards */}
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute left-4 top-0 bottom-0 flex justify-center"
+            >
+              <div className="h-full w-px bg-neutral-300/30 dark:bg-white/10" />
+              <div
+                data-how-line
+                className="absolute inset-y-0 left-0 right-0 m-auto h-full w-[3px] rounded-full bg-emerald-400/80"
+              />
+            </div>
+
+            {/* Steps column */}
+            <div className="flex flex-col gap-4 md:gap-5">
+              {[
+                {
+                  n: "01",
+                  title: "Create Organization & Invite Board",
+                  desc: "Set up your club, org, or startup and invite all board members and recruiting managers.",
+                },
+                {
+                  n: "02",
+                  title: "Set Up Recruitment Cycle & Rounds",
+                  desc: "Create a recruitment cycle (semester, year, etc.) and define rounds (interviews, events) with custom metrics.",
+                },
+                {
+                  n: "03",
+                  title: "Import Applicants via CSV",
+                  desc: "Upload applicants from your form (Google Forms, Tally, etc.) and map their info instantly.",
+                },
+                {
+                  n: "04",
+                  title: "Collect Feedback & Scores",
+                  desc: "Gather anonymized or named feedback and scores from board and general members for each round.",
+                },
+                {
+                  n: "05",
+                  title: "Progress Applicants & Export Decisions",
+                  desc: "Move applicants to the next round, mark as accepted/rejected/maybe, and export decisions and emails.",
+                },
+              ].map((s) => (
+                <div key={s.n} className="relative pl-12">
+                  <div
+                    data-how-step
+                    className="relative rounded-2xl border border-black/10 bg-white/70 p-5 md:p-6 shadow-[0_20px_50px_rgba(10,12,14,0.08)] backdrop-blur dark:border-white/12 dark:bg-black/40 dark:shadow-[0_20px_50px_rgba(0,0,0,0.55)]"
+                  >
+                    {/* Node on the line */}
+                    <div className="absolute left-0 top-6 -translate-x-1/2 h-3 w-3 rounded-full border border-emerald-200 bg-white dark:bg-black" />
+
+                    <div className="flex items-start gap-4">
+                      <div className="font-display text-sm tracking-[0.22em] text-neutral-900/70 dark:text-white/60">
+                        {s.n}
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="font-display text-lg font-semibold text-neutral-950 dark:text-white">
+                          {s.title}
+                        </h3>
+                        <p className="mt-2 text-sm text-neutral-800/70 dark:text-white/65">
+                          {s.desc}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </motion.section>
+      {/* Features Section (moved after how-it-works) */}
       <motion.section
         initial={{ opacity: 0, y: 40 }}
         whileInView={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8 }}
         viewport={{ once: true }}
-        className="w-full flex justify-center py-16"
+        className="w-full flex justify-center py-14 md:py-20"
       >
-        <div className="relative max-w-6xl w-full rounded-3xl bg-gradient-to-br from-white/5 via-blue-500/5 to-green-500/5 border border-blue-500/10 backdrop-blur-xl shadow-2xl p-8 md:p-16">
+        <div className="relative max-w-6xl w-full rounded-3xl p-8 md:p-14 ink-card dark:ink-card-dark">
           <FeaturesSectionWithHoverEffects />
-        </div>
-      </motion.section>
-      {/* Process/Stepper Section */}
-      <motion.section
-        initial={{ opacity: 0, y: 40 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.8, delay: 0.2 }}
-        viewport={{ once: true }}
-        className="w-full flex justify-center py-16"
-      >
-        <div className="relative max-w-4xl w-full rounded-3xl bg-gradient-to-br from-white/5 via-blue-500/5 to-green-500/5 border border-green-500/10 backdrop-blur-xl shadow-2xl p-8 md:p-16 flex flex-col items-center">
-          <h2 className="text-4xl sm:text-5xl font-bold tracking-tight mb-8 bg-clip-text text-transparent bg-gradient-to-r from-green-400 to-blue-400">
-            How Recruitify Works
-          </h2>
-          <div className="w-full max-w-3xl flex flex-col gap-6">
-            {/* Step 1 */}
-            <div className="flex items-start gap-4 p-4 rounded-xl bg-white/60 dark:bg-[#030303]/60 shadow border border-green-400/10">
-              <div className="flex items-center justify-center h-10 w-10 rounded-full bg-gradient-to-br from-green-400 to-blue-400 text-white font-bold text-lg shrink-0">
-                1
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold bg-clip-text text-transparent bg-gradient-to-r from-green-400 to-blue-400 mb-1">
-                  Create Organization & Invite Board
-                </h3>
-                <p className="text-sm text-muted-foreground">
-                  Set up your club, org, or startup and invite all board members
-                  and recruiting managers.
-                </p>
-              </div>
-            </div>
-            {/* Step 2 */}
-            <div className="flex items-start gap-4 p-4 rounded-xl bg-white/60 dark:bg-[#030303]/60 shadow border border-green-400/10">
-              <div className="flex items-center justify-center h-10 w-10 rounded-full bg-gradient-to-br from-green-400 to-blue-400 text-white font-bold text-lg shrink-0">
-                2
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold bg-clip-text text-transparent bg-gradient-to-r from-green-400 to-blue-400 mb-1">
-                  Set Up Recruitment Cycle & Rounds
-                </h3>
-                <p className="text-sm text-muted-foreground">
-                  Create a recruitment cycle (semester, year, etc.) and define
-                  rounds (interviews, events) with custom metrics.
-                </p>
-              </div>
-            </div>
-            {/* Step 3 */}
-            <div className="flex items-start gap-4 p-4 rounded-xl bg-white/60 dark:bg-[#030303]/60 shadow border border-green-400/10">
-              <div className="flex items-center justify-center h-10 w-10 rounded-full bg-gradient-to-br from-green-400 to-blue-400 text-white font-bold text-lg shrink-0">
-                3
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold bg-clip-text text-transparent bg-gradient-to-r from-green-400 to-blue-400 mb-1">
-                  Import Applicants via CSV
-                </h3>
-                <p className="text-sm text-muted-foreground">
-                  Upload applicants from your form (Google Forms, Tally, etc.)
-                  and map their info instantly.
-                </p>
-              </div>
-            </div>
-            {/* Step 4 */}
-            <div className="flex items-start gap-4 p-4 rounded-xl bg-white/60 dark:bg-[#030303]/60 shadow border border-green-400/10">
-              <div className="flex items-center justify-center h-10 w-10 rounded-full bg-gradient-to-br from-green-400 to-blue-400 text-white font-bold text-lg shrink-0">
-                4
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold bg-clip-text text-transparent bg-gradient-to-r from-green-400 to-blue-400 mb-1">
-                  Collect Feedback & Scores
-                </h3>
-                <p className="text-sm text-muted-foreground">
-                  Gather anonymized or named feedback and scores from board and
-                  general members for each round.
-                </p>
-              </div>
-            </div>
-            {/* Step 5 */}
-            <div className="flex items-start gap-4 p-4 rounded-xl bg-white/60 dark:bg-[#030303]/60 shadow border border-green-400/10">
-              <div className="flex items-center justify-center h-10 w-10 rounded-full bg-gradient-to-br from-green-400 to-blue-400 text-white font-bold text-lg shrink-0">
-                5
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold bg-clip-text text-transparent bg-gradient-to-r from-green-400 to-blue-400 mb-1">
-                  Progress Applicants & Export Decisions
-                </h3>
-                <p className="text-sm text-muted-foreground">
-                  Move applicants to the next round, mark as
-                  accepted/rejected/maybe, and export decisions and emails.
-                </p>
-              </div>
-            </div>
-          </div>
         </div>
       </motion.section>
       {/* CTA Section */}
@@ -357,29 +390,30 @@ function LandingAnimatedSections() {
         whileInView={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8, delay: 0.4 }}
         viewport={{ once: true }}
-        className="w-full flex justify-center py-16"
+        className="w-full flex justify-center py-14 md:py-20"
       >
-        <div className="relative max-w-2xl w-full mx-auto rounded-3xl p-10 bg-gradient-to-br from-white/10 via-blue-500/10 to-green-500/10 shadow-xl border border-green-500/20 backdrop-blur-lg flex flex-col items-center text-center">
-          <div className="absolute -inset-1 rounded-3xl bg-gradient-to-br from-green-500/20 via-blue-500/10 to-transparent blur-2xl pointer-events-none" />
-          <h2 className="text-4xl sm:text-5xl font-bold tracking-tight mb-4 bg-clip-text text-transparent bg-gradient-to-r from-green-400 to-blue-400">
-            Manage Your Club or Org&apos;s Recruitment—All in One Place
+        <div className="relative max-w-3xl w-full mx-auto rounded-3xl p-10 md:p-12 ink-card dark:ink-card-dark flex flex-col items-center text-center">
+          <div className="pointer-events-none absolute -left-6 -top-6 h-24 w-24 rounded-2xl border border-black/10 bg-emerald-600/10 rotate-6 dark:border-white/12 dark:bg-emerald-400/10" />
+          <div className="pointer-events-none absolute -right-8 -bottom-8 h-28 w-28 rounded-full border border-black/10 bg-black/5 dark:border-white/12 dark:bg-white/5" />
+          <h2 className="font-display text-4xl sm:text-5xl font-semibold tracking-tight mb-4 text-neutral-950 dark:text-white">
+            Run Your Club or Org Recruitment in One Workspace
           </h2>
-          <p className="text-lg light:text-black dark:text-white mb-8 max-w-xl">
-            Recruitify is built for recruiting chairs and boards who need to run
-            collaborative, multi-round recruitment cycles. No job boards, no
-            applicant portals—just powerful tools for your team.
+          <p className="text-lg text-neutral-800/80 dark:text-white/75 mb-8 max-w-xl">
+            Recruitify is built for recruiting chairs and boards who are tired
+            of juggling Google Forms, Docs, and spreadsheets. Manage every
+            round, discussion, and decision in one place.
           </p>
           <div className="flex flex-col gap-3 w-full max-w-xs">
             <Link
-              href="/auth?next=/dash"
-              className="inline-flex h-12 items-center justify-center rounded-xl bg-gradient-to-r from-green-400 to-blue-500 text-lg font-semibold text-[#030303] shadow-lg transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-400"
+              href="/dash"
+              className="cta-primary-dark text-base"
               prefetch={false}
             >
               Get Started
             </Link>
             <Link
-              href="/auth?next=/dash"
-              className="inline-flex h-12 items-center justify-center rounded-xl border border-black bg-white/10 text-lg font-semibold light:text-black dark:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-400"
+              href="#how-it-works"
+              className="cta-secondary-dark text-base"
               prefetch={false}
             >
               Learn More
@@ -391,180 +425,63 @@ function LandingAnimatedSections() {
   );
 }
 
-// Animated, angled, blurred geometric shapes background
-function AnimatedShapesBackground() {
-  return (
-    <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
-      {/* Top left indigo shape */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{
-          duration: 1.2,
-          delay: 0.3,
-          ease: [0.23, 0.86, 0.39, 0.96],
-        }}
-        className="absolute left-[-10%] md:left-[-5%] top-[15%] md:top-[20%]"
-        style={{ width: 600, height: 140 }}
-      >
-        <motion.div
-          initial={{ y: -40, rotate: -3 }}
-          animate={{ y: 8, rotate: 5 }}
-          transition={{
-            duration: 1.6,
-            ease: "easeInOut",
-            repeat: Infinity,
-            repeatType: "mirror",
-            delay: 0,
-          }}
-          className="absolute inset-0 w-full h-full"
-        >
-          <div className="absolute inset-0 rounded-full bg-gradient-to-r from-indigo-500/[0.15] to-transparent backdrop-blur-[2px] border-2 border-white/[0.15] shadow-[0_8px_32px_0_rgba(255,255,255,0.1)]" />
-        </motion.div>
-      </motion.div>
-      {/* Top right rose shape */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{
-          duration: 1.2,
-          delay: 0.5,
-          ease: [0.23, 0.86, 0.39, 0.96],
-        }}
-        className="absolute right-[-5%] md:right-[0%] top-[70%] md:top-[75%]"
-        style={{ width: 500, height: 120 }}
-      >
-        <motion.div
-          initial={{ y: -30, rotate: 0 }}
-          animate={{ y: -10, rotate: -6 }}
-          transition={{
-            duration: 1.7,
-            ease: "easeInOut",
-            repeat: Infinity,
-            repeatType: "mirror",
-            delay: 0,
-          }}
-          className="absolute inset-0 w-full h-full"
-        >
-          <div className="absolute inset-0 rounded-full bg-gradient-to-r from-rose-500/[0.15] to-transparent backdrop-blur-[2px] border-2 border-white/[0.15] shadow-[0_8px_32px_0_rgba(255,255,255,0.1)]" />
-        </motion.div>
-      </motion.div>
-      {/* Bottom left violet shape */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{
-          duration: 1.2,
-          delay: 0.4,
-          ease: [0.23, 0.86, 0.39, 0.96],
-        }}
-        className="absolute left-[5%] md:left-[10%] bottom-[5%] md:bottom-[10%]"
-        style={{ width: 300, height: 80 }}
-      >
-        <motion.div
-          initial={{ y: 30, rotate: 0 }}
-          animate={{ y: 12, rotate: -4 }}
-          transition={{
-            duration: 1.5,
-            ease: "easeInOut",
-            repeat: Infinity,
-            repeatType: "mirror",
-            delay: 0,
-          }}
-          className="absolute inset-0 w-full h-full"
-        >
-          <div className="absolute inset-0 rounded-full bg-gradient-to-r from-violet-500/[0.15] to-transparent backdrop-blur-[2px] border-2 border-white/[0.15] shadow-[0_8px_32px_0_rgba(255,255,255,0.1)]" />
-        </motion.div>
-      </motion.div>
-      {/* Top right amber shape */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{
-          duration: 1.2,
-          delay: 0.6,
-          ease: [0.23, 0.86, 0.39, 0.96],
-        }}
-        className="absolute right-[15%] md:right-[20%] top-[10%] md:top-[15%]"
-        style={{ width: 200, height: 60 }}
-      >
-        <motion.div
-          initial={{ y: -20, rotate: 0 }}
-          animate={{ y: 7, rotate: 8 }}
-          transition={{
-            duration: 1.4,
-            ease: "easeInOut",
-            repeat: Infinity,
-            repeatType: "mirror",
-            delay: 0,
-          }}
-          className="absolute inset-0 w-full h-full"
-        >
-          <div className="absolute inset-0 rounded-full bg-gradient-to-r from-amber-500/[0.15] to-transparent backdrop-blur-[2px] border-2 border-white/[0.15] shadow-[0_8px_32px_0_rgba(255,255,255,0.1)]" />
-        </motion.div>
-      </motion.div>
-      {/* Top left cyan shape */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{
-          duration: 1.2,
-          delay: 0.7,
-          ease: [0.23, 0.86, 0.39, 0.96],
-        }}
-        className="absolute left-[20%] md:left-[25%] top-[5%] md:top-[10%]"
-        style={{ width: 150, height: 40 }}
-      >
-        <motion.div
-          initial={{ y: -14, rotate: 0 }}
-          animate={{ y: -8, rotate: -3 }}
-          transition={{
-            duration: 1.3,
-            ease: "easeInOut",
-            repeat: Infinity,
-            repeatType: "mirror",
-            delay: 0,
-          }}
-          className="absolute inset-0 w-full h-full"
-        >
-          <div className="absolute inset-0 rounded-full bg-gradient-to-r from-cyan-500/[0.15] to-transparent backdrop-blur-[2px] border-2 border-white/[0.15] shadow-[0_8px_32px_0_rgba(255,255,255,0.1)]" />
-        </motion.div>
-      </motion.div>
-    </div>
-  );
-}
-
 export default function Landing() {
+  const [isPastHero, setIsPastHero] = useState(false);
+
+  useEffect(() => {
+    const hero = document.getElementById("landing-hero");
+    if (!hero) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsPastHero(!entry.isIntersecting);
+      },
+      { threshold: 0.2 },
+    );
+
+    observer.observe(hero);
+    return () => observer.disconnect();
+  }, []);
+
   return (
-    <div className="relative flex flex-col min-h-screen overflow-x-hidden">
-      <AnimatedShapesBackground />
-      <header className="relative z-10 px-0 lg:px-6">
-        <Navbar />
+    <div className="relative flex flex-col min-h-screen overflow-x-hidden paper-surface dark:paper-surface-dark paper-texture">
+      <header
+        className={`fixed inset-x-0 top-0 z-40 transition-colors duration-300 ${
+          isPastHero
+            ? "bg-black/20 backdrop-blur supports-[backdrop-filter]:bg-black/15 dark:bg-black/28 dark:supports-[backdrop-filter]:bg-black/24"
+            : "bg-transparent"
+        }`}
+      >
+        <div className="w-full px-4 md:px-8 lg:px-12 pt-4">
+          <Navbar />
+        </div>
       </header>
-      <main className="flex-1 relative z-10">
+      <main className="relative z-10 flex-1">
         <LandingAnimatedSections />
       </main>
       {/* Footer */}
-      <footer className="relative z-10 flex flex-col gap-2 sm:flex-row py-6 w-full shrink-0 items-center px-4 md:px-6 border-t border-blue-500/20 backdrop-blur-md bg-white/60 dark:bg-[#030303]/60">
-        <p className="text-xs text-neutral-600 dark:text-white/60">
-          &copy; 2024 Recruit. All rights reserved.
-        </p>
-        <nav className="sm:ml-auto flex gap-4 sm:gap-6">
-          <Link
-            href="#"
-            className="text-xs hover:underline underline-offset-4 text-blue-400"
-            prefetch={false}
-          >
-            Terms of Service
-          </Link>
-          <Link
-            href="/privacy-policy"
-            className="text-xs hover:underline underline-offset-4 text-green-400"
-            prefetch={false}
-          >
-            Privacy
-          </Link>
-        </nav>
+      <footer className="relative z-10 w-full border-t border-black/10 dark:border-white/12">
+        <div className="mx-auto max-w-6xl px-4 md:px-6 py-7 flex flex-col gap-2 sm:flex-row items-center">
+          <p className="text-xs text-neutral-900/60 dark:text-white/60">
+            &copy; {new Date().getFullYear()} Recruit. All rights reserved.
+          </p>
+          <nav className="sm:ml-auto flex gap-4 sm:gap-6">
+            <Link
+              href="#"
+              className="text-xs hover:underline underline-offset-4 text-neutral-900/70 dark:text-white/70"
+              prefetch={false}
+            >
+              Terms of Service
+            </Link>
+            <Link
+              href="/privacy-policy"
+              className="text-xs hover:underline underline-offset-4 text-neutral-900/70 dark:text-white/70"
+              prefetch={false}
+            >
+              Privacy
+            </Link>
+          </nav>
+        </div>
       </footer>
     </div>
   );

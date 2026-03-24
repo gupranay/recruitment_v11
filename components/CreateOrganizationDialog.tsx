@@ -13,7 +13,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useRouter } from "next/navigation";
-import { Organization } from "@/contexts/OrganizationContext";
+import { Organization, useOrganization } from "@/contexts/OrganizationContext";
 import toast from "react-hot-toast";
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu"; // Adjusted import for consistency
 import { Plus } from "lucide-react";
@@ -23,6 +23,9 @@ type CreateOrganizationDialogProps = {
   organizations: Organization[];
   setOrganizations: (orgs: Organization[]) => void;
   setCurrentOrg: (org: Organization) => void;
+  useMenuItemTrigger?: boolean;
+  forceOpen?: boolean;
+  onForceOpenChange?: (open: boolean) => void;
 };
 
 export function CreateOrganizationDialog({
@@ -30,12 +33,27 @@ export function CreateOrganizationDialog({
   organizations,
   setOrganizations,
   setCurrentOrg,
+  useMenuItemTrigger = true,
+  forceOpen,
+  onForceOpenChange,
 }: CreateOrganizationDialogProps) {
+  const { organizations: contextOrgs, setOrganizations: setContextOrganizations, setSelectedOrganization } =
+    useOrganization();
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
   const router = useRouter();
+
+  const isControlled = typeof forceOpen === "boolean";
+  const open = isControlled ? (forceOpen as boolean) : internalOpen;
+  const handleOpenChange = (next: boolean) => {
+    if (isControlled) {
+      onForceOpenChange?.(next);
+    } else {
+      setInternalOpen(next);
+    }
+  };
 
   const handleCreateOrganization = async () => {
     setLoading(true);
@@ -65,12 +83,18 @@ export function CreateOrganizationDialog({
         role: "Owner", // Add the role property since the creator is always the owner
       };
 
-      setOrganizations([...organizations, newOrganization]);
+      const nextOrgs = [...organizations, newOrganization];
+      setOrganizations(nextOrgs);
+      // Keep context in sync and ensure global selection updates
+      const nextContextOrgs =
+        contextOrgs.length > 0 ? [...contextOrgs, newOrganization] : [newOrganization];
+      setContextOrganizations(nextContextOrgs);
+      setSelectedOrganization(newOrganization);
       setCurrentOrg(newOrganization); // Set the newly created organization as the current organization
       toast.success("Organization created successfully!");
 
       setName("");
-      setOpen(false);
+      handleOpenChange(false);
       router.refresh(); // Refresh the page to reflect changes
     } catch (err: any) {
       if (
@@ -83,7 +107,7 @@ export function CreateOrganizationDialog({
           "Organization name already exists. Please choose a different name."
         );
       } else {
-        setError(err.message);
+        setError(err.message || "Something went wrong while creating the organization.");
       }
     } finally {
       setLoading(false);
@@ -99,41 +123,55 @@ export function CreateOrganizationDialog({
   }, [open]);
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-          <Plus className="mr-2 h-4 w-4" />
-          <span>Create Organization</span>
-        </DropdownMenuItem>
-      </DialogTrigger>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      {/* When forceOpen is used (controlled mode), caller handles how to open it,
+          so we omit the trigger entirely to avoid stray buttons. */}
+      {!isControlled && (
+        <DialogTrigger asChild>
+          {useMenuItemTrigger !== false ? (
+            <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+              <Plus className="mr-2 h-4 w-4" />
+              <span>Create Organization</span>
+            </DropdownMenuItem>
+          ) : (
+            <Button type="button" size="sm">
+              <Plus className="mr-2 h-4 w-4" />
+              <span>Create Organization</span>
+            </Button>
+          )}
+        </DialogTrigger>
+      )}
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Create Organization</DialogTitle>
           <DialogDescription>
-            Enter the name of the new organization.
+            Give your organization a clear, recognizable name. You can change this later in settings.
           </DialogDescription>
         </DialogHeader>
-        <div className="grid gap-4 py-4">
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="name" className="text-right">
-              Name
-            </Label>
+        <div className="space-y-3 py-4">
+          <div className="space-y-2">
+            <Label htmlFor="name">Organization name</Label>
             <Input
               id="name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="col-span-3"
+              placeholder="Acme Recruiting"
+              autoFocus
             />
-            {error && <div className="col-span-4 text-red-500">{error}</div>}
           </div>
+          {error && (
+            <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+              {error}
+            </div>
+          )}
         </div>
         <DialogFooter>
           <Button
             type="button"
             onClick={handleCreateOrganization}
-            disabled={loading}
+            disabled={loading || !name.trim()}
           >
-            {loading ? "Creating..." : "Create"}
+            {loading ? "Creating..." : "Create organization"}
           </Button>
         </DialogFooter>
       </DialogContent>

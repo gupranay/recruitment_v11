@@ -69,6 +69,145 @@
     }
     body {
       @apply bg-background text-foreground;
+      font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+    }
+  }
+
+  @layer utilities {
+    .font-display {
+      font-family: var(--font-display), ui-serif, Georgia, serif;
+    }
+
+    /* Warm paper + ink aesthetic helpers (marketing sections). */
+    .paper-surface {
+      background-color: #f5f1e8;
+      color: #0b0d0f;
+    }
+
+    .paper-surface-dark {
+      background-color: #070707;
+      color: #f4f4f4;
+    }
+
+    .paper-texture {
+      position: relative;
+      isolation: isolate;
+    }
+
+    .paper-texture::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0.22;
+      mix-blend-mode: multiply;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23n)' opacity='.28'/%3E%3C/svg%3E");
+    }
+
+    .paper-grid::after {
+      content: "";
+      position: absolute;
+      inset: -1px;
+      pointer-events: none;
+      opacity: 0.18;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='72' height='72'%3E%3Cpath d='M72 0H0V72' fill='none' stroke='rgba(10,12,14,0.18)' stroke-width='1'/%3E%3C/svg%3E");
+      mask-image: radial-gradient(circle at 50% 10%, rgba(0,0,0,1) 30%, rgba(0,0,0,0) 70%);
+    }
+
+    .ink-card {
+      background: rgba(255, 255, 255, 0.72);
+      border: 1px solid rgba(10, 12, 14, 0.14);
+      box-shadow: 0 24px 60px rgba(10, 12, 14, 0.08);
+      backdrop-filter: blur(10px);
+    }
+
+    .ink-card-dark {
+      background: rgba(10, 10, 10, 0.72);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
+      backdrop-filter: blur(10px);
+    }
+
+    /* Aura hero/auth background (used on landing hero + auth). */
+    .aura-hero-surface {
+      /* Light mode: soft neutral gradient with emerald accent */
+      background:
+        radial-gradient(circle at top, rgba(16, 185, 129, 0.24), transparent 60%),
+        radial-gradient(circle at bottom, rgba(56, 189, 248, 0.16), transparent 60%),
+        #f7f5f0;
+      color: #0b0d0f;
+    }
+
+    .dark .aura-hero-surface {
+      /* Preserve existing dark hero feel */
+      background-color: #050607;
+      color: #f9fafb;
+    }
+
+    .aura-hero-bg {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      overflow: hidden;
+    }
+
+    .aura-hero-bg::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      opacity: 0.16;
+      background-image:
+        radial-gradient(circle at top, rgba(16, 185, 129, 0.24) 0, transparent 55%),
+        radial-gradient(circle at bottom, rgba(56, 189, 248, 0.16) 0, transparent 60%);
+    }
+
+    .aura-hero-bg::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      opacity: 0.14;
+      background-image:
+        linear-gradient(to right, rgba(15, 23, 42, 0.08) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(15, 23, 42, 0.06) 1px, transparent 1px);
+      background-size: 90px 90px;
+    }
+
+    /* Dark glass panel used for hero side card + auth card. */
+    .glass-panel-dark {
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      background: rgba(15, 17, 19, 0.7);
+      backdrop-filter: blur(18px);
+    }
+
+    /* Shared CTAs for landing + auth. */
+    .cta-primary-dark {
+      @apply inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-semibold;
+      @apply bg-white text-black;
+      @apply transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400;
+    }
+
+    .cta-primary-dark:hover {
+      transform: translateY(-1px) scale(1.03);
+    }
+
+    .cta-secondary-dark {
+      @apply inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-semibold;
+      /* Light mode: black outline, black text */
+      @apply border border-black/20 text-black bg-transparent;
+      @apply transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400;
+    }
+
+    .cta-secondary-dark:hover {
+      transform: translateY(-1px);
+      background-color: rgba(0, 0, 0, 0.04);
+    }
+
+    .dark .cta-secondary-dark {
+      @apply border border-white/30 text-white bg-transparent;
+    }
+
+    .dark .cta-secondary-dark:hover {
+      background-color: rgba(255, 255, 255, 0.04);
     }
   }
 

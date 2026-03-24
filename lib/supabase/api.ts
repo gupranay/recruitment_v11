@@ -2,11 +2,12 @@ import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { serialize } from "cookie";
 import type { Database } from "@/database.types";
+import { getSupabaseUrl, getSupabaseAnonKey } from "./config";
 
 export function supabaseApi(req: NextApiRequest, res: NextApiResponse) {
   return createServerClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    getSupabaseUrl(),
+    getSupabaseAnonKey(),
     {
       cookies: {
         get(name: string) {

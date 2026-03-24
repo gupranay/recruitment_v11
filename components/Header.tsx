@@ -57,7 +57,7 @@ export default function Header({
   userId,
 }: {
   currentOrg: Organization | null;
-  setCurrentOrg: (org: Organization) => void;
+  setCurrentOrg: (org: Organization | null) => void;
   organizations: Organization[];
   setOrganizations: (orgs: Organization[]) => void;
   currentCycle: RecruitmentCycle | null;
@@ -119,6 +119,7 @@ export default function Header({
 
     checkOwner();
   }, [currentOrg, user?.id]);
+
 
   // Separate cycles into active and archived
   const activeCycles = recruitmentCycles.filter(cycle => !cycle.archived);
@@ -246,7 +247,7 @@ export default function Header({
   };
 
   return (
-    <header className="flex h-14 items-center justify-between border-b bg-background px-6">
+    <header className="flex items-center justify-between border-b bg-background px-6 pt-4 pb-6">
       <Link href="#" className="font-semibold">
         Recruitify
       </Link>
@@ -290,7 +291,11 @@ export default function Header({
               setOrganizations={setOrganizations}
               setCurrentOrg={handleOrgSelect}
             />
-            <ManageOrganizationDialog />
+            <ManageOrganizationDialog
+              organizations={organizations}
+              setOrganizations={setOrganizations}
+              setCurrentOrg={setCurrentOrg}
+            />
           </DropdownMenuContent>
         </DropdownMenu>
 

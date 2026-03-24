@@ -1,6 +1,7 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { protectedPaths } from "./lib/constant/inedx";
+import { getSupabaseUrl, getSupabaseAnonKey } from "./lib/supabase/config";
 
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({
@@ -10,8 +11,8 @@ export async function middleware(request: NextRequest) {
   });
 
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    getSupabaseUrl(),
+    getSupabaseAnonKey(),
     {
       cookies: {
         get(name: string) {

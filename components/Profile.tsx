@@ -33,8 +33,7 @@ export default function Profile() {
       {!data?.id ? (
         <Link href="/auth" className="animate-fade">
           <Button
-            variant="outline"
-            className="rounded-xl bg-gradient-to-r from-green-400 to-blue-500 text-lg font-semibold text-[#030303] shadow-lg transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-400 border-0"
+            className="cta-primary-dark text-sm px-5 py-2 h-auto"
           >
             Sign In
           </Button>
@@ -63,11 +62,8 @@ export default function Profile() {
               {data?.full_name ? data?.full_name[0] : ""}
             </AvatarFallback>
           </Avatar> */}
-          <Button
-            asChild
-            className="rounded-xl bg-gradient-to-r from-green-400 to-blue-500 text-lg font-semibold text-[#030303] shadow-lg transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-400 border-0"
-          >
-            <Link href={"/dash"}> Go to Dashboard</Link>
+          <Button asChild className="cta-secondary-dark text-sm px-5 py-2 h-auto">
+            <Link href={"/dash"}>Go to Dashboard</Link>
           </Button>
           <Button
             onClick={handleLogout}

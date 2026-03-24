@@ -21,6 +21,7 @@ type OrganizationContextType = {
   selectedOrganization: Organization | null;
   setSelectedOrganization: (organization: Organization | null) => void;
   organizations: Organization[];
+  setOrganizations: (organizations: Organization[]) => void;
   loading: boolean;
   error: string | null;
 };
@@ -36,6 +37,42 @@ export const OrganizationProvider = ({ children }: { children: ReactNode }) => {
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const applySelectionRules = (
+    nextOrganizations: Organization[],
+    options?: { deletedOrgId?: string }
+  ) => {
+    setOrganizations(nextOrganizations);
+
+    const hasOrgs = nextOrganizations.length > 0;
+
+    // When there are no organizations left, clear selection and localStorage
+    if (!hasOrgs) {
+      setSelectedOrganization(null);
+      if (user?.id) {
+        localStorage.removeItem(`lastUsedOrg_${user.id}`);
+      }
+      return;
+    }
+
+    // If current selection is missing or was just deleted, select the first org
+    const currentId = selectedOrganization?.id;
+    const selectionInvalid =
+      !currentId ||
+      !!options?.deletedOrgId ||
+      !nextOrganizations.find((o) => o.id === currentId);
+
+    if (selectionInvalid) {
+      const firstOrg = nextOrganizations[0];
+      setSelectedOrganization(firstOrg);
+      if (user?.id) {
+        localStorage.setItem(
+          `lastUsedOrg_${user.id}`,
+          JSON.stringify(firstOrg)
+        );
+      }
+    }
+  };
 
   // Fetch organizations when user changes
   useEffect(() => {
@@ -66,18 +103,24 @@ export const OrganizationProvider = ({ children }: { children: ReactNode }) => {
           if (org) {
             setSelectedOrganization(org);
           } else if (fetchedOrganizations.length > 0) {
-            setSelectedOrganization(fetchedOrganizations[0]);
+            const firstOrg = fetchedOrganizations[0];
+            setSelectedOrganization(firstOrg);
             localStorage.setItem(
               `lastUsedOrg_${user.id}`,
-              JSON.stringify(fetchedOrganizations[0])
+              JSON.stringify(firstOrg)
             );
           }
         } else if (fetchedOrganizations.length > 0) {
-          setSelectedOrganization(fetchedOrganizations[0]);
+          const firstOrg = fetchedOrganizations[0];
+          setSelectedOrganization(firstOrg);
           localStorage.setItem(
             `lastUsedOrg_${user.id}`,
-            JSON.stringify(fetchedOrganizations[0])
+            JSON.stringify(firstOrg)
           );
+        } else {
+          // No organizations at all: clear any stale persisted selection
+          localStorage.removeItem(`lastUsedOrg_${user.id}`);
+          setSelectedOrganization(null);
         }
       } catch (error) {
         console.error("Error fetching organizations:", error);
@@ -114,6 +157,8 @@ export const OrganizationProvider = ({ children }: { children: ReactNode }) => {
         selectedOrganization,
         setSelectedOrganization: handleSetSelectedOrganization,
         organizations,
+        setOrganizations: (nextOrgs: Organization[]) =>
+          applySelectionRules(nextOrgs),
         loading,
         error,
       }}

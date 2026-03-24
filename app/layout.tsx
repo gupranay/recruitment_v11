@@ -1,13 +1,24 @@
 // app/layout.tsx
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Fraunces, Spline_Sans } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import QueryProvider from "@/components/query-provider";
 import { Analytics } from "@vercel/analytics/react";
-import NavBar from "@/components/NavBar";
 import { OrganizationProvider } from "@/contexts/OrganizationContext";
 import { RecruitmentCycleProvider } from "@/contexts/RecruitmentCycleContext";
+
+const fontSans = Spline_Sans({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-sans",
+});
+
+const fontDisplay = Fraunces({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-display",
+});
 
 export const metadata: Metadata = {
   title: "Recruitify",
@@ -20,7 +31,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html
+      lang="en"
+      suppressHydrationWarning
+      className={`${fontSans.variable} ${fontDisplay.variable}`}
+    >
       <Analytics />
       <head>
         <link
@@ -35,7 +50,10 @@ export default function RootLayout({
       {/* suppressHydrationWarning is needed for browser extensions (e.g., Grammarly) 
           that inject attributes into the body element. This is the recommended React solution
           for external DOM modifications that we cannot control. */}
-      <body className="min-h-screen m-0 p-0 overflow-x-hidden" suppressHydrationWarning>
+      <body
+        className="min-h-screen m-0 p-0 overflow-x-hidden font-sans antialiased"
+        suppressHydrationWarning
+      >
         <QueryProvider>
           <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
             <OrganizationProvider>

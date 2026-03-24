@@ -56,6 +56,7 @@ import {
   Tooltip,
 } from "recharts";
 import useUser from "@/app/hook/useUser";
+import { ApplicantToolbar } from "@/components/ApplicantToolbar";
 
 // Types
 interface ApplicantWithVote {
@@ -864,76 +865,20 @@ export default function DelibsPage() {
     <div className="flex h-screen flex-col">
       <Toaster />
 
-      {/* Header */}
-      <header className="border-b px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => router.push("/dash")}
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <div>
-              <h1 className="text-xl font-semibold">Delibs: {roundName}</h1>
-              <p className="text-sm text-muted-foreground">
-                Deliberation voting for final round applicants
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-4">
-            {/* Session status */}
-            <Badge
-              variant={
-                session?.status === "locked" ? "destructive" : "secondary"
+      <ApplicantToolbar
+        roundName={roundName}
+        sessionStatus={session?.status ?? null}
+        isOwnerOrAdmin={isOwnerOrAdmin}
+        onToggleLock={
+          isOwnerOrAdmin && session
+            ? () => {
+                setLockAction(session.status === "locked" ? "unlock" : "lock");
+                setLockDialogOpen(true);
               }
-              className="flex items-center gap-1"
-            >
-              {session?.status === "locked" ? (
-                <>
-                  <Lock className="h-3 w-3" />
-                  Locked
-                </>
-              ) : (
-                <>
-                  <Unlock className="h-3 w-3" />
-                  Open
-                </>
-              )}
-            </Badge>
-
-            {/* Lock/Unlock button for Owner/Admin */}
-            {isOwnerOrAdmin && session && (
-              <Button
-                variant={
-                  session.status === "locked" ? "outline" : "destructive"
-                }
-                size="sm"
-                onClick={() => {
-                  setLockAction(
-                    session.status === "locked" ? "unlock" : "lock",
-                  );
-                  setLockDialogOpen(true);
-                }}
-              >
-                {session.status === "locked" ? (
-                  <>
-                    <Unlock className="h-4 w-4 mr-2" />
-                    Unlock Voting
-                  </>
-                ) : (
-                  <>
-                    <Lock className="h-4 w-4 mr-2" />
-                    Lock Voting
-                  </>
-                )}
-              </Button>
-            )}
-          </div>
-        </div>
-      </header>
+            : undefined
+        }
+        isSubmittingLock={isSubmitting}
+      />
 
       {/* Main content */}
       <main className="flex-1 overflow-hidden">

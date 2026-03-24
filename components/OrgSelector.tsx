@@ -16,6 +16,8 @@ import { RecruitmentCycle } from "@/lib/types/RecruitmentCycle";
 import { Skeleton } from "@/components/ui/skeleton";
 import useUser from "@/app/hook/useUser";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { CreateOrganizationDialog } from "@/components/CreateOrganizationDialog";
 
 export function OrgSelector({ user: userProp }: { user: any }) {
   const { data: user } = useUser();
@@ -65,7 +67,18 @@ export function OrgSelector({ user: userProp }: { user: any }) {
   }
 
   if (organizations.length === 0) {
-    return <div>You have no organizations. Please create one.</div>;
+    return (
+      <div className="flex items-center gap-3 text-sm text-muted-foreground">
+        <span>You have no organizations yet.</span>
+        <CreateOrganizationDialog
+          user={actualUser}
+          organizations={[]}
+          setOrganizations={() => {}}
+          setCurrentOrg={() => {}}
+          useMenuItemTrigger={false}
+        />
+      </div>
+    );
   }
 
   return (

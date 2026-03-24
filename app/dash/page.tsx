@@ -33,7 +33,15 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { CreateOrganizationDialog } from "@/components/CreateOrganizationDialog";
+import CreateRecruitmentCycleDialog from "@/components/CreateRecruitmentCycleDialog";
 import LoadingModal from "@/components/LoadingModal2";
 
 interface Applicant {
@@ -355,6 +363,11 @@ export default function Component() {
 
   const [isLoading, setIsLoading] = useState(true);
   const [loadingMessage, setLoadingMessage] = useState("Loading...");
+  const [showNoOrgDialog, setShowNoOrgDialog] = useState(false);
+  const [showCreateOrgDialog, setShowCreateOrgDialog] = useState(false);
+  const [autoOpenCycleDialog, setAutoOpenCycleDialog] = useState(false);
+  const [organizationsLoaded, setOrganizationsLoaded] = useState(false);
+  const [cyclesLoaded, setCyclesLoaded] = useState(false);
 
   const updateLoadingMessage = (message: string) => {
     setLoadingMessage(message);
@@ -415,9 +428,14 @@ export default function Component() {
           if (org) setCurrentOrg(org);
         } else if (data.length > 0) {
           setCurrentOrg(data[0]);
+        } else {
+          // No organizations at all – keep org null; CTA will open after loading completes
+          setCurrentOrg(null);
         }
       } catch (error) {
         console.error((error as Error).message);
+      } finally {
+        setOrganizationsLoaded(true);
       }
       finishLoading();
     };
@@ -430,6 +448,7 @@ export default function Component() {
     if (!currentOrg || !user?.id) {
       setRecruitmentCycles([]);
       setCurrentCycle(null);
+      setCyclesLoaded(false);
       return;
     }
 
@@ -498,12 +517,47 @@ export default function Component() {
         }
       } catch (error) {
         console.error((error as Error).message);
+      } finally {
+        setCyclesLoaded(true);
       }
       finishLoading();
     };
 
     fetchRecruitmentCycles();
   }, [currentOrg, user?.id]);
+
+  // If user has no orgs, open CTA only after org loading completes
+  useEffect(() => {
+    if (isLoading) return;
+    if (!organizationsLoaded) return;
+    if (organizations.length === 0) {
+      setShowNoOrgDialog(true);
+    }
+  }, [isLoading, organizationsLoaded, organizations.length]);
+
+  // Auto-open create recruitment cycle dialog when an org has no cycles
+  useEffect(() => {
+    if (isLoading) return;
+    if (!cyclesLoaded) return;
+    if (!currentOrg || !user) return;
+    const isOwnerOrAdmin =
+      currentOrg.owner_id === user.id ||
+      currentOrg.role === "Owner" ||
+      currentOrg.role === "Admin";
+    if (!isOwnerOrAdmin || recruitmentCycles.length !== 0) {
+      setAutoOpenCycleDialog(false);
+      return;
+    }
+
+    // Add a small buffer so the user can see the dashboard settle
+    const timeoutId = window.setTimeout(() => {
+      setAutoOpenCycleDialog(true);
+    }, 600);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [currentOrg, user, recruitmentCycles.length]);
 
   // Fetch Recruitment Rounds
   useEffect(() => {
@@ -628,50 +682,103 @@ export default function Component() {
   }
 
   return (
-    <div className="flex h-screen flex-col">
-      <Toaster />
-      <Header
-        currentOrg={currentOrg}
-        setCurrentOrg={setCurrentOrg}
-        organizations={organizations}
-        setOrganizations={setOrganizations}
-        currentCycle={currentCycle}
-        setCurrentCycle={setCurrentCycle}
-        recruitmentCycles={recruitmentCycles}
-        setRecruitmentCycles={setRecruitmentCycles}
-        userId={user?.id ?? ""}
-      />
-      <div className="flex flex-1">
-        {currentCycle ? (
-          <Sidebar
-            rounds={recruitmentRounds}
-            setRecruitmentRounds={setRecruitmentRounds}
-            currentRound={currentRound}
-            setCurrentRound={setCurrentRound}
-            currentRecruitmentCycle={currentCycle}
-            onDeleteRound={handleDeleteRound}
-            currentOrg={currentOrg}
-            user={user}
+    <>
+      <div className="flex h-screen flex-col">
+        <Toaster />
+        <Header
+          currentOrg={currentOrg}
+          setCurrentOrg={setCurrentOrg}
+          organizations={organizations}
+          setOrganizations={setOrganizations}
+          currentCycle={currentCycle}
+          setCurrentCycle={setCurrentCycle}
+          recruitmentCycles={recruitmentCycles}
+          setRecruitmentCycles={setRecruitmentCycles}
+          userId={user?.id ?? ""}
+        />
+        {/* Auto-create recruitment cycle dialog when needed */}
+        {currentOrg && (
+          <CreateRecruitmentCycleDialog
+            selectedOrganization={currentOrg}
+            recruitmentCycles={recruitmentCycles}
+            setRecruitmentCycles={setRecruitmentCycles}
+            setCurrentCycle={(cycle) => setCurrentCycle(cycle)}
+            forceOpen={autoOpenCycleDialog}
+            onForceOpenChange={setAutoOpenCycleDialog}
           />
-        ) : (
-          <div className="w-64 border-r p-4 text-muted-foreground">
-            No recruitment cycles available.
-          </div>
         )}
-        <main className="flex-1">
-          <div className="p-6">
-            <ApplicantGrid
+        <div className="flex flex-1">
+          {currentCycle ? (
+            <Sidebar
               rounds={recruitmentRounds}
+              setRecruitmentRounds={setRecruitmentRounds}
               currentRound={currentRound}
-              onMoveToNextRound={(id) => Promise.resolve()}
-              onReject={(id) => Promise.resolve()}
-              isLastRound={currentRound === recruitmentRounds.length - 1}
-              currentCycle={currentCycle}
+              setCurrentRound={setCurrentRound}
+              currentRecruitmentCycle={currentCycle}
+              onDeleteRound={handleDeleteRound}
               currentOrg={currentOrg}
+              user={user}
             />
-          </div>
-        </main>
+          ) : (
+            <div className="w-64 border-r p-4 text-muted-foreground">
+              No recruitment cycles available.
+            </div>
+          )}
+          <main className="flex-1">
+            <div className="p-6">
+              <ApplicantGrid
+                rounds={recruitmentRounds}
+                currentRound={currentRound}
+                onMoveToNextRound={(id) => Promise.resolve()}
+                onReject={(id) => Promise.resolve()}
+                isLastRound={currentRound === recruitmentRounds.length - 1}
+                currentCycle={currentCycle}
+                currentOrg={currentOrg}
+              />
+            </div>
+          </main>
+        </div>
       </div>
-    </div>
+
+      {/* Onboarding CTA when user has no organizations */}
+      {user && (
+        <Dialog open={showNoOrgDialog} onOpenChange={setShowNoOrgDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Get started with an organization</DialogTitle>
+              <DialogDescription>
+                You don&apos;t have any organizations yet. Create one to start
+                managing recruitment, or ask an existing owner to invite you to
+                their organization.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="mt-4 flex justify-end">
+              <Button
+                type="button"
+                onClick={() => {
+                  setShowNoOrgDialog(false);
+                  setShowCreateOrgDialog(true);
+                }}
+              >
+                Create Organization
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Dedicated create-organization dialog opened from CTA */}
+      {user && (
+        <CreateOrganizationDialog
+          user={user}
+          organizations={organizations}
+          setOrganizations={setOrganizations}
+          setCurrentOrg={setCurrentOrg}
+          useMenuItemTrigger={false}
+          forceOpen={showCreateOrgDialog}
+          onForceOpenChange={setShowCreateOrgDialog}
+        />
+      )}
+    </>
   );
 }

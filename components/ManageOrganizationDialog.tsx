@@ -36,6 +36,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { CreateOrganizationDialog } from "./CreateOrganizationDialog";
 
 type Member = {
   id: string;
@@ -212,9 +213,22 @@ function AddMemberForm({ onClose }: { onClose: () => void }) {
   );
 }
 
-export function ManageOrganizationDialog() {
+export function ManageOrganizationDialog({
+  organizations: headerOrganizations,
+  setOrganizations: setHeaderOrganizations,
+  setCurrentOrg,
+}: {
+  organizations: Organization[];
+  setOrganizations: (orgs: Organization[]) => void;
+  setCurrentOrg: (org: Organization | null) => void;
+}) {
   const { data: user } = useUser();
-  const { selectedOrganization } = useOrganization();
+  const {
+    selectedOrganization,
+    organizations,
+    setOrganizations,
+    setSelectedOrganization,
+  } = useOrganization();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [removingMemberId, setRemovingMemberId] = useState<string | null>(null);
@@ -375,10 +389,33 @@ export function ManageOrganizationDialog() {
         throw new Error(error.error || "Failed to delete organization");
       }
 
+      const deletedId = selectedOrganization.id;
+
+      // Update organization list in context and let context handle selection rules
+      const updatedContextOrgs = organizations.filter(
+        (org) => org.id !== deletedId
+      );
+      setOrganizations(updatedContextOrgs);
+
+      // Also update the header/local organizations list so dropdown is in sync
+      const updatedHeaderOrgs = headerOrganizations.filter(
+        (org) => org.id !== selectedOrganization.id
+      );
+      setHeaderOrganizations(updatedHeaderOrgs);
+
+      // Align currentOrg with the new selection or clear it when empty
+      if (updatedHeaderOrgs.length === 0) {
+        setCurrentOrg(null);
+        // Reload the page so the dashboard detects the no-org state
+        // and shows the onboarding CTA popup.
+        window.location.reload();
+      } else if (deletedId === selectedOrganization.id) {
+        // Context selection rules will move to first org; mirror that here
+        setCurrentOrg(updatedHeaderOrgs[0]);
+      }
+
       toast.success("Organization deleted successfully");
       setOpen(false);
-      // Refresh the page to update the organization list
-      window.location.reload();
     } catch (error: any) {
       toast.error(error.message || "Failed to delete organization");
     } finally {
@@ -474,14 +511,35 @@ export function ManageOrganizationDialog() {
         <DialogHeader className="flex-shrink-0">
           <DialogTitle>Manage Organization</DialogTitle>
           <DialogDescription>
-            Manage your organization settings, members, and more.
+            {selectedOrganization
+              ? "Manage your organization settings, members, and more."
+              : "You’re not part of any organizations yet."}
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs
-          defaultValue="details"
-          className="flex-1 flex flex-col overflow-hidden"
-        >
+        {!selectedOrganization ? (
+          <div className="flex-1 flex flex-col items-start justify-center gap-4 px-6">
+            <p className="text-sm text-muted-foreground">
+              Create a new organization to get started, or ask an existing owner
+              to invite you to theirs.
+            </p>
+            <CreateOrganizationDialog
+              user={user}
+              organizations={headerOrganizations}
+              setOrganizations={setHeaderOrganizations}
+              setCurrentOrg={(org) => {
+                setCurrentOrg(org);
+                if (org) {
+                  setSelectedOrganization(org);
+                }
+              }}
+            />
+          </div>
+        ) : (
+          <Tabs
+            defaultValue="details"
+            className="flex-1 flex flex-col overflow-hidden"
+          >
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="details" className="flex items-center gap-2">
               <Info className="h-4 w-4" />
@@ -731,6 +789,7 @@ export function ManageOrganizationDialog() {
             </div>
           </TabsContent>
         </Tabs>
+        )}
       </DialogContent>
 
       <AlertDialog open={showOwnerConfirm} onOpenChange={setShowOwnerConfirm}>
