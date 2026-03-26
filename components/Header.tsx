@@ -17,7 +17,14 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-import { ChevronDown, Settings, Archive, ArchiveRestore, Check, Trash2 } from "lucide-react";
+import {
+  ChevronDown,
+  Settings,
+  Archive,
+  ArchiveRestore,
+  Check,
+  Trash2,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -44,6 +51,22 @@ import {
 } from "@/components/ui/alert-dialog";
 import CreateRecruitmentCycleDialog from "./CreateRecruitmentCycleDialog";
 import LogOutButton from "./LogOut";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+
+function profileInitials(
+  fullName: string | null | undefined,
+  email: string | undefined,
+) {
+  if (fullName?.trim()) {
+    const parts = fullName.trim().split(/\s+/);
+    if (parts.length >= 2) {
+      return `${parts[0]![0] ?? ""}${parts[parts.length - 1]![0] ?? ""}`.toUpperCase();
+    }
+    return parts[0].slice(0, 2).toUpperCase();
+  }
+  if (email) return email.slice(0, 2).toUpperCase();
+  return "?";
+}
 
 export default function Header({
   currentOrg,
@@ -73,17 +96,19 @@ export default function Header({
     cycle: RecruitmentCycle | null;
     archive: boolean;
   }>({ cycle: null, archive: false });
-  const [confirmDelete, setConfirmDelete] = useState<RecruitmentCycle | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<RecruitmentCycle | null>(
+    null,
+  );
   const [deleteConfirmationText, setDeleteConfirmationText] = useState("");
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
   const [isOwner, setIsOwner] = useState(false);
 
   // Check if user is Owner or Admin
-  const isOwnerOrAdmin = currentOrg && (
-    currentOrg.owner_id === user?.id || 
-    currentOrg.role === "Owner" || 
-    currentOrg.role === "Admin"
-  );
+  const isOwnerOrAdmin =
+    currentOrg &&
+    (currentOrg.owner_id === user?.id ||
+      currentOrg.role === "Owner" ||
+      currentOrg.role === "Admin");
 
   // Check if user is Owner using API (more reliable)
   useEffect(() => {
@@ -120,10 +145,9 @@ export default function Header({
     checkOwner();
   }, [currentOrg, user?.id]);
 
-
   // Separate cycles into active and archived
-  const activeCycles = recruitmentCycles.filter(cycle => !cycle.archived);
-  const archivedCycles = recruitmentCycles.filter(cycle => cycle.archived);
+  const activeCycles = recruitmentCycles.filter((cycle) => !cycle.archived);
+  const archivedCycles = recruitmentCycles.filter((cycle) => cycle.archived);
 
   const handleOrgSelect = (org: Organization) => {
     setCurrentOrg(org);
@@ -143,7 +167,7 @@ export default function Header({
 
     setIsArchiving(cycle.id);
     setConfirmArchive({ cycle: null, archive: false });
-    
+
     try {
       const response = await fetch("/api/recruitment_cycles/archive", {
         method: "POST",
@@ -164,10 +188,10 @@ export default function Header({
       }
 
       const updatedCycle = await response.json();
-      
+
       // Update the cycles list
-      const updatedCycles = recruitmentCycles.map(c => 
-        c.id === cycle.id ? updatedCycle : c
+      const updatedCycles = recruitmentCycles.map((c) =>
+        c.id === cycle.id ? updatedCycle : c,
       );
       setRecruitmentCycles(updatedCycles);
 
@@ -177,8 +201,12 @@ export default function Header({
         setCurrentCycle(updatedCycle);
       }
       // If unarchiving, user can manually select it
-      
-      toast.success(archive ? "Cycle archived successfully" : "Cycle unarchived successfully");
+
+      toast.success(
+        archive
+          ? "Cycle archived successfully"
+          : "Cycle unarchived successfully",
+      );
     } catch (error: any) {
       console.error("Error archiving cycle:", error);
       toast.error(error.message || "Failed to update cycle");
@@ -203,7 +231,7 @@ export default function Header({
     }
 
     setIsDeleting(cycle.id);
-    
+
     try {
       const response = await fetch("/api/recruitment_cycles/delete", {
         method: "POST",
@@ -223,7 +251,7 @@ export default function Header({
       }
 
       // Remove the cycle from the list
-      const updatedCycles = recruitmentCycles.filter(c => c.id !== cycle.id);
+      const updatedCycles = recruitmentCycles.filter((c) => c.id !== cycle.id);
       setRecruitmentCycles(updatedCycles);
 
       // If the deleted cycle was the current cycle, set to null or first available
@@ -255,12 +283,10 @@ export default function Header({
         {/* Organization Dropdown */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button 
-              variant={currentOrg ? "default" : "outline"} 
+            <Button
+              variant={currentOrg ? "default" : "outline"}
               size="sm"
-              className={cn(
-                currentOrg && "bg-primary text-primary-foreground"
-              )}
+              className={cn(currentOrg && "bg-primary text-primary-foreground")}
             >
               {currentOrg ? currentOrg.name : "Select Organization"}
               <ChevronDown className="ml-2 h-4 w-4" />
@@ -275,7 +301,7 @@ export default function Header({
                 onSelect={() => handleOrgSelect(org)}
                 className={cn(
                   "relative pl-8",
-                  currentOrg?.id === org.id && "bg-accent font-semibold"
+                  currentOrg?.id === org.id && "bg-accent font-semibold",
                 )}
               >
                 {currentOrg?.id === org.id && (
@@ -302,12 +328,12 @@ export default function Header({
         {/* Recruitment Cycle Dropdown */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button 
-              variant={currentCycle ? "default" : "outline"} 
-              size="sm" 
+            <Button
+              variant={currentCycle ? "default" : "outline"}
+              size="sm"
               disabled={!currentOrg}
               className={cn(
-                currentCycle && "bg-primary text-primary-foreground"
+                currentCycle && "bg-primary text-primary-foreground",
               )}
             >
               {currentOrg
@@ -340,13 +366,14 @@ export default function Header({
                       if (currentOrg && userId) {
                         localStorage.setItem(
                           `lastUsedCycle_${userId}_${currentOrg.id}`,
-                          JSON.stringify({ id: cycle.id, name: cycle.name })
+                          JSON.stringify({ id: cycle.id, name: cycle.name }),
                         );
                       }
                     }}
                     className={cn(
                       "flex items-center justify-between group relative pl-8",
-                      currentCycle?.id === cycle.id && "bg-accent font-semibold"
+                      currentCycle?.id === cycle.id &&
+                        "bg-accent font-semibold",
                     )}
                   >
                     {currentCycle?.id === cycle.id && (
@@ -393,13 +420,14 @@ export default function Header({
                       if (currentOrg && userId) {
                         localStorage.setItem(
                           `lastUsedCycle_${userId}_${currentOrg.id}`,
-                          JSON.stringify({ id: cycle.id, name: cycle.name })
+                          JSON.stringify({ id: cycle.id, name: cycle.name }),
                         );
                       }
                     }}
                     className={cn(
                       "text-muted-foreground italic flex items-center justify-between group relative pl-8",
-                      currentCycle?.id === cycle.id && "bg-accent font-semibold not-italic"
+                      currentCycle?.id === cycle.id &&
+                        "bg-accent font-semibold not-italic",
                     )}
                   >
                     {currentCycle?.id === cycle.id && (
@@ -453,29 +481,59 @@ export default function Header({
                     Manage Recruitment Cycle
                   </DropdownMenuItem>
                 </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Manage Recruitment Cycle</DialogTitle>
-                  <DialogDescription>
-                    Edit the details of your recruitment cycle.
-                  </DialogDescription>
-                </DialogHeader>
-                <form onSubmit={(e) => e.preventDefault()}>
-                  <div className="grid gap-4 py-4">
-                    <div className="grid gap-2">
-                      <Label htmlFor="cycleName">Cycle Name</Label>
-                      <Input id="cycleName" defaultValue={currentCycle?.name} />
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Manage Recruitment Cycle</DialogTitle>
+                    <DialogDescription>
+                      Edit the details of your recruitment cycle.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <form onSubmit={(e) => e.preventDefault()}>
+                    <div className="grid gap-4 py-4">
+                      <div className="grid gap-2">
+                        <Label htmlFor="cycleName">Cycle Name</Label>
+                        <Input
+                          id="cycleName"
+                          defaultValue={currentCycle?.name}
+                        />
+                      </div>
                     </div>
-                  </div>
-                  <DialogFooter>
-                    <Button type="submit">Save Changes</Button>
-                  </DialogFooter>
-                </form>
-              </DialogContent>
-            </Dialog>
+                    <DialogFooter>
+                      <Button type="submit">Save Changes</Button>
+                    </DialogFooter>
+                  </form>
+                </DialogContent>
+              </Dialog>
             )}
           </DropdownMenuContent>
         </DropdownMenu>
+
+        {/* Profile (dashboard) */}
+        {user?.id ? (
+          <Button
+            variant="ghost"
+            size="icon"
+            asChild
+            className="rounded-full shrink-0"
+          >
+            <Link href="/profile" aria-label="Open profile">
+              <Avatar className="h-9 w-9 ring-2 ring-border">
+                <AvatarImage
+                  src={
+                    typeof user.avatar_url === "string" &&
+                    user.avatar_url.trim()
+                      ? user.avatar_url.trim()
+                      : undefined
+                  }
+                  alt={user.full_name?.trim() || user.email || "Profile"}
+                />
+                <AvatarFallback className="text-xs font-semibold">
+                  {profileInitials(user.full_name, user.email)}
+                </AvatarFallback>
+              </Avatar>
+            </Link>
+          </Button>
+        ) : null}
 
         {/* Logout Button */}
         <LogOutButton />
@@ -493,20 +551,25 @@ export default function Header({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {confirmArchive.archive ? "Archive Recruitment Cycle?" : "Unarchive Recruitment Cycle?"}
+              {confirmArchive.archive
+                ? "Archive Recruitment Cycle?"
+                : "Unarchive Recruitment Cycle?"}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {confirmArchive.archive ? (
                 <>
-                  Are you sure you want to archive <strong>{confirmArchive.cycle?.name}</strong>?
+                  Are you sure you want to archive{" "}
+                  <strong>{confirmArchive.cycle?.name}</strong>?
                   <br />
                   <br />
-                  Archived cycles will be hidden from members but remain accessible to owners and admins.
-                  You can unarchive this cycle at any time.
+                  Archived cycles will be hidden from members but remain
+                  accessible to owners and admins. You can unarchive this cycle
+                  at any time.
                 </>
               ) : (
                 <>
-                  Are you sure you want to unarchive <strong>{confirmArchive.cycle?.name}</strong>?
+                  Are you sure you want to unarchive{" "}
+                  <strong>{confirmArchive.cycle?.name}</strong>?
                   <br />
                   <br />
                   This will make the cycle visible to all members again.
@@ -519,15 +582,17 @@ export default function Header({
             <AlertDialogAction
               onClick={handleArchiveConfirm}
               disabled={isArchiving === confirmArchive.cycle?.id}
-              className={confirmArchive.archive ? "bg-destructive hover:bg-destructive/90" : ""}
+              className={
+                confirmArchive.archive
+                  ? "bg-destructive hover:bg-destructive/90"
+                  : ""
+              }
             >
-              {isArchiving === confirmArchive.cycle?.id ? (
-                "Processing..."
-              ) : confirmArchive.archive ? (
-                "Archive"
-              ) : (
-                "Unarchive"
-              )}
+              {isArchiving === confirmArchive.cycle?.id
+                ? "Processing..."
+                : confirmArchive.archive
+                  ? "Archive"
+                  : "Unarchive"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -547,10 +612,12 @@ export default function Header({
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Recruitment Cycle?</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete <strong>{confirmDelete?.name}</strong>?
+              Are you sure you want to delete{" "}
+              <strong>{confirmDelete?.name}</strong>?
               <br />
               <br />
-              This action cannot be undone. The cycle and all its data will be permanently deleted.
+              This action cannot be undone. The cycle and all its data will be
+              permanently deleted.
               <br />
               <br />
               <strong>Type the cycle name to confirm:</strong>
@@ -568,7 +635,10 @@ export default function Header({
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDeleteConfirm}
-              disabled={isDeleting === confirmDelete?.id || deleteConfirmationText !== confirmDelete?.name}
+              disabled={
+                isDeleting === confirmDelete?.id ||
+                deleteConfirmationText !== confirmDelete?.name
+              }
               className="bg-destructive hover:bg-destructive/90"
             >
               {isDeleting === confirmDelete?.id ? "Deleting..." : "Delete"}

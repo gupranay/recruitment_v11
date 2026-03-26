@@ -18,13 +18,62 @@ export default async function handler(
   } = await supabase.auth.getUser();
 
   if (authError || !user) {
+    console.warn("Unauthorized request to /api/organizations/create");
     return res.status(401).json({ error: "Unauthorized" });
   }
 
-  const { name } = req.body;
+  const body = req.body as unknown;
+  const forbiddenIdentityKeys = [
+    "user",
+    "id",
+    "user_id",
+    "owner_id",
+    "ownerId",
+    "userId",
+    "email",
+    "uid",
+  ] as const;
 
-  if (!name || typeof name !== "string" || name.trim().length === 0) {
-    return res.status(400).json({ error: "Organization name is required" });
+  const hasForbiddenIdentity = (value: unknown) => {
+    if (!value || typeof value !== "object") return false;
+    const obj = value as Record<string, unknown>;
+    const topLevelForbidden = forbiddenIdentityKeys.some((k) =>
+      Object.prototype.hasOwnProperty.call(obj, k)
+    );
+
+    const nestedUser =
+      Object.prototype.hasOwnProperty.call(obj, "user") && typeof obj.user === "object"
+        ? (obj.user as Record<string, unknown>)
+        : null;
+    const nestedForbidden = nestedUser
+      ? forbiddenIdentityKeys.some((k) => Object.prototype.hasOwnProperty.call(nestedUser, k))
+      : false;
+    return topLevelForbidden || nestedForbidden;
+  };
+
+  if (body === null || body === undefined || typeof body !== "object") {
+    return res.status(400).json({ error: "Invalid request payload" });
+  }
+
+  if (hasForbiddenIdentity(body)) {
+    console.warn("Rejected forged identity payload on /api/organizations/create");
+    return res.status(400).json({ error: "Invalid request payload" });
+  }
+
+  const rawName = (body as Record<string, unknown>)?.name;
+  const name = typeof rawName === "string" ? rawName.trim() : "";
+
+  // Collapse repeated whitespace to keep names consistent.
+  const normalizedName = name.replace(/\s+/g, " ");
+
+  if (
+    !normalizedName ||
+    normalizedName.length === 0 ||
+    normalizedName.length > 80
+  ) {
+    return res
+      .status(400)
+      .json({ error: "Organization name must be between 1 and 80 characters" });
   }
 
   try {
@@ -32,7 +81,7 @@ export default async function handler(
     const checkResult = await supabase
       .from("organizations")
       .select("id")
-      .eq("name", name.trim())
+      .eq("name", normalizedName)
       .single();
     
     const { data: existingOrg, error: checkError } = checkResult as {
@@ -53,7 +102,7 @@ export default async function handler(
 
     // Create the organization - SECURITY: Use authenticated user.id, not from request
     const insertData: Database["public"]["Tables"]["organizations"]["Insert"] = {
-      name: name.trim(),
+      name: normalizedName,
       owner_id: user.id,
     };
     const orgResult = await (supabase
@@ -98,6 +147,6 @@ export default async function handler(
     res.status(201).json(organization);
   } catch (error: any) {
     console.error("Error creating organization:", error);
-    res.status(400).json({ error: error.message });
+    res.status(500).json({ error: "Internal Server Error" });
   }
 }

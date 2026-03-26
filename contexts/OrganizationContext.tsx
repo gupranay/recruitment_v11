@@ -82,10 +82,6 @@ export const OrganizationProvider = ({ children }: { children: ReactNode }) => {
       try {
         const response = await fetch("/api/organizations", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(user),
         });
 
         if (!response.ok) {

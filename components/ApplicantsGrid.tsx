@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useRef, useState, useCallback, useEffect, useMemo } from "react";
 import ApplicantCard from "./ApplicantCard";
 import ApplicantListItem from "./ApplicantListItem";
 import LoadingModal from "@/components/LoadingModal2";
@@ -7,10 +7,12 @@ import { Button } from "./ui/button";
 import { Separator } from "./ui/separator";
 import { Switch } from "./ui/switch";
 import { MultiSelect } from "./ui/MultiSelect";
+import { Input } from "./ui/input";
 import UploadApplicantsDialog3 from "./UploadApplicantsDialog3";
 import CreateAnonymizedAppDialog from "./CreateAnonymizedAppDialog";
 import ApplicationDialog from "./ApplicationDialog";
 import { exportToCSV } from "@/lib/utils/exportAppsToCSV";
+import { cn } from "@/lib/utils";
 import { RecruitmentRound } from "@/lib/types/RecruitmentRound";
 import React from "react";
 import {
@@ -22,6 +24,7 @@ import {
 import { RecruitmentCycle } from "@/lib/types/RecruitmentCycle";
 import useUser from "@/app/hook/useUser";
 import { Organization } from "@/contexts/OrganizationContext";
+import { Search, X } from "lucide-react";
 
 type SortOption =
   | "current_weighted_asc"
@@ -50,6 +53,8 @@ export default function ApplicantGrid({
   currentOrg,
 }: ApplicantGridProps) {
   const { data: user } = useUser();
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
+  const searchButtonRef = useRef<HTMLButtonElement | null>(null);
   
   // Check if user is Owner or Admin (not Member)
   const isOwnerOrAdmin = currentOrg && user ? (
@@ -66,6 +71,8 @@ export default function ApplicantGrid({
   const [sortOption, setSortOption] = useState<SortOption>("status");
   const [selectedRoundId, setSelectedRoundId] = useState<string | null>(null);
   const [selectedDecisions, setSelectedDecisions] = useState<string[]>([]);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const fetchApplicants = useCallback(async () => {
     if (!rounds[currentRound]?.id) {
@@ -106,6 +113,16 @@ export default function ApplicantGrid({
     fetchApplicants();
   }, [fetchApplicants]);
 
+  useEffect(() => {
+    if (!isSearchOpen) return;
+    // Defer focus until after the input has mounted/animated in
+    const id = window.setTimeout(() => {
+      searchInputRef.current?.focus();
+      searchInputRef.current?.select();
+    }, 0);
+    return () => window.clearTimeout(id);
+  }, [isSearchOpen]);
+
   // Effect to open demographics when the selected round changes
   useEffect(() => {
     if (selectedRoundId) {
@@ -129,6 +146,14 @@ export default function ApplicantGrid({
       filteredApplicants = applicants.filter((applicant) =>
         selectedDecisions.includes(applicant.status)
       );
+    }
+
+    const q = searchQuery.trim().toLowerCase();
+    if (q) {
+      filteredApplicants = filteredApplicants.filter((applicant) => {
+        const name = (applicant.name ?? "").toString().toLowerCase();
+        return name.includes(q);
+      });
     }
 
     // Then sort the filtered results
@@ -164,7 +189,7 @@ export default function ApplicantGrid({
         ? (a[key] ?? -Infinity) - (b[key] ?? -Infinity)
         : (b[key] ?? -Infinity) - (a[key] ?? -Infinity);
     });
-  }, [applicants, sortOption, selectedDecisions]);
+  }, [applicants, sortOption, selectedDecisions, searchQuery]);
 
   const handleOpenDialog = (applicant: ApplicantCardType) => {
     setSelectedApplicant(applicant);
@@ -289,6 +314,62 @@ export default function ApplicantGrid({
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
+            {/* Search (expands into input) */}
+            <div className="flex items-center gap-2">
+              <div
+                className={cn(
+                  "overflow-hidden transition-[width,opacity] duration-200 ease-out",
+                  isSearchOpen ? "w-64 opacity-100" : "w-0 opacity-0"
+                )}
+                aria-hidden={!isSearchOpen}
+              >
+                <div className="relative">
+                  <Search className="pointer-events-none absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    ref={searchInputRef}
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search names…"
+                    className="h-9 pl-8 pr-8 text-sm"
+                    onKeyDown={(e) => {
+                      if (e.key === "Escape") {
+                        e.preventDefault();
+                        setSearchQuery("");
+                        setIsSearchOpen(false);
+                        searchButtonRef.current?.focus();
+                      }
+                    }}
+                  />
+                  {searchQuery.trim().length > 0 && (
+                    <button
+                      type="button"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 rounded-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      onClick={() => setSearchQuery("")}
+                    >
+                      <X className="h-4 w-4" />
+                      <span className="sr-only">Clear search</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+              <Button
+                ref={searchButtonRef}
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setIsSearchOpen((v) => {
+                    const next = !v;
+                    if (!next) setSearchQuery("");
+                    return next;
+                  });
+                }}
+                className={cn(isSearchOpen && "bg-accent")}
+              >
+                <Search className="mr-2 h-4 w-4" />
+                Search
+              </Button>
+            </div>
+
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm">

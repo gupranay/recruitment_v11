@@ -1,6 +1,9 @@
 "use client";
 import { supabaseBrowser } from "@/lib/supabase/browser";
 import { useQuery } from "@tanstack/react-query";
+import type { Database } from "@/database.types";
+
+type UserRow = Database["public"]["Tables"]["users"]["Row"];
 
 const initUser = {
   avatar_url: "",
@@ -36,7 +39,25 @@ export default function useUser() {
           return initUser;
         }
 
-        return user;
+        const row = user as UserRow;
+        const meta = authUser.user_metadata as
+          | { avatar_url?: string; picture?: string }
+          | undefined;
+        const fromMetadata =
+          typeof meta?.avatar_url === "string" && meta.avatar_url.trim()
+            ? meta.avatar_url.trim()
+            : typeof meta?.picture === "string" && meta.picture.trim()
+              ? meta.picture.trim()
+              : "";
+        const fromDb =
+          typeof row.avatar_url === "string" && row.avatar_url.trim()
+            ? row.avatar_url.trim()
+            : "";
+
+        return {
+          ...row,
+          avatar_url: fromDb || fromMetadata || "",
+        };
       }
       return initUser;
     },
