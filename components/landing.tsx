@@ -275,7 +275,7 @@ function LandingAnimatedSections() {
     <>
       {/* Hero Section */}
       <HeroGeometric
-        badge="Recruitment Platform"
+        badge=""
         title1="Run Better Recruitment"
         title2="For Your Organization"
       />
