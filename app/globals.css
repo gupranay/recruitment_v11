@@ -211,6 +211,13 @@
     }
   }
 
+  :root.theme-switching,
+  :root.theme-switching * {
+    transition-property: color, background-color, border-color, fill, stroke, box-shadow;
+    transition-duration: 380ms;
+    transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
   /* Rich text content styling for comments */
   .rich-text-content {
     line-height: 1.6;

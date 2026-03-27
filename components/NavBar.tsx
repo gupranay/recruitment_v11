@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import Profile from "./Profile";
 import Link from "next/link";
+import ThemeSelector from "./ThemeSelector";
 
 export default function NavBar() {
   const [showBrand, setShowBrand] = useState(false);
@@ -54,7 +55,8 @@ export default function NavBar() {
           </span>
         </Link>
       </div>
-      <div className="flex items-center">
+      <div className="flex items-center gap-3">
+        <ThemeSelector className="scale-95 origin-right" />
         <Profile />
       </div>
     </div>

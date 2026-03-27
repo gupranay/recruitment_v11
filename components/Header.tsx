@@ -52,6 +52,7 @@ import {
 import CreateRecruitmentCycleDialog from "./CreateRecruitmentCycleDialog";
 import LogOutButton from "./LogOut";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import ThemeSelector from "./ThemeSelector";
 
 function profileInitials(
   fullName: string | null | undefined,
@@ -280,6 +281,8 @@ export default function Header({
         Recruitify
       </Link>
       <div className="flex items-center gap-4">
+        <ThemeSelector />
+
         {/* Organization Dropdown */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
