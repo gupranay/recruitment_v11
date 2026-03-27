@@ -228,15 +228,59 @@ export default function ApplicantGrid({
               {/* Primary action */}
               <Button
                 onClick={() => {
-                  const encodedRoundId = encodeURIComponent(
-                    rounds[currentRound].id
-                  );
+                  const encodedRoundId = encodeURIComponent(rounds[currentRound].id);
                   window.open(`/feedback/?id=${encodedRoundId}`, "_blank");
                 }}
                 className="bg-emerald-500 text-white hover:bg-emerald-600"
               >
                 Launch feedback
               </Button>
+
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    disabled={!currentCycle?.id}
+                  >
+                    Launch forms
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  <DropdownMenuItem
+                    onClick={() => {
+                      if (!currentCycle?.id) return;
+                      window.open(
+                        `/forms/conflict?cycle_id=${encodeURIComponent(currentCycle.id)}`,
+                        "_blank",
+                      );
+                    }}
+                  >
+                    Conflict of Interest Form
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => {
+                      if (!currentCycle?.id) return;
+                      window.open(
+                        `/forms/referral?cycle_id=${encodeURIComponent(currentCycle.id)}`,
+                        "_blank",
+                      );
+                    }}
+                  >
+                    Referral Form
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => {
+                      if (!currentCycle?.id) return;
+                      window.open(
+                        `/forms/red-flag?cycle_id=${encodeURIComponent(currentCycle.id)}`,
+                        "_blank",
+                      );
+                    }}
+                  >
+                    Red Flag Form
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
 
               {/* Sub-primary: anonymized reading */}
               <CreateAnonymizedAppDialog

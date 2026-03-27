@@ -19,5 +19,6 @@ export const protectedPaths = [
   "/cc",
   "/app/cc",
   "/feedback",
+  "/forms",
 ];
 export const authPaths = ["/register", "/signin", "/auth"];

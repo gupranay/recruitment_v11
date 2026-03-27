@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import Image from "next/image";
+import DOMPurify from "dompurify";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import toast from "react-hot-toast";
@@ -116,6 +117,26 @@ interface Submission {
 interface EditingScore {
   score_id: string;
   score_value: number;
+}
+
+interface ExternalSubmitter {
+  id: string | null;
+  full_name: string | null;
+  email: string | null;
+  avatar_url: string | null;
+}
+
+interface ExternalFormEntry {
+  id: string;
+  created_at: string;
+  submission_text: string;
+  submitter: ExternalSubmitter | null;
+}
+
+interface ExternalRedFlagEntry extends ExternalFormEntry {
+  is_anonymous_to_owner: boolean;
+  wants_board_follow_up: boolean;
+  follow_up_contact: string | null;
 }
 
 // Helper functions for smart field type detection
@@ -316,6 +337,10 @@ export default function ApplicationDialog({
   const [isEditingComment, setIsEditingComment] = useState(false);
   const [editingScore, setEditingScore] = useState<EditingScore | null>(null);
   const [deletingSubmissionId, setDeletingSubmissionId] = useState<string | null>(null);
+  const [externalConflictForms, setExternalConflictForms] = useState<ExternalFormEntry[]>([]);
+  const [externalReferralForms, setExternalReferralForms] = useState<ExternalFormEntry[]>([]);
+  const [externalRedFlagForms, setExternalRedFlagForms] = useState<ExternalRedFlagEntry[]>([]);
+  const [externalDataLoading, setExternalDataLoading] = useState(false);
   const [showDeleteApplicantDialog, setShowDeleteApplicantDialog] =
     useState(false);
   const [isDeletingApplicant, setIsDeletingApplicant] = useState(false);
@@ -370,6 +395,10 @@ export default function ApplicationDialog({
   const isOwnerOrAdmin = selectedOrganization && (
     selectedOrganization.role === "Owner" ||
     selectedOrganization.role === "Admin"
+  );
+  const isOwner = selectedOrganization && (
+    selectedOrganization.role === "Owner" ||
+    selectedOrganization.owner_id === userId
   );
 
   useEffect(() => {
@@ -446,12 +475,53 @@ export default function ApplicationDialog({
       }
     };
 
+    const fetchExternalData = async () => {
+      if (!isOwner || !applicantId) {
+        setExternalConflictForms([]);
+        setExternalReferralForms([]);
+        setExternalRedFlagForms([]);
+        return;
+      }
+
+      setExternalDataLoading(true);
+      try {
+        const response = await fetch("/api/external-data/by-applicant", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            applicant_id: applicantId,
+            applicant_round_id: applicantRoundId,
+          }),
+        });
+
+        if (!response.ok) {
+          const data = await response.json().catch(() => ({}));
+          throw new Error(data.error || "Failed to load external data");
+        }
+
+        const data = await response.json();
+        setExternalConflictForms(data.conflict_forms || []);
+        setExternalReferralForms(data.referral_forms || []);
+        setExternalRedFlagForms(data.red_flag_forms || []);
+      } catch (error) {
+        console.error("Error fetching external data:", error);
+        setExternalConflictForms([]);
+        setExternalReferralForms([]);
+        setExternalRedFlagForms([]);
+      } finally {
+        setExternalDataLoading(false);
+      }
+    };
+
     if (isOpen) {
       fetchApplicantDetails();
       fetchComments();
       fetchScores();
+      fetchExternalData();
     }
-  }, [isOpen, applicantId, applicantRoundId, userId, selectedOrganization?.id]);
+  }, [isOpen, applicantId, applicantRoundId, userId, selectedOrganization?.id, isOwner]);
 
   useEffect(() => {
     const fetchMetrics = async () => {
@@ -904,6 +974,14 @@ export default function ApplicationDialog({
                         </Badge>
                       )}
                     </TabsTrigger>
+                    {isOwner && (
+                      <TabsTrigger
+                        value="external-data"
+                        className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-1 pb-3 pt-3"
+                      >
+                        External Data
+                      </TabsTrigger>
+                    )}
                   </TabsList>
                 </div>
 
@@ -1394,6 +1472,206 @@ export default function ApplicationDialog({
                     </div>
                   </ScrollArea>
                 </TabsContent>
+
+                {isOwner && (
+                  <TabsContent value="external-data" className="flex-1 overflow-hidden m-0">
+                    <ScrollArea className="h-full">
+                      <div className="p-6 space-y-6">
+                        {externalDataLoading ? (
+                          <Card className="border-dashed">
+                            <CardContent className="py-10 text-center text-muted-foreground">
+                              Loading external data...
+                            </CardContent>
+                          </Card>
+                        ) : (
+                          <>
+                            <Card>
+                              <CardHeader className="pb-3">
+                                <CardTitle className="text-lg">Conflict of Interest Forms</CardTitle>
+                              </CardHeader>
+                              <CardContent className="space-y-3">
+                                {externalConflictForms.length === 0 ? (
+                                  <p className="text-sm text-muted-foreground">No conflict forms submitted.</p>
+                                ) : (
+                                  externalConflictForms.map((entry) => (
+                                    <div key={entry.id} className="rounded-xl border border-border/70 bg-muted/20 p-4 shadow-sm">
+                                      <div className="flex items-start justify-between gap-3">
+                                        <div className="flex items-center gap-3 min-w-0">
+                                          {entry.submitter?.avatar_url ? (
+                                            <div className="h-9 w-9 rounded-full overflow-hidden ring-1 ring-border flex-shrink-0">
+                                              <Image
+                                                src={entry.submitter.avatar_url}
+                                                alt={entry.submitter?.full_name || "Member avatar"}
+                                                width={36}
+                                                height={36}
+                                                className="h-full w-full object-cover"
+                                              />
+                                            </div>
+                                          ) : (
+                                            <div className="h-9 w-9 rounded-full bg-primary/10 text-primary text-xs font-semibold flex items-center justify-center ring-1 ring-border flex-shrink-0">
+                                              {(entry.submitter?.full_name || entry.submitter?.email || "U")
+                                                .charAt(0)
+                                                .toUpperCase()}
+                                            </div>
+                                          )}
+                                          <div className="min-w-0">
+                                            <div className="text-sm font-semibold truncate">
+                                              {entry.submitter?.full_name || entry.submitter?.email || "Unknown member"}
+                                            </div>
+                                            {entry.submitter?.email && (
+                                              <div className="text-xs text-muted-foreground truncate">
+                                                {entry.submitter.email}
+                                              </div>
+                                            )}
+                                          </div>
+                                        </div>
+                                        <div className="text-xs text-muted-foreground">
+                                          {new Date(entry.created_at).toLocaleString()}
+                                        </div>
+                                      </div>
+                                      <div
+                                        className="mt-2 text-sm rich-text-content prose prose-sm max-w-none"
+                                        dangerouslySetInnerHTML={{
+                                          __html: DOMPurify.sanitize(entry.submission_text),
+                                        }}
+                                      />
+                                    </div>
+                                  ))
+                                )}
+                              </CardContent>
+                            </Card>
+
+                            <Card>
+                              <CardHeader className="pb-3">
+                                <CardTitle className="text-lg">Referral Forms</CardTitle>
+                              </CardHeader>
+                              <CardContent className="space-y-3">
+                                {externalReferralForms.length === 0 ? (
+                                  <p className="text-sm text-muted-foreground">No referral forms submitted.</p>
+                                ) : (
+                                  externalReferralForms.map((entry) => (
+                                    <div key={entry.id} className="rounded-xl border border-border/70 bg-muted/20 p-4 shadow-sm">
+                                      <div className="flex items-start justify-between gap-3">
+                                        <div className="flex items-center gap-3 min-w-0">
+                                          {entry.submitter?.avatar_url ? (
+                                            <div className="h-9 w-9 rounded-full overflow-hidden ring-1 ring-border flex-shrink-0">
+                                              <Image
+                                                src={entry.submitter.avatar_url}
+                                                alt={entry.submitter?.full_name || "Member avatar"}
+                                                width={36}
+                                                height={36}
+                                                className="h-full w-full object-cover"
+                                              />
+                                            </div>
+                                          ) : (
+                                            <div className="h-9 w-9 rounded-full bg-primary/10 text-primary text-xs font-semibold flex items-center justify-center ring-1 ring-border flex-shrink-0">
+                                              {(entry.submitter?.full_name || entry.submitter?.email || "U")
+                                                .charAt(0)
+                                                .toUpperCase()}
+                                            </div>
+                                          )}
+                                          <div className="min-w-0">
+                                            <div className="text-sm font-semibold truncate">
+                                              {entry.submitter?.full_name || entry.submitter?.email || "Unknown member"}
+                                            </div>
+                                            {entry.submitter?.email && (
+                                              <div className="text-xs text-muted-foreground truncate">
+                                                {entry.submitter.email}
+                                              </div>
+                                            )}
+                                          </div>
+                                        </div>
+                                        <div className="text-xs text-muted-foreground">
+                                          {new Date(entry.created_at).toLocaleString()}
+                                        </div>
+                                      </div>
+                                      <div
+                                        className="mt-2 text-sm rich-text-content prose prose-sm max-w-none"
+                                        dangerouslySetInnerHTML={{
+                                          __html: DOMPurify.sanitize(entry.submission_text),
+                                        }}
+                                      />
+                                    </div>
+                                  ))
+                                )}
+                              </CardContent>
+                            </Card>
+
+                            <Card>
+                              <CardHeader className="pb-3">
+                                <CardTitle className="text-lg">Red Flag Forms</CardTitle>
+                              </CardHeader>
+                              <CardContent className="space-y-3">
+                                {externalRedFlagForms.length === 0 ? (
+                                  <p className="text-sm text-muted-foreground">No red flag forms submitted.</p>
+                                ) : (
+                                  externalRedFlagForms.map((entry) => (
+                                    <div key={entry.id} className="rounded-xl border border-border/70 bg-muted/20 p-4 shadow-sm">
+                                      <div className="flex items-start justify-between gap-3">
+                                        <div className="flex items-center gap-3 min-w-0">
+                                          {entry.is_anonymous_to_owner ? (
+                                            <div className="h-9 w-9 rounded-full bg-muted text-muted-foreground flex items-center justify-center ring-1 ring-border flex-shrink-0">
+                                              <User className="h-4 w-4" />
+                                            </div>
+                                          ) : entry.submitter?.avatar_url ? (
+                                            <div className="h-9 w-9 rounded-full overflow-hidden ring-1 ring-border flex-shrink-0">
+                                              <Image
+                                                src={entry.submitter.avatar_url}
+                                                alt={entry.submitter?.full_name || "Member avatar"}
+                                                width={36}
+                                                height={36}
+                                                className="h-full w-full object-cover"
+                                              />
+                                            </div>
+                                          ) : (
+                                            <div className="h-9 w-9 rounded-full bg-primary/10 text-primary text-xs font-semibold flex items-center justify-center ring-1 ring-border flex-shrink-0">
+                                              {(entry.submitter?.full_name || entry.submitter?.email || "U")
+                                                .charAt(0)
+                                                .toUpperCase()}
+                                            </div>
+                                          )}
+                                          <div className="min-w-0">
+                                            <div className="text-sm font-semibold truncate">
+                                              {entry.is_anonymous_to_owner ? "Anonymous" : (entry.submitter?.full_name || entry.submitter?.email || "Unknown member")}
+                                            </div>
+                                            {!entry.is_anonymous_to_owner && entry.submitter?.email && (
+                                              <div className="text-xs text-muted-foreground truncate">
+                                                {entry.submitter.email}
+                                              </div>
+                                            )}
+                                          </div>
+                                        </div>
+                                        <div className="text-xs text-muted-foreground">
+                                          {new Date(entry.created_at).toLocaleString()}
+                                        </div>
+                                      </div>
+                                      <div
+                                        className="mt-2 text-sm rich-text-content prose prose-sm max-w-none"
+                                        dangerouslySetInnerHTML={{
+                                          __html: DOMPurify.sanitize(entry.submission_text),
+                                        }}
+                                      />
+                                      <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                                        <Badge variant="outline">
+                                          Follow-up: {entry.wants_board_follow_up ? "Requested" : "Not requested"}
+                                        </Badge>
+                                        {!entry.is_anonymous_to_owner && entry.wants_board_follow_up && entry.follow_up_contact && (
+                                          <Badge variant="outline">
+                                            Contact: {entry.follow_up_contact}
+                                          </Badge>
+                                        )}
+                                      </div>
+                                    </div>
+                                  ))
+                                )}
+                              </CardContent>
+                            </Card>
+                          </>
+                        )}
+                      </div>
+                    </ScrollArea>
+                  </TabsContent>
+                )}
               </Tabs>
             </div>
           )

@@ -268,6 +268,192 @@ export type Database = {
           },
         ]
       }
+      external_conflict_forms: {
+        Row: {
+          applicant_id: string
+          created_at: string
+          id: string
+          organization_id: string
+          recruitment_cycle_id: string
+          submission_text: string
+          submitted_by_user_id: string | null
+        }
+        Insert: {
+          applicant_id: string
+          created_at?: string
+          id?: string
+          organization_id: string
+          recruitment_cycle_id: string
+          submission_text: string
+          submitted_by_user_id?: string | null
+        }
+        Update: {
+          applicant_id?: string
+          created_at?: string
+          id?: string
+          organization_id?: string
+          recruitment_cycle_id?: string
+          submission_text?: string
+          submitted_by_user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "external_conflict_forms_applicant_id_fkey"
+            columns: ["applicant_id"]
+            isOneToOne: false
+            referencedRelation: "applicants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "external_conflict_forms_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "external_conflict_forms_recruitment_cycle_id_fkey"
+            columns: ["recruitment_cycle_id"]
+            isOneToOne: false
+            referencedRelation: "recruitment_cycles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "external_conflict_forms_submitted_by_user_id_fkey"
+            columns: ["submitted_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      external_red_flag_forms: {
+        Row: {
+          applicant_id: string
+          created_at: string
+          follow_up_contact: string | null
+          id: string
+          is_anonymous_to_owner: boolean
+          organization_id: string
+          recruitment_cycle_id: string
+          submission_text: string
+          submitted_by_user_id: string | null
+          wants_board_follow_up: boolean
+        }
+        Insert: {
+          applicant_id: string
+          created_at?: string
+          follow_up_contact?: string | null
+          id?: string
+          is_anonymous_to_owner?: boolean
+          organization_id: string
+          recruitment_cycle_id: string
+          submission_text: string
+          submitted_by_user_id?: string | null
+          wants_board_follow_up?: boolean
+        }
+        Update: {
+          applicant_id?: string
+          created_at?: string
+          follow_up_contact?: string | null
+          id?: string
+          is_anonymous_to_owner?: boolean
+          organization_id?: string
+          recruitment_cycle_id?: string
+          submission_text?: string
+          submitted_by_user_id?: string | null
+          wants_board_follow_up?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "external_red_flag_forms_applicant_id_fkey"
+            columns: ["applicant_id"]
+            isOneToOne: false
+            referencedRelation: "applicants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "external_red_flag_forms_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "external_red_flag_forms_recruitment_cycle_id_fkey"
+            columns: ["recruitment_cycle_id"]
+            isOneToOne: false
+            referencedRelation: "recruitment_cycles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "external_red_flag_forms_submitted_by_user_id_fkey"
+            columns: ["submitted_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      external_referral_forms: {
+        Row: {
+          applicant_id: string
+          created_at: string
+          id: string
+          organization_id: string
+          recruitment_cycle_id: string
+          submission_text: string
+          submitted_by_user_id: string | null
+        }
+        Insert: {
+          applicant_id: string
+          created_at?: string
+          id?: string
+          organization_id: string
+          recruitment_cycle_id: string
+          submission_text: string
+          submitted_by_user_id?: string | null
+        }
+        Update: {
+          applicant_id?: string
+          created_at?: string
+          id?: string
+          organization_id?: string
+          recruitment_cycle_id?: string
+          submission_text?: string
+          submitted_by_user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "external_referral_forms_applicant_id_fkey"
+            columns: ["applicant_id"]
+            isOneToOne: false
+            referencedRelation: "applicants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "external_referral_forms_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "external_referral_forms_recruitment_cycle_id_fkey"
+            columns: ["recruitment_cycle_id"]
+            isOneToOne: false
+            referencedRelation: "recruitment_cycles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "external_referral_forms_submitted_by_user_id_fkey"
+            columns: ["submitted_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       metrics: {
         Row: {
           created_at: string

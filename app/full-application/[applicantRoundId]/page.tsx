@@ -18,12 +18,7 @@ import {
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
@@ -95,6 +90,26 @@ interface InterviewData {
   metrics: Metric[];
   comments: Comment[];
   user_role: string;
+}
+
+interface ExternalSubmitter {
+  id: string | null;
+  full_name: string | null;
+  email: string | null;
+  avatar_url: string | null;
+}
+
+interface ExternalFormEntry {
+  id: string;
+  created_at: string;
+  submission_text: string;
+  submitter: ExternalSubmitter | null;
+}
+
+interface ExternalRedFlagEntry extends ExternalFormEntry {
+  is_anonymous_to_owner: boolean;
+  wants_board_follow_up: boolean;
+  follow_up_contact: string | null;
 }
 
 // Helpers (borrowed from ApplicationDialog / InterviewPage)
@@ -248,11 +263,21 @@ export default function FullApplicationPage() {
   const applicantRoundId = params?.applicantRoundId as string | undefined;
 
   const [interviewData, setInterviewData] = useState<InterviewData | null>(
-    null
+    null,
   );
   const [comments, setComments] = useState<Comment[]>([]);
   const [scores, setScores] = useState<Submission[]>([]);
   const [metrics, setMetrics] = useState<Metric[]>([]);
+  const [externalConflictForms, setExternalConflictForms] = useState<
+    ExternalFormEntry[]
+  >([]);
+  const [externalReferralForms, setExternalReferralForms] = useState<
+    ExternalFormEntry[]
+  >([]);
+  const [externalRedFlagForms, setExternalRedFlagForms] = useState<
+    ExternalRedFlagEntry[]
+  >([]);
+  const [externalDataLoading, setExternalDataLoading] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [unauthorized, setUnauthorized] = useState(false);
@@ -297,10 +322,49 @@ export default function FullApplicationPage() {
         setComments(data.comments || []);
         setScores(data.scores || []);
         setMetrics(data.metrics || []);
+
+        if (data.user_role === "Owner") {
+          setExternalDataLoading(true);
+          try {
+            const externalResponse = await fetch(
+              "/api/external-data/by-applicant",
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  applicant_id: data.applicant.id,
+                  applicant_round_id: applicantRoundId,
+                }),
+              },
+            );
+            if (externalResponse.ok) {
+              const externalData = await externalResponse.json();
+              setExternalConflictForms(externalData.conflict_forms || []);
+              setExternalReferralForms(externalData.referral_forms || []);
+              setExternalRedFlagForms(externalData.red_flag_forms || []);
+            } else {
+              console.warn(
+                "Failed to fetch external data:",
+                externalResponse.status,
+              );
+              setExternalConflictForms([]);
+              setExternalReferralForms([]);
+              setExternalRedFlagForms([]);
+            }
+          } finally {
+            setExternalDataLoading(false);
+          }
+        } else {
+          setExternalDataLoading(false);
+          setExternalConflictForms([]);
+          setExternalReferralForms([]);
+          setExternalRedFlagForms([]);
+        }
       } catch (err) {
         console.error("Error fetching full application:", err);
+        setExternalDataLoading(false);
         setError(
-          err instanceof Error ? err.message : "Failed to load application"
+          err instanceof Error ? err.message : "Failed to load application",
         );
       } finally {
         setIsLoading(false);
@@ -362,6 +426,7 @@ export default function FullApplicationPage() {
   }
 
   const { applicant, recruitment_round, recruitment_cycle } = interviewData;
+  const isOwner = interviewData.user_role === "Owner";
 
   const getOrderedEntries = (): [string, string][] => {
     const data = applicant.data || {};
@@ -447,6 +512,9 @@ export default function FullApplicationPage() {
                 <BarChart3 className="h-4 w-4 mr-2" />
                 Scores
               </TabsTrigger>
+              {isOwner && (
+                <TabsTrigger value="external-data">External Data</TabsTrigger>
+              )}
             </TabsList>
           </div>
 
@@ -485,9 +553,7 @@ export default function FullApplicationPage() {
                               />
                             ) : (
                               <span className="text-xs text-muted-foreground">
-                                {comment.user_name
-                                  ? comment.user_name[0]
-                                  : "?"}
+                                {comment.user_name ? comment.user_name[0] : "?"}
                               </span>
                             )}
                           </div>
@@ -504,15 +570,15 @@ export default function FullApplicationPage() {
                                 )}
                               </div>
                               <span className="text-xs text-muted-foreground">
-                                {new Date(
-                                  comment.created_at
-                                ).toLocaleString()}
+                                {new Date(comment.created_at).toLocaleString()}
                               </span>
                             </div>
                             <div
                               className="mt-2 text-sm text-foreground rich-text-content prose prose-sm max-w-none break-words overflow-wrap-anywhere"
                               dangerouslySetInnerHTML={{
-                                __html: DOMPurify.sanitize(comment.comment_text),
+                                __html: DOMPurify.sanitize(
+                                  comment.comment_text,
+                                ),
                               }}
                             />
                           </div>
@@ -559,16 +625,16 @@ export default function FullApplicationPage() {
                               {submission.user_name || "Reviewer"}
                             </div>
                             <div className="text-xs text-muted-foreground">
-                              {new Date(
-                                submission.created_at
-                              ).toLocaleString()}
+                              {new Date(submission.created_at).toLocaleString()}
                             </div>
                           </div>
                         </div>
                         <div className="text-right">
                           <div className="text-sm font-semibold">
                             Avg:{" "}
-                            {submission.weighted_average != null ? submission.weighted_average.toFixed(2) : "N/A"}
+                            {submission.weighted_average != null
+                              ? submission.weighted_average.toFixed(2)
+                              : "N/A"}
                           </div>
                         </div>
                       </CardHeader>
@@ -576,7 +642,7 @@ export default function FullApplicationPage() {
                         <div className="space-y-2">
                           {submission.scores.map((score) => {
                             const metric = metrics.find(
-                              (m) => m.id === score.metric_id
+                              (m) => m.id === score.metric_id,
                             );
                             return (
                               <div
@@ -608,9 +674,269 @@ export default function FullApplicationPage() {
               </div>
             </ScrollArea>
           </TabsContent>
+
+          {isOwner && (
+            <TabsContent
+              value="external-data"
+              className="flex-1 overflow-hidden"
+            >
+              <ScrollArea className="h-full">
+                <div className="p-6 space-y-4">
+                  {externalDataLoading ? (
+                    <p className="text-sm text-muted-foreground">
+                      Loading external data...
+                    </p>
+                  ) : (
+                    <>
+                      <Card>
+                        <CardHeader>
+                          <CardTitle>Conflict of Interest Forms</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-3">
+                          {externalConflictForms.length === 0 ? (
+                            <p className="text-sm text-muted-foreground">
+                              No conflict forms submitted.
+                            </p>
+                          ) : (
+                            externalConflictForms.map((entry) => (
+                              <div
+                                key={entry.id}
+                                className="rounded-xl border border-border/70 bg-muted/20 p-4 shadow-sm"
+                              >
+                                <div className="flex items-start justify-between gap-3">
+                                  <div className="flex items-center gap-3 min-w-0">
+                                    {entry.submitter?.avatar_url ? (
+                                      <div className="h-9 w-9 rounded-full overflow-hidden ring-1 ring-border flex-shrink-0">
+                                        <Image
+                                          src={entry.submitter.avatar_url}
+                                          alt={
+                                            entry.submitter?.full_name ||
+                                            "Member avatar"
+                                          }
+                                          width={36}
+                                          height={36}
+                                          className="h-full w-full object-cover"
+                                        />
+                                      </div>
+                                    ) : (
+                                      <div className="h-9 w-9 rounded-full bg-primary/10 text-primary text-xs font-semibold flex items-center justify-center ring-1 ring-border flex-shrink-0">
+                                        {(
+                                          entry.submitter?.full_name ||
+                                          entry.submitter?.email ||
+                                          "U"
+                                        )
+                                          .charAt(0)
+                                          .toUpperCase()}
+                                      </div>
+                                    )}
+                                    <div className="min-w-0">
+                                      <div className="text-sm font-semibold truncate">
+                                        {entry.submitter?.full_name ||
+                                          entry.submitter?.email ||
+                                          "Unknown member"}
+                                      </div>
+                                      {entry.submitter?.email && (
+                                        <div className="text-xs text-muted-foreground truncate">
+                                          {entry.submitter.email}
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <span className="text-xs text-muted-foreground">
+                                    {new Date(
+                                      entry.created_at,
+                                    ).toLocaleString()}
+                                  </span>
+                                </div>
+                                <div
+                                  className="mt-2 text-sm rich-text-content prose prose-sm max-w-none"
+                                  dangerouslySetInnerHTML={{
+                                    __html: DOMPurify.sanitize(
+                                      entry.submission_text,
+                                    ),
+                                  }}
+                                />
+                              </div>
+                            ))
+                          )}
+                        </CardContent>
+                      </Card>
+
+                      <Card>
+                        <CardHeader>
+                          <CardTitle>Referral Forms</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-3">
+                          {externalReferralForms.length === 0 ? (
+                            <p className="text-sm text-muted-foreground">
+                              No referral forms submitted.
+                            </p>
+                          ) : (
+                            externalReferralForms.map((entry) => (
+                              <div
+                                key={entry.id}
+                                className="rounded-xl border border-border/70 bg-muted/20 p-4 shadow-sm"
+                              >
+                                <div className="flex items-start justify-between gap-3">
+                                  <div className="flex items-center gap-3 min-w-0">
+                                    {entry.submitter?.avatar_url ? (
+                                      <div className="h-9 w-9 rounded-full overflow-hidden ring-1 ring-border flex-shrink-0">
+                                        <Image
+                                          src={entry.submitter.avatar_url}
+                                          alt={
+                                            entry.submitter?.full_name ||
+                                            "Member avatar"
+                                          }
+                                          width={36}
+                                          height={36}
+                                          className="h-full w-full object-cover"
+                                        />
+                                      </div>
+                                    ) : (
+                                      <div className="h-9 w-9 rounded-full bg-primary/10 text-primary text-xs font-semibold flex items-center justify-center ring-1 ring-border flex-shrink-0">
+                                        {(
+                                          entry.submitter?.full_name ||
+                                          entry.submitter?.email ||
+                                          "U"
+                                        )
+                                          .charAt(0)
+                                          .toUpperCase()}
+                                      </div>
+                                    )}
+                                    <div className="min-w-0">
+                                      <div className="text-sm font-semibold truncate">
+                                        {entry.submitter?.full_name ||
+                                          entry.submitter?.email ||
+                                          "Unknown member"}
+                                      </div>
+                                      {entry.submitter?.email && (
+                                        <div className="text-xs text-muted-foreground truncate">
+                                          {entry.submitter.email}
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <span className="text-xs text-muted-foreground">
+                                    {new Date(
+                                      entry.created_at,
+                                    ).toLocaleString()}
+                                  </span>
+                                </div>
+                                <div
+                                  className="mt-2 text-sm rich-text-content prose prose-sm max-w-none"
+                                  dangerouslySetInnerHTML={{
+                                    __html: DOMPurify.sanitize(
+                                      entry.submission_text,
+                                    ),
+                                  }}
+                                />
+                              </div>
+                            ))
+                          )}
+                        </CardContent>
+                      </Card>
+
+                      <Card>
+                        <CardHeader>
+                          <CardTitle>Red Flag Forms</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-3">
+                          {externalRedFlagForms.length === 0 ? (
+                            <p className="text-sm text-muted-foreground">
+                              No red flag forms submitted.
+                            </p>
+                          ) : (
+                            externalRedFlagForms.map((entry) => (
+                              <div
+                                key={entry.id}
+                                className="rounded-xl border border-border/70 bg-muted/20 p-4 shadow-sm"
+                              >
+                                <div className="flex items-start justify-between gap-3">
+                                  <div className="flex items-center gap-3 min-w-0">
+                                    {!entry.is_anonymous_to_owner &&
+                                    entry.submitter?.avatar_url ? (
+                                      <div className="h-9 w-9 rounded-full overflow-hidden ring-1 ring-border flex-shrink-0">
+                                        <Image
+                                          src={entry.submitter.avatar_url}
+                                          alt={
+                                            entry.submitter?.full_name ||
+                                            "Member avatar"
+                                          }
+                                          width={36}
+                                          height={36}
+                                          className="h-full w-full object-cover"
+                                        />
+                                      </div>
+                                    ) : (
+                                      <div className="h-9 w-9 rounded-full bg-primary/10 text-primary text-xs font-semibold flex items-center justify-center ring-1 ring-border flex-shrink-0">
+                                        {entry.is_anonymous_to_owner
+                                          ? "A"
+                                          : (
+                                              entry.submitter?.full_name ||
+                                              entry.submitter?.email ||
+                                              "U"
+                                            )
+                                              .charAt(0)
+                                              .toUpperCase()}
+                                      </div>
+                                    )}
+                                    <div className="min-w-0">
+                                      <div className="text-sm font-semibold truncate">
+                                        {entry.is_anonymous_to_owner
+                                          ? "Anonymous"
+                                          : entry.submitter?.full_name ||
+                                            entry.submitter?.email ||
+                                            "Unknown member"}
+                                      </div>
+                                      {!entry.is_anonymous_to_owner &&
+                                        entry.submitter?.email && (
+                                          <div className="text-xs text-muted-foreground truncate">
+                                            {entry.submitter.email}
+                                          </div>
+                                        )}
+                                    </div>
+                                  </div>
+                                  <span className="text-xs text-muted-foreground">
+                                    {new Date(
+                                      entry.created_at,
+                                    ).toLocaleString()}
+                                  </span>
+                                </div>
+                                <div
+                                  className="mt-2 text-sm rich-text-content prose prose-sm max-w-none"
+                                  dangerouslySetInnerHTML={{
+                                    __html: DOMPurify.sanitize(
+                                      entry.submission_text,
+                                    ),
+                                  }}
+                                />
+                                <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                                  <Badge variant="outline">
+                                    Follow-up:{" "}
+                                    {entry.wants_board_follow_up
+                                      ? "Requested"
+                                      : "Not requested"}
+                                  </Badge>
+                                  {entry.wants_board_follow_up &&
+                                    entry.follow_up_contact && (
+                                      <Badge variant="outline">
+                                        Contact: {entry.follow_up_contact}
+                                      </Badge>
+                                    )}
+                                </div>
+                              </div>
+                            ))
+                          )}
+                        </CardContent>
+                      </Card>
+                    </>
+                  )}
+                </div>
+              </ScrollArea>
+            </TabsContent>
+          )}
         </Tabs>
       </main>
     </div>
   );
 }
-
