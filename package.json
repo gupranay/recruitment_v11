@@ -2,6 +2,9 @@
   "name": "recruitment_platform_v3",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": "24.x"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -64,7 +67,6 @@
     "react-dom": "^19.2.3",
     "react-hot-toast": "^2.4.1",
     "react-icons": "^5.2.1",
-    "react-router-dom": "^6.23.1",
     "recharts": "^2.15.1",
     "resend": "^6.8.0",
     "styled-jsx": "^5.1.6",
@@ -82,7 +84,6 @@
     "eslint": "^9",
     "eslint-config-next": "^16.1.4",
     "postcss": "^8",
-    "react-email": "^5.2.5",
     "supabase": "^2.1.1",
     "tailwindcss": "^3.4.1",
     "typescript": "^5"
