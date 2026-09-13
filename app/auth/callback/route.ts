@@ -9,7 +9,12 @@ export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
   // if "next" is in param, use it as the redirect URL
-  const next = searchParams.get("next") ?? "/";
+  const requestedNext = searchParams.get("next") ?? "/";
+  // Only allow same-site relative paths; reject protocol-relative and absolute URLs.
+  const next =
+    requestedNext.startsWith("/") && !requestedNext.startsWith("//")
+      ? requestedNext
+      : "/";
 
   if (code) {
     const cookieStore = await cookies();

@@ -25,6 +25,7 @@ import {
   X,
 } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
+import DOMPurify from "dompurify";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -1196,7 +1197,7 @@ export default function InterviewPage() {
                                       <div
                                         className="text-xs text-foreground rich-text-content prose prose-sm max-w-none break-words overflow-wrap-anywhere"
                                         dangerouslySetInnerHTML={{
-                                          __html: comment.comment_text,
+                                          __html: DOMPurify.sanitize(comment.comment_text),
                                         }}
                                       />
                                       <p className="text-xs text-muted-foreground mt-1">
@@ -1307,7 +1308,7 @@ export default function InterviewPage() {
                                       <div
                                         className="text-xs text-foreground rich-text-content prose prose-sm max-w-none break-words overflow-wrap-anywhere"
                                         dangerouslySetInnerHTML={{
-                                          __html: comment.comment_text,
+                                          __html: DOMPurify.sanitize(comment.comment_text),
                                         }}
                                       />
                                       <p className="text-xs text-muted-foreground mt-1">

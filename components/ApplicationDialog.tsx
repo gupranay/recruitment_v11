@@ -1350,9 +1350,9 @@ export default function ApplicationDialog({
                                         </div>
                                         <div
                                           className="text-sm text-foreground rich-text-content prose prose-sm max-w-none"
-                                          dangerouslySetInnerHTML={{
-                                            __html: comment.comment_text,
-                                          }}
+                                        dangerouslySetInnerHTML={{
+                                          __html: DOMPurify.sanitize(comment.comment_text),
+                                        }}
                                         />
                                         <p className="text-xs text-muted-foreground mt-2">
                                           {new Date(comment.created_at).toLocaleString()}

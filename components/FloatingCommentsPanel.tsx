@@ -8,6 +8,7 @@ import { ScrollArea } from "./ui/scroll-area";
 import Image from "next/image";
 import { MessageSquare, X, User, Trash2, Edit2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import DOMPurify from "dompurify";
 
 interface Comment {
   id: string;
@@ -139,7 +140,7 @@ export default function FloatingCommentsPanel({
                         <div
                           className="text-xs text-foreground rich-text-content prose prose-sm max-w-none break-words overflow-wrap-anywhere"
                           dangerouslySetInnerHTML={{
-                            __html: comment.comment_text,
+                            __html: DOMPurify.sanitize(comment.comment_text),
                           }}
                         />
                         <p className="text-xs text-muted-foreground mt-1">

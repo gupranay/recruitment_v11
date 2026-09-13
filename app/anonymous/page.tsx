@@ -19,6 +19,7 @@ import { create } from "domain";
 import { Loader2, Pencil, Trash2, ExternalLink } from "lucide-react";
 import RichTextEditor from "@/components/RichTextEditor";
 import LoadingModal from "@/components/LoadingModal2";
+import DOMPurify from "dompurify";
 
 interface AnonApplicant {
   id: string; // The actual UUID of the applicant
@@ -755,7 +756,7 @@ const ReadingPageContent = () => {
                               <div
                                 className="text-sm text-card-foreground leading-relaxed rich-text-content"
                                 dangerouslySetInnerHTML={{
-                                  __html: comment.comment_text,
+                                  __html: DOMPurify.sanitize(comment.comment_text),
                                 }}
                               />
                             </div>
