@@ -68,7 +68,7 @@ export default function UploadApplicantsDialog() {
         trim: true,
         relax_quotes: true,
         relax_column_count: true,
-      });
+      }) as Record<string, string>[];
       setParsedData(records);
       if (records.length > 0) {
         const headers = Object.keys(records[0]);
