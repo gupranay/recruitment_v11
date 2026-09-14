@@ -94,5 +94,9 @@
     "@fast-csv/format": {
       "lodash.isequal": "npm:lodash@^4.17.21"
     }
+  },
+  "allowScripts": {
+    "esbuild@0.25.12": true,
+    "unrs-resolver@1.11.1": true
   }
 }
