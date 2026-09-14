@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { protectedPaths } from "./lib/constant/inedx";
 import { getSupabaseUrl, getSupabaseAnonKey } from "./lib/supabase/config";
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   let response = NextResponse.next({
     request: {
       headers: request.headers,

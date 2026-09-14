@@ -1,4 +1,4 @@
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import {
   Loader2,
   Send,
@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import Image from "next/image";
+import ApplicantMedia from "@/components/ApplicantMedia";
 import DOMPurify from "dompurify";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -854,6 +855,11 @@ export default function ApplicationDialog({
         <DialogTitle className="sr-only">
           {applicantData ? `Application details for ${applicantData.name}` : "Application details"}
         </DialogTitle>
+        <DialogDescription className="sr-only">
+          {applicantData
+            ? `Full application, reviews, and comments for ${applicantData.name}`
+            : "Applicant application details"}
+        </DialogDescription>
         {isLoading ? (
           <div className="flex items-center justify-center h-[80vh]">
             <div className="flex flex-col items-center gap-4">
@@ -871,13 +877,14 @@ export default function ApplicationDialog({
                     <div className="flex items-center gap-4">
                       {/* Avatar in Header */}
                       <div className={`relative w-16 h-16 rounded-full overflow-hidden ring-2 ${statusColors.ring} ring-offset-2 ring-offset-background shadow-lg`}>
-                        <Image
+                        <ApplicantMedia
                           src={
                             applicantData.headshot_url ||
                             "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png"
                           }
                           alt={`${applicantData.name}`}
                           fill
+                          sizes="64px"
                           className="object-cover"
                         />
                       </div>
@@ -992,14 +999,17 @@ export default function ApplicationDialog({
                       {/* Large Headshot */}
                       <div className="flex justify-center mb-8">
                         <div className="relative w-48 h-48 rounded-xl overflow-hidden shadow-lg ring-1 ring-border">
-                          <Image
+                          <ApplicantMedia
                             src={
                               applicantData.headshot_url ||
                               "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png"
                             }
                             alt={`Headshot of ${applicantData.name}`}
                             fill
+                            sizes="192px"
                             className="object-cover"
+                            pdfMode="embed"
+                            pdfClassName="absolute inset-0 min-h-0 rounded-xl"
                           />
                         </div>
                       </div>

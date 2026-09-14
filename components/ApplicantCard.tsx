@@ -15,7 +15,7 @@ import { Expand, ChevronRight, Loader2, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useState } from "react";
 import toast from "react-hot-toast";
-import Image from "next/image";
+import ApplicantMedia from "@/components/ApplicantMedia";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -35,6 +35,7 @@ interface ApplicantCardProps {
   isLastRound: boolean;
   onClick?: () => void;
   isOwnerOrAdmin?: boolean;
+  priority?: boolean;
 }
 
 export default function ApplicantCard({
@@ -44,6 +45,7 @@ export default function ApplicantCard({
   fetchApplicants,
   isLastRound,
   isOwnerOrAdmin = true,
+  priority = false,
 }: ApplicantCardProps) {
   const [isAlertDialogOpen, setIsAlertDialogOpen] = useState(false);
   const [isApplicationDialogOpen, setIsApplicationDialogOpen] = useState(false);
@@ -242,11 +244,15 @@ export default function ApplicantCard({
       <CardContent>
         <div className="aspect-[3/4] relative overflow-hidden rounded-lg bg-muted">
           {applicant.headshot_url && (
-            <Image
+            <ApplicantMedia
               src={applicant.headshot_url}
               alt={`${applicant.name}'s headshot`}
-              layout="fill"
+              fill
+              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
+              priority={priority}
               className="object-cover"
+              pdfMode="preview"
+              pdfClassName="absolute inset-0 min-h-0"
             />
           )}
         </div>

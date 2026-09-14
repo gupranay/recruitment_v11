@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import toast, { Toaster } from "react-hot-toast";
+import ApplicantMedia from "@/components/ApplicantMedia";
 import {
   Card,
   CardContent,
@@ -23,10 +24,11 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -286,20 +288,24 @@ export default function ExternalFormPage({
                           )}
                           aria-label={
                             selectedApplicant.headshot_url
-                              ? `View full-size photo of ${selectedApplicant.name}`
+                              ? `View headshot attachment for ${selectedApplicant.name}`
                               : undefined
                           }
                         >
                           <Avatar className="pointer-events-none h-12 w-12 border border-border/60 shadow-sm">
                             {selectedApplicant.headshot_url ? (
-                              <AvatarImage
+                              <ApplicantMedia
                                 src={selectedApplicant.headshot_url}
-                                alt=""
+                                alt={`${selectedApplicant.name} headshot`}
+                                fill
+                                sizes="48px"
+                                className="object-cover"
                               />
-                            ) : null}
-                            <AvatarFallback className="text-sm font-semibold">
-                              {applicantInitials(selectedApplicant.name)}
-                            </AvatarFallback>
+                            ) : (
+                              <AvatarFallback className="text-sm font-semibold">
+                                {applicantInitials(selectedApplicant.name)}
+                              </AvatarFallback>
+                            )}
                           </Avatar>
                         </button>
                         <span className="min-w-0 truncate text-base font-medium">
@@ -316,13 +322,21 @@ export default function ExternalFormPage({
                           <DialogTitle>
                             {selectedApplicant.name} — headshot
                           </DialogTitle>
+                          <DialogDescription>
+                            Full-size headshot for {selectedApplicant.name}
+                          </DialogDescription>
                         </DialogHeader>
                         {selectedApplicant.headshot_url ? (
-                          <img
+                          <ApplicantMedia
                             src={selectedApplicant.headshot_url}
                             alt={`${selectedApplicant.name} headshot`}
+                            width={900}
+                            height={900}
+                            unoptimized
                             className="max-h-[min(88vh,860px)] w-full object-contain"
                             referrerPolicy="no-referrer"
+                            pdfMode="embed"
+                            pdfClassName="h-[min(88vh,860px)] min-h-96"
                           />
                         ) : null}
                       </DialogContent>

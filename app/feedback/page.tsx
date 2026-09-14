@@ -13,7 +13,7 @@ import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import toast, { Toaster } from "react-hot-toast";
-import Image from "next/image";
+import ApplicantMedia from "@/components/ApplicantMedia";
 import useUser from "../hook/useUser";
 import { useSearchParams } from "next/navigation";
 import RichTextEditor from "@/components/RichTextEditor";
@@ -295,7 +295,7 @@ function FeedbackContent() {
                 <CardContent className="p-0">
                   {applicant.headshot_url ? (
                     <div className="relative w-full aspect-[3/4] overflow-hidden bg-muted">
-                      <Image
+                      <ApplicantMedia
                         src={applicant.headshot_url}
                         alt={`${applicant.name}'s headshot`}
                         width={300}
@@ -344,12 +344,14 @@ function FeedbackContent() {
               <>
                 {selectedApplicant.headshot_url && (
                   <div className="mx-auto mb-6 rounded-xl overflow-hidden w-48 sm:w-64 shadow-lg ring-2 ring-muted">
-                    <Image
+                    <ApplicantMedia
                       src={selectedApplicant.headshot_url}
                       alt={`${selectedApplicant.name}'s headshot`}
                       width={256}
                       height={256}
                       className="object-cover w-full h-full"
+                      pdfMode="embed"
+                      pdfClassName="min-h-64 rounded-xl"
                     />
                   </div>
                 )}

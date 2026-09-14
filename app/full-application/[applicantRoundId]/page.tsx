@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
+import ApplicantMedia from "@/components/ApplicantMedia";
 import DOMPurify from "dompurify";
 import {
   ArrowLeft,
@@ -463,13 +464,14 @@ export default function FullApplicationPage() {
             </Button>
             <div className="flex items-center gap-4">
               <div className="relative h-14 w-14 overflow-hidden rounded-full bg-muted">
-                <Image
+                <ApplicantMedia
                   src={
                     applicant.headshot_url ||
                     "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png"
                   }
                   alt={applicant.name}
                   fill
+                  sizes="56px"
                   className="object-cover"
                 />
               </div>

@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import RichTextEditor from "@/components/RichTextEditor";
 import { Separator } from "@/components/ui/separator";
 import toast, { Toaster } from "react-hot-toast";
-import Image from "next/image";
+import ApplicantMedia from "@/components/ApplicantMedia";
 import useUser from "../hook/useUser";
 
 interface Applicant {
@@ -159,7 +159,7 @@ export default function ApplicantsGridPage() {
               className="rounded-lg border border-muted bg-card shadow-sm p-4 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-ring transition flex flex-col items-center"
             >
               {applicant.headshot_url && (
-                <Image
+                <ApplicantMedia
                   src={applicant.headshot_url}
                   alt={`${applicant.name}'s headshot`}
                   width={300}
@@ -191,12 +191,14 @@ export default function ApplicantsGridPage() {
               <>
                 {selectedApplicant.headshot_url && (
                   <div className="mx-auto mb-4 rounded-lg overflow-hidden w-64">
-                    <Image
+                    <ApplicantMedia
                       src={selectedApplicant.headshot_url}
                       alt={`${selectedApplicant.name}'s headshot`}
                       width={256}
                       height={256}
                       className="object-cover w-full h-full"
+                      pdfMode="embed"
+                      pdfClassName="min-h-64 rounded-lg"
                     />
                   </div>
                 )}

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
-import Image from "next/image";
+import ApplicantMedia from "@/components/ApplicantMedia";
 import Link from "next/link";
 import {
   Loader2,
@@ -163,10 +163,11 @@ const ApplicantVoteCard = ({
           {/* Avatar */}
           <div className="relative h-12 w-12 flex-shrink-0 overflow-hidden rounded-full bg-muted">
             {applicant.headshot_url ? (
-              <Image
+              <ApplicantMedia
                 src={applicant.headshot_url}
                 alt={applicant.name}
                 fill
+                sizes="48px"
                 className="object-cover"
               />
             ) : (
@@ -289,10 +290,11 @@ const ResultCard = ({
           {/* Avatar */}
           <div className="relative h-12 w-12 flex-shrink-0 overflow-hidden rounded-full bg-muted">
             {result.headshot_url ? (
-              <Image
+              <ApplicantMedia
                 src={result.headshot_url}
                 alt={result.name}
                 fill
+                sizes="48px"
                 className="object-cover"
               />
             ) : (

@@ -4,6 +4,7 @@ import {
   DialogHeader,
   DialogFooter,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { MultiSelect } from "@/components/ui/MultiSelect";
@@ -146,12 +147,12 @@ export default function CreateAnonymizedAppDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Create Anonymized App Reading</DialogTitle>
-        </DialogHeader>
-        <div className="py-4">
-          <p className="text-sm text-muted-foreground mb-4">
+          <DialogDescription>
             Select fields to omit from the anonymized reading for{" "}
             {recruitment_round_name}
-          </p>
+          </DialogDescription>
+        </DialogHeader>
+        <div className="py-4">
           {isLoadingFields ? (
             <p>Loading available fields...</p>
           ) : (

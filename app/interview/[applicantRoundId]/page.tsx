@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
+import ApplicantMedia from "@/components/ApplicantMedia";
 import {
   Loader2,
   Send,
@@ -586,14 +587,17 @@ const ApplicationView = ({
         {/* Large Headshot */}
         <div className="flex justify-center mb-8">
           <div className="relative w-32 h-32 rounded-xl overflow-hidden shadow-lg ring-1 ring-border">
-            <Image
+            <ApplicantMedia
               src={
                 applicant.headshot_url ||
                 "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png"
               }
               alt={`Headshot of ${applicant.name}`}
               fill
+              sizes="128px"
               className="object-cover"
+              pdfMode="embed"
+              pdfClassName="absolute inset-0 min-h-0 rounded-xl"
             />
           </div>
         </div>
@@ -1025,13 +1029,14 @@ export default function InterviewPage() {
             <div className="h-6 w-px bg-border" />
             <div className="flex items-center gap-3">
               <div className="relative w-10 h-10 rounded-full overflow-hidden ring-2 ring-border">
-                <Image
+                <ApplicantMedia
                   src={
                     interviewData.applicant.headshot_url ||
                     "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png"
                   }
                   alt={interviewData.applicant.name}
                   fill
+                  sizes="40px"
                   className="object-cover"
                 />
               </div>

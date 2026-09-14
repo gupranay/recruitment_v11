@@ -484,7 +484,7 @@ export default function ApplicantGrid({
             </div>
           ) : (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {sortedApplicants.map((applicant) => (
+              {sortedApplicants.map((applicant, index) => (
                 <ApplicantCard
                   key={applicant.applicant_id}
                   applicant={applicant}
@@ -494,6 +494,7 @@ export default function ApplicantGrid({
                   isLastRound={isLastRound}
                   onClick={() => handleOpenDialog(applicant)}
                   isOwnerOrAdmin={isOwnerOrAdmin}
+                  priority={index < 4}
                 />
               ))}
             </div>
