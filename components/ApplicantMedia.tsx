@@ -39,6 +39,45 @@ export function isPdfUrl(value?: string | null): boolean {
   }
 }
 
+export function isHeicUrl(value?: string | null): boolean {
+  const url = value?.trim();
+
+  if (!url) return false;
+
+  try {
+    const parsedUrl = new URL(url, "https://local.invalid");
+    const pathname = decodeURIComponent(parsedUrl.pathname);
+    const contentType =
+      parsedUrl.searchParams.get("contentType") ||
+      parsedUrl.searchParams.get("content-type") ||
+      parsedUrl.searchParams.get("type");
+    const namedFile =
+      parsedUrl.searchParams.get("filename") ||
+      parsedUrl.searchParams.get("file") ||
+      parsedUrl.searchParams.get("name");
+
+    return (
+      /\.(?:heic|heif)$/i.test(pathname) ||
+      /\.(?:heic|heif)$/i.test(namedFile || "") ||
+      /image\/(?:heic|heif)/i.test(contentType || "")
+    );
+  } catch {
+    return /\.(?:heic|heif)(?:$|[?#])/i.test(url);
+  }
+}
+
+function imageViewerUrl(url: string): string {
+  try {
+    if (new URL(url).hostname === "storage.tally.so") {
+      return `/api/media/image?url=${encodeURIComponent(url)}`;
+    }
+  } catch {
+    // Relative image URLs can be displayed directly by the browser.
+  }
+
+  return url;
+}
+
 function pdfViewerUrl(url: string): string {
   const viewerOptions = "toolbar=0&navpanes=0&view=FitH";
 
@@ -75,7 +114,7 @@ export default function ApplicantMedia({
   if (!isPdfUrl(resolvedSrc)) {
     return (
       <Image
-        src={resolvedSrc}
+        src={isHeicUrl(resolvedSrc) ? imageViewerUrl(resolvedSrc) : resolvedSrc}
         alt={alt}
         className={className}
         fill={fill}
