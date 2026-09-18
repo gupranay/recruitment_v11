@@ -11,6 +11,7 @@ type ApplicantRoundWithApplicant = {
     name: string;
     headshot_url: string | null;
     email: string | null;
+    data: Record<string, unknown> | null;
   } | null;
 };
 
@@ -63,7 +64,8 @@ export default async function handler(
           id,
           name,
           headshot_url,
-          email
+          email,
+          data
         )
       `
       )
@@ -93,6 +95,8 @@ export default async function handler(
         name: string | null;
         headshot_url: string | null;
         email: string | null;
+        grade: string | null;
+        major: string | null;
         status: string | null;
         current_round_weighted: number | null;
         last_round_weighted: number | null;
@@ -101,12 +105,23 @@ export default async function handler(
 
     for (const item of currentRoundData) {
       const aId = item.applicant_id;
+      const fields = item.applicants?.data;
+      const getField = (name: string) => {
+        const value = Object.entries(fields ?? {}).find(
+          ([key]) => key.trim().toLowerCase() === name
+        )?.[1];
+        return typeof value === "string" || typeof value === "number"
+          ? String(value)
+          : null;
+      };
       resultsMap[aId] = {
         applicant_round_id: item.id,
         applicant_id: aId,
         name: item.applicants?.name ?? null,
         headshot_url: item.applicants?.headshot_url ?? null,
         email: item.applicants?.email ?? null,
+        grade: getField("grade"),
+        major: getField("major"),
         status: item.status ?? null,
         current_round_weighted: item.weighted_score ?? null,
         last_round_weighted: null,
