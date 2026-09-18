@@ -307,10 +307,12 @@ export default function ApplicantGrid({
                   <DropdownMenuItem
                     onClick={() => {
                       exportToCSV(
-                        applicants.map(({ name, email, status }) => ({
+                        applicants.map(({ name, email, status, grade, major }) => ({
                           name: name || "N/A",
                           email: email || "N/A",
                           status: status || "N/A",
+                          grade: grade ?? "",
+                          major: major ?? "",
                         })),
                         rounds[currentRound].name || "applicants"
                       );
