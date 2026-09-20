@@ -4,6 +4,7 @@ export type ApplicantCardType = {
   name: string;
   headshot_url: string;
   email: string;
+  data?: Record<string, unknown>;
   grade?: string | null;
   major?: string | null;
   status: string;

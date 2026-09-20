@@ -11,7 +11,7 @@ import { Input } from "./ui/input";
 import UploadApplicantsDialog3 from "./UploadApplicantsDialog3";
 import CreateAnonymizedAppDialog from "./CreateAnonymizedAppDialog";
 import ApplicationDialog from "./ApplicationDialog";
-import { exportToCSV } from "@/lib/utils/exportAppsToCSV";
+import ExportApplicantsDialog from "./ExportApplicantsDialog";
 import { cn } from "@/lib/utils";
 import { RecruitmentRound } from "@/lib/types/RecruitmentRound";
 import React from "react";
@@ -73,6 +73,7 @@ export default function ApplicantGrid({
   const [selectedDecisions, setSelectedDecisions] = useState<string[]>([]);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
 
   const fetchApplicants = useCallback(async () => {
     if (!rounds[currentRound]?.id) {
@@ -305,23 +306,19 @@ export default function ApplicantGrid({
                     View demographics
                   </DropdownMenuItem>
                   <DropdownMenuItem
-                    onClick={() => {
-                      exportToCSV(
-                        applicants.map(({ name, email, status, grade, major }) => ({
-                          name: name || "N/A",
-                          email: email || "N/A",
-                          status: status || "N/A",
-                          grade: grade ?? "",
-                          major: major ?? "",
-                        })),
-                        rounds[currentRound].name || "applicants"
-                      );
-                    }}
+                    onClick={() => setIsExportDialogOpen(true)}
                   >
                     Export decisions (CSV)
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
+
+              <ExportApplicantsDialog
+                applicants={applicants}
+                roundName={rounds[currentRound].name || "applicants"}
+                open={isExportDialogOpen}
+                onOpenChange={setIsExportDialogOpen}
+              />
 
               {currentRound === 0 && (
                 <UploadApplicantsDialog3
