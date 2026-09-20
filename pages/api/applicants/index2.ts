@@ -95,6 +95,7 @@ export default async function handler(
         name: string | null;
         headshot_url: string | null;
         email: string | null;
+        data: Record<string, unknown>;
         grade: string | null;
         major: string | null;
         status: string | null;
@@ -120,6 +121,7 @@ export default async function handler(
         name: item.applicants?.name ?? null,
         headshot_url: item.applicants?.headshot_url ?? null,
         email: item.applicants?.email ?? null,
+        data: fields ?? {},
         grade: getField("grade"),
         major: getField("major"),
         status: item.status ?? null,
