@@ -18,6 +18,25 @@ export type ExportApplicant = {
 
 const normalizeColumn = (column: string) => column.trim().toLowerCase();
 
+const DEFAULT_DATA_COLUMNS = new Set(["grade", "major", "gender"]);
+
+const getColumnWords = (column: string) =>
+  normalizeColumn(column).split(/[^a-z0-9]+/).filter(Boolean);
+
+const matchesColumn = (field: string, column: string): boolean => {
+  const normalizedField = normalizeColumn(field);
+  const normalizedColumn = normalizeColumn(column);
+
+  if (normalizedField === normalizedColumn) return true;
+  if (!DEFAULT_DATA_COLUMNS.has(normalizedColumn)) return false;
+
+  const fieldWords = getColumnWords(field);
+  return (
+    fieldWords.includes(normalizedColumn) ||
+    (normalizedColumn === "major" && fieldWords.includes("majors"))
+  );
+};
+
 const formatValue = (value: unknown): string => {
   if (value === null || value === undefined) return "";
   if (typeof value === "object") return JSON.stringify(value);
@@ -34,9 +53,10 @@ const getApplicantValue = (
   if (normalizedColumn === "email") return applicant.email ?? "";
   if (normalizedColumn === "status") return applicant.status ?? "";
 
-  const matchingField = Object.entries(applicant.data ?? {}).find(
-    ([field]) => normalizeColumn(field) === normalizedColumn,
-  );
+  const fields = Object.entries(applicant.data ?? {});
+  const matchingField =
+    fields.find(([field]) => normalizeColumn(field) === normalizedColumn) ??
+    fields.find(([field]) => matchesColumn(field, column));
   return formatValue(matchingField?.[1]);
 };
 
@@ -49,7 +69,10 @@ export const getAvailableExportColumns = (
   for (const applicant of applicants) {
     for (const field of Object.keys(applicant.data ?? {})) {
       const normalizedField = normalizeColumn(field);
-      if (!normalizedField || seen.has(normalizedField)) continue;
+      const matchesDefault = DEFAULT_EXPORT_COLUMNS.some((column) =>
+        matchesColumn(field, column),
+      );
+      if (!normalizedField || seen.has(normalizedField) || matchesDefault) continue;
       seen.add(normalizedField);
       columns.push(field);
     }

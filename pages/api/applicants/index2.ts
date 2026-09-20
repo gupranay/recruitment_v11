@@ -109,7 +109,15 @@ export default async function handler(
       const fields = item.applicants?.data;
       const getField = (name: string) => {
         const value = Object.entries(fields ?? {}).find(
-          ([key]) => key.trim().toLowerCase() === name
+          ([key]) => {
+            const normalizedKey = key.trim().toLowerCase();
+            const keyWords = normalizedKey.split(/[^a-z0-9]+/).filter(Boolean);
+            return (
+              normalizedKey === name ||
+              keyWords.includes(name) ||
+              (name === "major" && keyWords.includes("majors"))
+            );
+          }
         )?.[1];
         return typeof value === "string" || typeof value === "number"
           ? String(value)
